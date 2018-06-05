@@ -1,0 +1,156 @@
+---
+title: "Exploratory analysis of measles data from China and Niger"
+author: Andrew Tredennick
+output: html_document
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)  # data wrangling
+library(lubridate)  # time and date functions
+library(ggthemes)   # pleasing ggplot2 themes
+library(codyn)      # community dynamics metrics (e.g., synchrony)
+```
+
+## Niger data
+
+### Fetch the Niger measles data
+
+The data are stored as a matrix with rows for each of 40 regions and columns for the region name and incident numbers for each week starting 1 January 1995 for eleven years.
+
+```{r fetch-niger-data, message=FALSE, warning=FALSE}
+file_name <- "../niger_measles/niger_regional_1995_2005.csv"
+niger_measles_raw <- read_csv(file_name, col_types = cols())
+
+num_regions <- nrow(niger_measles_raw)
+num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because first column are regions
+
+# Create a vector of dates for each week over 11 years
+start_date <- ymd("19950101")
+all_dates <- seq(start_date, by = "week", length.out = num_weeks)
+
+niger_measles <- niger_measles_raw %>%
+  gather(key = week, value = cases, -X1) %>%
+  mutate(
+    week_num = rep(1:num_weeks, each = num_regions),
+    date = rep(all_dates, each = num_regions)
+  ) %>%
+  dplyr::rename(region = X1) %>%
+  dplyr::select(-week)
+
+glimpse(niger_measles)
+```
+
+### Plot the time series by region
+
+```{r plot-niger-measles, warning=FALSE}
+ggplot(data = niger_measles, aes(x = date, y = cases)) +
+  geom_line() +
+  facet_wrap(~region, scales = "free_y") +
+  theme_minimal(base_size = 9) +
+  ggtitle("Measles cases in Niger", subtitle = "Weekly, by region")
+```
+
+### Calculate sychrony of cases across all regions
+```{r calc-synch-niger}
+regional_synchrony <- codyn::synchrony(
+  df = niger_measles,
+  time.var = "week_num", 
+  species.var = "region", 
+  abundance.var = "cases",
+  metric = "Loreau"
+  )
+```
+
+Synchrony of measles cases across all regions is `r round(regional_synchrony, 2)`. The synchrony metric ranges from 0 (perfectly asynchronous) to 1 (perfectly sunchronus).
+
+Now look at all pairwise correlations.
+
+```{r niger-corrs}
+niger_cor_matrix <- niger_measles %>%
+  spread(region, cases) %>%
+  dplyr::select(-week_num, -date) %>%
+  cor()
+
+corrplot::corrplot(niger_cor_matrix, type="lower")
+```
+
+### Plot just Niamey
+```{r plot-niamey-measles}
+ggplot(data = filter(niger_measles, region == "Niamey (City)"), aes(x = date, y = cases)) +
+  geom_point() +
+  theme_minimal(base_size = 15) +
+  ggtitle("Measles cases in Niamey, Niger", subtitle = "Weekly")
+```
+
+### Attempt to fit a TSIR model to Niamey data
+I am trying to fit a model like the one presented [Ferrari et al. 2008](https://www.nature.com/articles/nature06509). The structure of the model is:
+
+\begin{align} 
+\textbf{Process:} \quad \lambda_t &= \beta_m S_t I_t^\alpha \\
+I_{t+1} &\sim \text{Negative Binomial}\left(\lambda_t, I_t \right), \\
+S_{t+1} &= S_t - I_{t+1} + B_t, \\
+S_{t=0} &\sim \text{Normal}(x, \sigma^2). \\
+\textbf{Data:} \quad y_m &\sim \text{Binomial}\left(I_m, p_{\text{obs}} \right), 
+\end{align}
+
+where parameters are as follows:
+
++ $\lambda_t$: epidemic intensity at time *t*
++ $\beta_m$: tranmission rate in month *m*
++ $S_t$: size of latent susceptible population at time *t*
++ $I_t$: size of latent infected population at time *t*
++ $\alpha$: parameter for nonlinear transmission (if present)
++ $B_t$: birthrate at time *t*, assumed to be constant and discounted by 70% vaccination rate
++ $p_{\text{obs}}$: reporting rate
+
+First define the JAGS model.
+
+```{r niger-jags}
+tsir_jags_model <- "
+model{
+  # Latent process
+  for(t in 1:(weeks-1)){
+    lambda[t] <- beta[m[t]] * S[t] * I[t]^alpha  # epidemic intensity
+    I[t+1] ~ dnegbin(lambda[t], I[t])  # new infecteds
+    S[t+1] <- max(1, S[t] - I[t+1] + B)  # new susceptibles
+  }
+  
+  
+  # Observation process
+  for(m in 1:months){
+    ids <- weekids[m, ]  # get the week ids corresponding to month m
+    Im <- sum(I[ids])  # sum over the weeks to get monthly cases
+    y[m] ~ dbin(Im, p_obs)  # binomial likelihood
+  }
+
+  # Priors
+  S[1, 1] ~ dunif(100, 10000)  # initial pool of susceptibles
+  I[1, 1] <- I0  # from data
+  p_obs ~ dbeta(3.6, 6.3)  # from Ferrari et al. 2008
+  for(m in 1:months){
+    beta[m] ~ dbeta(0.8, 1000)  # from Ferrari et al. 2008
+  }
+  alpha ~ dbeta(100, 5)  # from Ferrari et al. 2008
+}
+"
+```
+
+Aggregate data to monthly cases and set up JAGS inputs.
+
+```{r niger-jags-setup}
+niamey_monthly <- niger_measles %>%
+  filter(region == "Niamey (City)") %>%
+  mutate(
+    month = month(date),
+    year = year(date)
+  ) %>%
+  group_by(year, month) %>%
+  summarise(cases = sum(cases))
+
+glimpse(niamey_monthly)
+
+months <- 12
+weeks <- 52
+```
