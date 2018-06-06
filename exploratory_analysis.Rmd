@@ -11,6 +11,7 @@ library(tidyverse)  # data wrangling
 library(lubridate)  # time and date functions
 library(ggthemes)   # pleasing ggplot2 themes
 library(codyn)      # community dynamics metrics (e.g., synchrony)
+library(rjags)      # Gibbs MCMC sampling algorithm for Bayesian models
 ```
 
 ## Niger data
@@ -105,52 +106,153 @@ where parameters are as follows:
 + $B_t$: birthrate at time *t*, assumed to be constant and discounted by 70% vaccination rate
 + $p_{\text{obs}}$: reporting rate
 
+### Reconstruct the susceptible class
+Following: https://rss.onlinelibrary.wiley.com/doi/epdf/10.1111/1467-9876.00187 and description from https://esajournals.onlinelibrary.wiley.com/doi/epdf/10.1890/0012-9615%282002%29072%5B0169%3ADOMEES%5D2.0.CO%3B2
+
+> We, therefore, carry out susceptible reconstruction using the algorithm proposed by Finkenstadt and Grenfell (2000). In summary, this method reconstructs the dynamics of the unobserved susceptible class from data on births and reported cases. The size of the susceptible class reﬂects a balance between the rate of loss of passive maternal immunity of infants (assumed to occur at 4 mo) and the recovery rate of recently infected individuals (who have active immunity henceforth).The susceptible reconstruction is achieved by regressing cumulative births against cumulative case notiﬁcations (see Finkenstadt and Grenfell 2000 for details).The residuals from this regression represent the cyclical deviation of the susceptible class around the mean number of susceptibles, S, as driven by the epidemic dynamics. We denote the deviations by zt.The only assumption necessary to make for this to work is that the reporting rate is constant through time. Since the 1944–1966 period showed signiﬁcant changes in public health and socioeconomic patterns, it makes sense to allow for the possibility of smooth changes in reporting rates. We do this by using a locally linear regression of the cumulative–cumulative plot (Finkenstadt and Grenfell 2000).
+
+```{r susc-recon}
+niamey_pop <- tibble(
+  year = c(2001, 2012),
+  population = c(707951, 1026800)  # from UN DATA, via Google
+)
+
+poptrend <- lm(population~year, data = niamey_pop)
+poppreds <- round(predict(poptrend, newdata = data.frame(year = 1995:2005)))
+
+niamey_pop_preds <- tibble(
+  year = 1995:2005,
+  population = poppreds
+)
+
+# Define biweeks and match up to weeks
+first_week <- min(niger_measles$date)+7  # add 7 days to get first biweek
+last_week <- max(niger_measles$date)
+biweeks <- seq(first_week, last_week, "2 weeks")
+if(max(biweeks) != last_week) stop("Biweeks not matching up.")
+
+week_match <- tibble(
+  date = unique(niger_measles$date),
+  biweek = rep(biweeks, each = 2)
+)
+
+niamey_biweekly <- niger_measles %>%
+  filter(region == "Niamey (City)") %>%
+  left_join(week_match, by = "date") %>%
+  group_by(biweek) %>%
+  summarise(cases = sum(cases)) %>%
+  mutate(cumcases = cumsum(cases)) %>%
+  mutate(
+    year = year(biweek)
+  ) %>%
+  left_join(niamey_pop_preds, by = "year") %>%
+  mutate(
+    yrly_birth_rate = (50.73/1000) * 0.7,
+    biweek_birth_rate = yrly_birth_rate/26,
+    births = round(population*biweek_birth_rate)
+  ) %>%
+  mutate(
+    cumbirths = cumsum(births)
+  )
+
+library(mgcv)
+zt <- resid(gam(cumbirths ~ s(cumcases), data = niamey_biweekly))
+
+susceptible_deviations <- tibble(
+  biweek = niamey_biweekly$biweek,
+  zt = zt
+)
+
+ggplot(susceptible_deviations, aes(x = biweek, y = zt)) +
+  geom_point() +
+  labs(x = "Date", y = "Deviation from mean susceptible size (z)")+
+  theme_minimal() +
+  ggtitle("Reconstructed susceptible dynamics")
+
+```
+
+
 First define the JAGS model.
+
+TODO: Make transmission periodic such that each biweek gets its own beta, but those biweek betas are constant across years.
 
 ```{r niger-jags}
 tsir_jags_model <- "
 model{
   # Latent process
   for(t in 1:(weeks-1)){
-    lambda[t] <- beta[m[t]] * S[t] * I[t]^alpha  # epidemic intensity
-    I[t+1] ~ dnegbin(lambda[t], I[t])  # new infecteds
-    S[t+1] <- max(1, S[t] - I[t+1] + B)  # new susceptibles
+    log(lambda[t]) <- log(beta[win[t]]) + alpha*log(I[t]) + log(z[t] + Sbar)  # epidemic intensity
+    p[t] <- I[t]/(I[t]+lambda[t]) 
+    I[t+1] ~ dnegbin(p[t], I[t])
+
+    S[t+1] <- S[t] - I[t+1] + B[t]  # new susceptibles
   }
   
-  
   # Observation process
-  for(m in 1:months){
-    ids <- weekids[m, ]  # get the week ids corresponding to month m
-    Im <- sum(I[ids])  # sum over the weeks to get monthly cases
-    y[m] ~ dbin(Im, p_obs)  # binomial likelihood
+  for(t in 1:weeks){
+    y[t] ~ dbin(p_obs, I[t])  # binomial likelihood
   }
 
   # Priors
-  S[1, 1] ~ dunif(100, 10000)  # initial pool of susceptibles
-  I[1, 1] <- I0  # from data
+  Sbar ~ dunif(minsize, 1000000)  # initial pool of susceptibles
+  S[1] <- Sbar+z[1]
+  I[1] <- 3
   p_obs ~ dbeta(3.6, 6.3)  # from Ferrari et al. 2008
-  for(m in 1:months){
-    beta[m] ~ dbeta(0.8, 1000)  # from Ferrari et al. 2008
-  }
   alpha ~ dbeta(100, 5)  # from Ferrari et al. 2008
+  for(t in 1:27){
+    beta[t] ~ dbeta(0.8, 1000)  # from Ferrari et al. 2008
+  }
 }
 "
 ```
 
-Aggregate data to monthly cases and set up JAGS inputs.
+Aggregate data to biweekly cases to match measles timescale (2 weeks from infection to recovery) and set up JAGS inputs.
 
 ```{r niger-jags-setup}
-niamey_monthly <- niger_measles %>%
-  filter(region == "Niamey (City)") %>%
-  mutate(
-    month = month(date),
-    year = year(date)
-  ) %>%
-  group_by(year, month) %>%
-  summarise(cases = sum(cases))
+# ggplot(niamey_biweekly, aes(x = biweek, y = cases)) +
+#   geom_point() +
+#   labs(x = "Date", y = "Reported cases") +
+#   theme_minimal(base_size = 15) +
+#   ggtitle("Bi-weekly measles cases", subtitle = "Niamey, Niger")
 
-glimpse(niamey_monthly)
+# Set up data for JAGS
+niamey_jags <- niamey_biweekly %>%
+  left_join(susceptible_deviations, by = "biweek")
 
-months <- 12
-weeks <- 52
+y <- pull(niamey_jags, cases)
+z <- pull(niamey_jags, zt)
+B <- pull(niamey_jags, births)
+weeks <- length(y)
+
+if(
+  length(z) != length(y) |
+   length(z) != length(B) |
+   length(y) != length(B)
+) { stop("Observation vectors are not of equal length.") }
+
+# jags_data <- list(
+#   y = y,
+#   z = z,
+#   weeks = weeks,
+#   B = B,
+#   minsize = round(0-min(zt))
+# )
+# 
+# model <- jags.model(
+#   textConnection(tsir_jags_model),
+#   data = jags_data,
+#   n.chains = 1,
+#   n.adapt = 2000
+# )
+# 
+# mcmc_results <- coda.samples(model, variable.names = c("beta"), n.iter = 5000)
+# mcmc_df <- ggs(mcmc_results) %>%
+#   group_by(Parameter) %>%
+#   summarise(mean_value = mean(value)) %>%
+#   mutate(biweek = rep(niamey_jags$biweek, times = 1))
+# 
+# ggplot(mcmc_df[1:286,], aes(x = biweek, y = mean_value)) +
+#   geom_point(color = "red")+
+#   # geom_point(data = niamey_jags, aes(y = cases))+
+#   scale_y_continuous(limits = c(0,0.0001))
 ```
