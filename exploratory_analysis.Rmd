@@ -194,24 +194,27 @@ tsir_jags_model <- "
 model{
   # Latent process
   for(t in 1:(weeks-1)){
-    log(lambda[t]) <- log(beta[wid[t]]) + alpha*log(I[t]) + log(z[t] + Sbar)  # epidemic intensity
-    p[t] <- I[t]/(I[t]+lambda[t]) 
-    I[t+1] ~ dnegbin(p[t], I[t])
+    I[t+1] <- log(beta[wid[t]]) + alpha*log(y[t]) + eps*z[t]  # epidemic intensity
+    # p[t] <- I[t]/(I[t]+lambda[t]) 
+    # I[t+1] ~ dnegbin(p[t], I[t])
 
-    S[t+1] <- S[t] - I[t+1] + B[t]  # new susceptibles
+    # S[t+1] <- eps*z[t] - I[t+1] + B[t]  # new susceptibles
   }
   
   # Observation process
   for(t in 1:weeks){
-    y[t] ~ dbin(p_obs, I[t])  # binomial likelihood
+    #y[t] ~ dbin(p_obs, I[t])  # binomial likelihood
+    y[t] ~ dnorm(exp(I[t]), tau)
   }
 
   # Priors
-  Sbar ~ dunif(minsize, 1000000)  # initial pool of susceptibles
-  S[1] <- Sbar+z[1]
+  #Sbar ~ dunif(minsize, 1000000)  # initial pool of susceptibles
+  #S[1] <- eps*z[1]
   I[1] <- 3
+  tau ~ dunif(0.0001, 10)
   p_obs ~ dbeta(3.6, 6.3)  # from Ferrari et al. 2008
   alpha ~ dbeta(100, 5)  # from Ferrari et al. 2008
+  eps ~ dnorm(0,0.001)
   for(t in 1:biweeksyear){
     beta[t] ~ dbeta(0.8, 1000)  # from Ferrari et al. 2008
   }
@@ -256,23 +259,85 @@ jags_data <- list(
   wid = wid
 )
 
+# model <- jags.model(
+#   textConnection(tsir_jags_model),
+#   data = jags_data,
+#   n.chains = 1,
+#   n.adapt = 2000
+# )
+# 
+# mcmc_results <- coda.samples(model, variable.names = c("I"), n.iter = 5000)
+# mcmc_df <- ggs(mcmc_results) %>%
+#   group_by(Parameter) %>%
+#   summarise(mean_value = mean(value),
+#             upper_value = quantile(value, 0.9),
+#             lower_value = quantile(value, 0.1)) %>%
+#   mutate(biweek = 1:26)
+# 
+# ggplot(mcmc_df, aes(x = biweek, y = mean_value)) +
+#   geom_ribbon(aes(ymax = upper_value, ymin = lower_value), alpha = 0.5, fill = "grey") +
+#   geom_line() +
+#   theme_minimal()
+```
+
+
+### Clark and Bjornstadt TSIR model
+
+I just can't seem to get the Ferrari style model working, so I am going to use the Clark version (https://esajournals.onlinelibrary.wiley.com/doi/10.1890/03-0520), which still uses the susceptible reconstrunction, in a way. Note that I now must rely on the interpolated population estimates and number of biweekly births from above. Might be able to amend that once it is up and running.
+
+```{r clark-tsir-jags}
+clark_tsir <- "
+ model{
+  # Process model
+  for(t in 2:timesteps){
+   theta[t-1] <- beta[wid[t-1]] * I[t-1] / N[t-1]
+   I[t] ~ dbin(theta[t-1], S[t-1])
+   S[t] <- S[t-1] + B[t-1] - I[t]
+  }
+
+  # Data model
+  for(i in 1:nobs){
+   y[i] ~ dbin(rho, I[i])
+  }
+
+  # Parameter model
+  I[1] <- 43
+  S[1] <- 120000
+  rho ~ dbeta(10,60)
+  for(w in 1:26){
+   beta[w] ~ dunif(0, 20)
+  }
+ }
+"
+
+niamey_jags <- niamey_biweekly 
+
+weeks <- nrow(niamey_jags)
+n_years <- length(unique(year(niamey_jags$biweek)))
+biweeksyear <- weeks/n_years
+wid <- rep(1:biweeksyear, times = n_years)
+y <- niamey_jags$cases
+
+jags_data <- list(
+  N = niamey_jags$population,
+  B = niamey_jags$births,
+  y = y,
+  nobs = nrow(niamey_jags),
+  timesteps = nrow(niamey_jags),
+  wid = wid
+)
+
 model <- jags.model(
-  textConnection(tsir_jags_model),
+  textConnection(clark_tsir),
   data = jags_data,
   n.chains = 1,
   n.adapt = 2000
 )
 
-mcmc_results <- coda.samples(model, variable.names = c("beta"), n.iter = 5000)
-mcmc_df <- ggs(mcmc_results) %>%
-  group_by(Parameter) %>%
-  summarise(mean_value = mean(value),
-            upper_value = quantile(value, 0.9),
-            lower_value = quantile(value, 0.1)) %>%
-  mutate(biweek = 1:26)
+mcmc_results <- coda.samples(model, variable.names = c("I"), n.iter = 5000)
 
-ggplot(mcmc_df, aes(x = biweek, y = mean_value)) +
-  geom_ribbon(aes(ymax = upper_value, ymin = lower_value), alpha = 0.5, fill = "grey") +
-   geom_line() +
-  theme_minimal()
 ```
+
+### tSIR package attempt
+
+For tomorrow...
