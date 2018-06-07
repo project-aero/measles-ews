@@ -12,6 +12,9 @@ library(lubridate)  # time and date functions
 library(ggthemes)   # pleasing ggplot2 themes
 library(codyn)      # community dynamics metrics (e.g., synchrony)
 library(rjags)      # Gibbs MCMC sampling algorithm for Bayesian models
+library(ggmcmc)     # quick conversions of MCMC output to data frames
+library(mgcv)       # fitting generalized additive (spline) models
+library(viridis)    # pleasing color palette
 ```
 
 ## Niger data
@@ -75,6 +78,19 @@ niger_cor_matrix <- niger_measles %>%
   cor()
 
 corrplot::corrplot(niger_cor_matrix, type="lower")
+```
+
+### Recreate Ferrari et al. 2010 Figure 1 (sort of)
+
+```{r heatmap-cases}
+niger_measles_0na <- niger_measles %>%
+  mutate(
+    cases = ifelse(cases == 0, NA, cases)
+  )
+ggplot(niger_measles_0na, aes(x = date, y = region, fill = log(cases))) +
+  geom_tile() +
+  scale_fill_viridis() +
+  theme_minimal()
 ```
 
 ### Plot just Niamey
@@ -155,7 +171,6 @@ niamey_biweekly <- niger_measles %>%
     cumbirths = cumsum(births)
   )
 
-library(mgcv)
 zt <- resid(gam(cumbirths ~ s(cumcases), data = niamey_biweekly))
 
 susceptible_deviations <- tibble(
@@ -174,14 +189,12 @@ ggplot(susceptible_deviations, aes(x = biweek, y = zt)) +
 
 First define the JAGS model.
 
-TODO: Make transmission periodic such that each biweek gets its own beta, but those biweek betas are constant across years.
-
 ```{r niger-jags}
 tsir_jags_model <- "
 model{
   # Latent process
   for(t in 1:(weeks-1)){
-    log(lambda[t]) <- log(beta[win[t]]) + alpha*log(I[t]) + log(z[t] + Sbar)  # epidemic intensity
+    log(lambda[t]) <- log(beta[wid[t]]) + alpha*log(I[t]) + log(z[t] + Sbar)  # epidemic intensity
     p[t] <- I[t]/(I[t]+lambda[t]) 
     I[t+1] ~ dnegbin(p[t], I[t])
 
@@ -199,7 +212,7 @@ model{
   I[1] <- 3
   p_obs ~ dbeta(3.6, 6.3)  # from Ferrari et al. 2008
   alpha ~ dbeta(100, 5)  # from Ferrari et al. 2008
-  for(t in 1:27){
+  for(t in 1:biweeksyear){
     beta[t] ~ dbeta(0.8, 1000)  # from Ferrari et al. 2008
   }
 }
@@ -223,36 +236,43 @@ y <- pull(niamey_jags, cases)
 z <- pull(niamey_jags, zt)
 B <- pull(niamey_jags, births)
 weeks <- length(y)
+n_years <- length(unique(year(niamey_jags$biweek)))
+biweeksyear <- weeks/n_years
+wid <- rep(1:biweeksyear, times = n_years)
 
 if(
   length(z) != length(y) |
-   length(z) != length(B) |
-   length(y) != length(B)
+  length(z) != length(B) |
+  length(y) != length(B)
 ) { stop("Observation vectors are not of equal length.") }
 
-# jags_data <- list(
-#   y = y,
-#   z = z,
-#   weeks = weeks,
-#   B = B,
-#   minsize = round(0-min(zt))
-# )
-# 
-# model <- jags.model(
-#   textConnection(tsir_jags_model),
-#   data = jags_data,
-#   n.chains = 1,
-#   n.adapt = 2000
-# )
-# 
-# mcmc_results <- coda.samples(model, variable.names = c("beta"), n.iter = 5000)
-# mcmc_df <- ggs(mcmc_results) %>%
-#   group_by(Parameter) %>%
-#   summarise(mean_value = mean(value)) %>%
-#   mutate(biweek = rep(niamey_jags$biweek, times = 1))
-# 
-# ggplot(mcmc_df[1:286,], aes(x = biweek, y = mean_value)) +
-#   geom_point(color = "red")+
-#   # geom_point(data = niamey_jags, aes(y = cases))+
-#   scale_y_continuous(limits = c(0,0.0001))
+jags_data <- list(
+  y = y,
+  z = z,
+  weeks = weeks,
+  B = B,
+  minsize = round(0-min(zt)),
+  biweeksyear = biweeksyear,
+  wid = wid
+)
+
+model <- jags.model(
+  textConnection(tsir_jags_model),
+  data = jags_data,
+  n.chains = 1,
+  n.adapt = 2000
+)
+
+mcmc_results <- coda.samples(model, variable.names = c("beta"), n.iter = 5000)
+mcmc_df <- ggs(mcmc_results) %>%
+  group_by(Parameter) %>%
+  summarise(mean_value = mean(value),
+            upper_value = quantile(value, 0.9),
+            lower_value = quantile(value, 0.1)) %>%
+  mutate(biweek = 1:26)
+
+ggplot(mcmc_df, aes(x = biweek, y = mean_value)) +
+  geom_ribbon(aes(ymax = upper_value, ymin = lower_value), alpha = 0.5, fill = "grey") +
+   geom_line() +
+  theme_minimal()
 ```
