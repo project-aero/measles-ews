@@ -318,26 +318,84 @@ biweeksyear <- weeks/n_years
 wid <- rep(1:biweeksyear, times = n_years)
 y <- niamey_jags$cases
 
-jags_data <- list(
-  N = niamey_jags$population,
-  B = niamey_jags$births,
-  y = y,
-  nobs = nrow(niamey_jags),
-  timesteps = nrow(niamey_jags),
-  wid = wid
-)
+# jags_data <- list(
+#   N = niamey_jags$population,
+#   B = niamey_jags$births,
+#   y = y,
+#   nobs = nrow(niamey_jags),
+#   timesteps = nrow(niamey_jags),
+#   wid = wid
+# )
+# 
+# model <- jags.model(
+#   textConnection(clark_tsir),
+#   data = jags_data,
+#   n.chains = 1,
+#   n.adapt = 2000
+# )
 
-model <- jags.model(
-  textConnection(clark_tsir),
-  data = jags_data,
-  n.chains = 1,
-  n.adapt = 2000
-)
-
-mcmc_results <- coda.samples(model, variable.names = c("I"), n.iter = 5000)
+# mcmc_results <- coda.samples(model, variable.names = c("I"), n.iter = 5000)
 
 ```
 
-### tSIR package attempt
+### tsiR package attempt
 
-For tomorrow...
+I think my Bayesian attempts are failing because I just don't have the right model structure, and it's going to take more time to figure it all out -- though I think the Clark approach *should* work if we can get birth rates correct. In the meantime, I am going to try the `tsiR` package (http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0185528). I don't think it is great for estimating states with fully specified uncertainty, but I should be able to get out time-varying SIR parameters.
+
+```{r tsir}
+library(tsiR)
+
+# Set up data for tsiR
+tsir_data <- niamey_biweekly %>%
+  dplyr::select(biweek, cases, population, births) %>%
+  dplyr::rename(
+    time = biweek,
+    pop = population
+  ) %>%
+  dplyr::select(time, cases, births, pop)
+
+tsir_results <- runtsir(
+  data = tsir_data, 
+  IP = 2, 
+  xreg = "cumcases", 
+  regtype = "loess", 
+  alpha = NULL, 
+  sbar = NULL, 
+  family = "gaussian", 
+  link = "identity", 
+  method = "negbin", 
+  nsim = 100)
+
+tsir_params <- estpars(
+  data = tsir_data, 
+  IP = 2, 
+  xreg = "cumcases", 
+  regtype = "loess", 
+  alpha = NULL, 
+  sbar = NULL, 
+  family = "gaussian", 
+  link = "identity")
+
+# plotbreaks(data = tsir_data, threshold = 10)
+
+# tsir_sim <- simulatetsir(
+#   data = tsir_data, 
+#   IP = 2, 
+#   parms = tsir_params,
+#   epidemics = "break",
+#   threshold = 10, 
+#   method = "negbin",
+#   nsim = 100)
+
+# Plot the time-varying transmission coefficient
+beta_est <- tsir_params$contact
+
+scale_factor <- 10^4
+ggplot(beta_est, aes(x = time, y = beta*scale_factor)) +
+  geom_ribbon(aes(ymax = betahigh*scale_factor, ymin = betalow*scale_factor), alpha = 0.5, color = "grey") +
+  geom_line(color = "white") +
+  labs(x = "Two-week period", y = expression(beta[w])) +
+  theme_minimal()
+    
+
+```
