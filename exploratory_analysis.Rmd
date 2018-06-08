@@ -354,18 +354,19 @@ tsir_data <- niamey_biweekly %>%
   ) %>%
   dplyr::select(time, cases, births, pop)
 
-tsir_results <- runtsir(
-  data = tsir_data, 
-  IP = 2, 
-  xreg = "cumcases", 
-  regtype = "loess", 
-  alpha = NULL, 
-  sbar = NULL, 
-  family = "gaussian", 
-  link = "identity", 
-  method = "negbin", 
-  nsim = 100)
+# tsir_results <- runtsir(
+#   data = tsir_data, 
+#   IP = 2, 
+#   xreg = "cumcases", 
+#   regtype = "loess", 
+#   alpha = NULL, 
+#   sbar = NULL, 
+#   family = "gaussian", 
+#   link = "identity", 
+#   method = "negbin", 
+#   nsim = 100)
 
+# Estimate parameters
 tsir_params <- estpars(
   data = tsir_data, 
   IP = 2, 
@@ -373,29 +374,53 @@ tsir_params <- estpars(
   regtype = "loess", 
   alpha = NULL, 
   sbar = NULL, 
-  family = "gaussian", 
-  link = "identity")
+  family = "quasipoisson", 
+  link = "log")
 
-# plotbreaks(data = tsir_data, threshold = 10)
+# plotbreaks(data = tsir_data, threshold = 20)
 
-# tsir_sim <- simulatetsir(
-#   data = tsir_data, 
-#   IP = 2, 
-#   parms = tsir_params,
-#   epidemics = "break",
-#   threshold = 10, 
-#   method = "negbin",
-#   nsim = 100)
+tsir_sim <- simulatetsir(
+  data = tsir_data,
+  IP = 2,
+  parms = tsir_params,
+  epidemics = "break",
+  threshold = 3,
+  method = "pois",
+  nsim = 100)
+
+plotforward(tsir_sim)
 
 # Plot the time-varying transmission coefficient
 beta_est <- tsir_params$contact
 
 scale_factor <- 10^4
 ggplot(beta_est, aes(x = time, y = beta*scale_factor)) +
-  geom_ribbon(aes(ymax = betahigh*scale_factor, ymin = betalow*scale_factor), alpha = 0.5, color = "grey") +
-  geom_line(color = "white") +
-  labs(x = "Two-week period", y = expression(beta[w])) +
-  theme_minimal()
-    
+  geom_ribbon(aes(ymax = betahigh*scale_factor, ymin = betalow*scale_factor), alpha = 0.5, fill = "grey", color = NA) +
+  geom_line(color = "black") +
+  geom_point(color = "black", size = 2) +
+  labs(x = "Two-week period", y = expression(paste(beta[w], " (x1000)"))) +
+  theme_minimal() +
+  ggtitle("Biweekly measles transmission coefficients", subtitle = "Niamey, Niger")
+```
+
+Based on the biweekly estimates of transmission ($\beta$), I can calculate the time-varying force of infection, following Clark and Bjornstad (2004) as
+
+$$
+\phi_t = \beta_w \times \frac{I_t}{N_t}.
+$$
+
+I am going to use estimates from the `tsiR` simulations, $\hat{I}$, because these account for the estimated reporting rate ($\rho=$`r round(mean(1/tsir_params$rho),2)`). Note that the estimated reporting rate corresponds well with those reported in Ferrari papers using these data, which is encouraging.
+
+```{r tsir-force}
+infection_force <- niamey_biweekly %>%
+  dplyr::select(biweek, population) %>%
+  mutate(
+    I_hat = tsir_sim$res$mean,
+    beta = rep(beta_est$beta, times = n_years),
+    force = beta * (I_hat/population)
+  )
+
+ggplot(infection_force, aes(x = biweek, y = force)) +
+  geom_line()
 
 ```
