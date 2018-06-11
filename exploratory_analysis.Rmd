@@ -16,6 +16,7 @@ library(ggmcmc)     # quick conversions of MCMC output to data frames
 library(mgcv)       # fitting generalized additive (spline) models
 library(viridis)    # pleasing color palette
 library(spaero)     # project AERO code; EWS metrics, etc.
+library(sf)         # working with spatial data
 ```
 
 ## Niger data
@@ -427,7 +428,9 @@ ggplot(infection_force, aes(x = biweek, y = log(force))) +
 ```
 
 # Early warning signals -- for all data
-Look at early warning signals for each region separately.
+Look at early warning signals for each region separately. I will detect significance by reshuffling the time series and caluclating the EWS metrics using that reshuffled time series. Doing this many times will lead to a null distribution of values at each time window. If the the real EWS value exceeds 95% of the null distribution, I will consider it a significant signal.
+
+One thing to look at here is the spatial dynamics -- though not sure what that will look like yet.
 
 ```{r ews}
 # Test with Niamey
@@ -462,4 +465,105 @@ for(i in 1:100){
   )
   out_var <- rbind(out_var, ews_shuffled$stats$variance_first_diff)
 }
+
+# Plot example of significant EWSs 
+ews_ex_data <- tibble(
+  sig_vec = out_var[,3],
+  nosig_vec = out_var[,100]
+) %>%
+  mutate(id = 1:nrow(out_var)) %>%
+  gather(key = example, value = value, -id)
+
+ews_ex_real <- tibble(
+  example = c("sig_vec", "nosig_vec"),
+  ews_value = c(ews_niamey$stats$variance_first_diff[3],
+                ews_niamey$stats$variance_first_diff[100])
+)
+
+ggplot(ews_ex_data, aes(x = value)) +
+  geom_line(stat = "density") +
+  geom_vline(data = ews_ex_real, aes(xintercept = ews_value), color = "red") +
+  facet_wrap(~example, scales = "free") +
+  labs(x = "Variance difference (lag 1)", y = "Density") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank())
+```
+
+OK, that is the basic idea. Now I am going to do the above for each region, which might take a while. So, I'm going to start without the significance tests.
+
+First, a look at the spatial distribution of the regions.
+
+```{r region-map}
+region_boundaries <- st_read("./spatial_data/NER_adm2.shp")
+
+mycoords <- as_tibble(st_coordinates(region_boundaries)) %>%
+  group_by(L3) %>%
+  summarise(minx = min(X)) %>%
+  mutate(
+    NAME_2 = region_boundaries$NAME_2
+  )
+
+region_boundaries <- region_boundaries %>%
+  left_join(mycoords)
+
+ggplot(region_boundaries)+
+  geom_sf() +
+  labs(x = "Longitude", y = "Latitude") +
+  scale_fill_discrete(name = "Arrondissment") +
+  theme_minimal()
+```
+
+```{r ews-spatial-analysis}
+regions <- unique(niger_measles$region)
+bandwidths <- 10
+region_variances <- {} # empty object for storage
+
+for(do_region in regions){
+  region_cases <- niger_measles %>%
+    filter(region == do_region) %>%
+    pull(cases)
+  
+  if(length(which(is.na(region_cases))) < 1){
+    ews_tmp <- spaero::get_stats(
+      x = region_cases, 
+      center_kernel = "uniform",
+      center_trend = "local_constant", 
+      center_bandwidth = bandwidths,
+      stat_bandwidth = bandwidths
+    )
+    
+    var_first_diff <- ews_tmp$stats$variance_first_diff
+    
+    var_tmp <- tibble(
+      region = do_region,
+      window = 1:length(var_first_diff),
+      variance_first_diff = var_first_diff
+    )
+    
+    region_variances <- rbind(region_variances, var_tmp)
+    
+    # print(paste("Done with region:", do_region))
+  } else{
+    # print(paste("Skipping region:", do_region))
+  }
+}
+
+region_variances_clean <- region_variances %>%
+  filter(window != 1) %>%
+  filter(region != "Niamey (City)") %>%
+  mutate(
+    variance_first_diff = ifelse(variance_first_diff < 0, 0, variance_first_diff)
+  ) %>%
+  left_join(
+    long_dat <- as_tibble(region_boundaries) %>%
+      dplyr::select(NAME_2, minx) %>%
+      dplyr::rename(region = NAME_2)
+  )
+
+ggplot(filter(region_variances_clean, window > 300 & window < 350), aes(x = window, y = as.factor(minx), fill = sqrt(variance_first_diff))) +
+  geom_tile() +
+  scale_fill_viridis()
+
+plot(minx~variance_first_diff, data = region_variances_clean)
+
 ```
