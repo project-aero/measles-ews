@@ -433,23 +433,57 @@ Look at early warning signals for each region separately. I will detect signific
 One thing to look at here is the spatial dynamics -- though not sure what that will look like yet.
 
 ```{r ews}
+# Some functions from Toby
+get_tau <- function(stat_ts, time){
+  # Calculates Kendall's tau for association of EWS metrics through time
+  #
+  # Args:
+  #  stat_ts: a vector of EWS stats for each time window
+  #  time: a sequence of time windows
+  #
+  # Returns:
+  #  A scalar of Kendall's tau for the assocition of the metric with time
+  
+  stats::cor(stat_ts, time, use="pairwise.complete.obs", method="kendall")
+}
+
+get_ews_cor <- function(reports, bw=bandwidth, l=lag){
+  # Calculates EWS from case reports time series and their association
+  #  with time (Kendall's tau)
+  #
+  # Args:
+  #  reports: a vector of case reports through time
+  #  bw: bandwidth of kernel for detrending
+  #  l: lag for autocovariance calculation
+  #
+  # Returns:
+  #  A list of size vectors of EWS stats and a vector of Kendall's tau over 
+  #  time for each EWS stat.
+  
+  stats <- spaero::get_stats(reports,
+                             center_bandwidth=bw, 
+                             stat_bandwidth=bw,
+                             center_trend="local_constant",
+                             stat_trend="local_constant",
+                             center_kernel="uniform",
+                             stat_kernel="uniform", 
+                             lag=l)$stats
+  
+  taus <- sapply(stats, get_tau, time=seq_along(reports))
+  list(stats=stats, taus=taus)
+}
+
 # Test with Niamey
 niamey_cases <- niger_measles %>%
   filter(region == "Niamey (City)") %>%
   pull(cases)
 
-ews_niamey <- spaero::get_stats(
-  x = niamey_cases, 
-  center_kernel="uniform",
-  center_trend="local_constant", 
-  center_bandwidth=10,
-  stat_bandwidth=10
-)
+ews_niamey <- get_ews_cor(niamey_cases, bw = 52, l = 1)
 
-par(mfrow = c(2,1))
-plot(ews_niamey$stats$variance_first_diff[300:350], type = "l")
-abline(h = 0)
-plot(niamey_cases[300:350])
+par(mfrow = c(3,1))
+plot(ews_niamey$stats$variance, type = "l")
+plot(niamey_cases)
+plot(niamey_cases,ews_niamey$stats$autocorrelation)
 
 # Shuffle the time series and recalculate, many times
 
@@ -459,9 +493,9 @@ for(i in 1:100){
   ews_shuffled <- spaero::get_stats(
     x = shuffled, 
     center_kernel="uniform",
-    center_trend="local_constant", 
-    center_bandwidth=10,
-    stat_bandwidth=10
+    center_trend = "local constant", 
+    center_bandwidth=52,
+    stat_bandwidth=52
   )
   out_var <- rbind(out_var, ews_shuffled$stats$variance_first_diff)
 }
@@ -515,7 +549,7 @@ ggplot(region_boundaries)+
 
 ```{r ews-spatial-analysis}
 regions <- unique(niger_measles$region)
-bandwidths <- 10
+bandwidths <- 52  # two-year moving window
 region_variances <- {} # empty object for storage
 
 for(do_region in regions){
