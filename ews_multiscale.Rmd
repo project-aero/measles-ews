@@ -17,16 +17,18 @@ Load necessary packages. These will have to be installed via `install.packages()
 library(tidyverse)  # data wrangling
 library(lubridate)  # time and date functions
 library(ggthemes)   # pleasing ggplot2 themes
+library(cowplot)    # combining ggplot2 objects
 library(viridis)    # pleasing color palette
 library(spaero)     # project AERO code; EWS metrics, etc.
 library(forecast)   # time series functions
+library(moments)    # skewness function
 
 theme_set(theme_minimal())  # set the ggplot2 theme globally
 ```
 
 And define a couple handy wrapper functions around the `spaero::get_stats()` function.
 
-```{r helper-functions}
+```{r helper-functions, echo=FALSE}
 # Functions written by Toby Brett
 
 get_tau <- function(stat_ts, time){
@@ -159,3 +161,114 @@ ggplot(rand_df, aes(x = date, y = value)) +
            label = expression(paste("anomaly threshold (4", sigma, ")")), 
            size = 3)
 ```
+
+The 2003-2004 epidemic year is the only one for which the random component exceeds the anomaly threshold of 4$\sigma$. Thus, our goal is to anticipate this national level outbreak in 2003-2004. The flip side is to avoid signaling an expceptionally large outbreak in the other years (i.e., false positives).
+
+### Spatial indicators of impending outbreak
+In spatially extended systems, there are several spatially-based metrics that can serve as indicators of imminent regime shifts:
+
+1. Increase in spatial variance ([Dakos et al. 2011, The American Naturalist](https://www.journals.uchicago.edu/doi/full/10.1086/659945))
+2. Increase in spatial correlation ([Dakos et al. 2010, Theoretical Ecology](https://link.springer.com/article/10.1007/s12080-009-0060-6))
+3. Peaking of spatial skewness ([Guttal and Jayaprakash 2009, Theoretical Ecology](https://link.springer.com/article/10.1007/s12080-008-0033-1))
+4. Discrete Fourier transform ([Carpenter and Brock 2010, Ecosphere](https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1890/ES10-00016.1))
+
+Measles dynamics in Niger following metapopulation dynamics (Ferrari et al. 2008, Nature), meaning it is a spatially-extended system. Therefore, signals of the national scale outbreak in 2004 might be detectable in the temporal dynamics of measles across space, which in this case are the case reports within regions.
+
+We'll start by looking at the dynamics across space and do an initial test with spatial variance and skewness. The individual metrics will be converted to indices through time by calculating their standardized difference over a moving window from all times from the beginning of the sampling period to the time of the focal sample. Then the individual indices are combined into a composite early warning index, which is simply the sum of all the individual indices ([Drake and Griffen 2010, Nature](https://www.nature.com/articles/nature09389#s1)).
+
+```{r plot-spacetime, fig.height=6}
+# Set 0 reports to NA for visualization
+niger_measles_0na <- niger_measles %>%
+  mutate(
+    cases = ifelse(cases == 0, NA, cases)
+  )
+
+totals_plot <- ggplot(national_data, aes(x = date)) +
+  geom_ribbon(fill = "grey", aes(ymin = 0, ymax = total_cases)) +
+  labs(x = NULL, y = "Total\ncases") +
+  theme_minimal(base_size = 10)
+
+heat_plot <- ggplot(niger_measles_0na, aes(x = date, y = region, fill = log(cases))) +
+  geom_tile() +
+  scale_fill_viridis() +
+  labs(x = "Date", y = "District") +
+  guides(fill = FALSE) +
+  theme_minimal(base_size = 10)
+
+plot_grid(totals_plot, heat_plot, align = "v", nrow = 2, rel_heights = c(0.25,1))
+```
+
+```{r ews-space, fig.height=4, fig.width=5}
+# Calculate spatial variance and skewness at each time point
+spatial_var <- niger_measles %>%
+  group_by(date) %>%
+  # mutate(cases = scale(cases)) %>%
+  summarise(
+    var_cases = var(cases, na.rm = TRUE),  # rm NAs == ignore missing reports
+    skew_cases = skewness(cases, na.rm = TRUE),  # rm NAs == ignore missing reports
+    w_ind = var_cases + skew_cases  # composite index, following Drake and Griffen 2010, Nature
+  ) %>% 
+  left_join(national_data)
+
+
+# Calculate time-varying standardized deviations
+spatial_var_2004 <- spatial_var %>%
+  filter(year(date) >= 2003 & year(date) < 2005) %>%
+  filter(date > ymd("20031001"))
+
+# spatial_var_2004 <- spatial_var %>%
+#   filter(year(date) >= 1997 & year(date) < 1999) %>%
+#   filter(date > ymd("19971001"))
+
+all_times <- spatial_var_2004$date
+indicator_df <- {}
+
+for(do_time in all_times){
+  tmp_df <- spatial_var_2004 %>%
+    filter(date <= do_time)
+  
+  xnow <- tmp_df %>%
+    filter(date == do_time) %>%
+    pull(w_ind)
+  
+  xmean <- mean(tmp_df$w_ind)
+  xsd <- sd(tmp_df$w_ind)
+  
+  if(do_time == min(all_dates))
+  outdf <- tibble(
+    date = do_time,
+    w = (xnow - xmean) / xsd,
+    rollmu = NA,
+    rollsigma = NA
+  )
+  
+  if(do_time > min(all_dates))
+  outdf <- tibble(
+    date = do_time,
+    w = (xnow - xmean) / xsd,
+    rollmu = mean(indicator_df$w, na.rm = TRUE),
+    rollsigma = sd(indicator_df$w, na.rm = TRUE)
+  )
+  
+  indicator_df <- rbind(indicator_df, outdf)
+}
+
+indicator_df <- indicator_df %>%
+  mutate(
+    date = all_times
+  )
+
+ggplot(indicator_df) +
+  geom_point(aes(x = date, y = w), size = 2, color = "steelblue") +
+  geom_line(aes(x = date, y = rollmu), color = "coral") +
+  geom_line(aes(x = date, y = rollsigma+rollmu), linetype = 2, color = "coral") +
+  geom_line(aes(x = date, y = 2*rollsigma+rollmu), linetype = 3, color = "coral") +
+  labs(x = "Date", y = expression(paste("Spatial early warning index (", italic(w),")"))) +
+  annotate(geom = "text", x = max(all_times)+10, y = 0.5, label = expression(bar(italic(w)))) +
+  annotate(geom = "text", x = max(all_times)+14, y = 1.9, label = expression(paste("+", sigma))) +
+  annotate(geom = "text", x = max(all_times)+20, y = 3.3, label = expression(paste("+2", sigma))) +
+  theme_minimal(base_size = 13)
+
+```
+
+**DOES NOT WORK!!** Basically, the metrics just scale with each individual epidemic year and always indicate a large outbreak.
