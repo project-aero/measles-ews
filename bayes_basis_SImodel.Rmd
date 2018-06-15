@@ -13,7 +13,8 @@ library(lubridate)  # time and date functions
 library(ggthemes)   # pleasing ggplot2 themes
 library(rjags)      # Gibbs MCMC sampling algorithm for Bayesian models
 library(ggmcmc)     # quick conversions of MCMC output to data frames
-library(splines)    # fitting generalized additive (spline) models
+library(splines)    # generating basis functions
+library(mgcv)       # fitting generalized additive models
 library(viridis)    # pleasing color palette
 library(spaero)     # project AERO code; EWS metrics, etc.
 
@@ -151,17 +152,52 @@ ggplot(niamey_pop_preds, aes(x = Year, y = value)) +
 ### 2. Reconstruct the susceptible dynamics
 We don't actually know the number of susceptibles (*S*) at each time point, but we can recover their temporal dynamics, allowing us to recover the latent *S* state after estimating only one quantity, the mean number of susceptibles ($\overline{S}$).
 
+```{r susceptible-reconstruction}
+# Calculate cumulative cases and cumulative births
+niamey_pop_merge <- niamey_pop_preds %>%
+  spread(variable, value) %>%
+  rename(
+    pop_size = `Population Size`,
+    num_births = `Weekly Births`,
+    year = Year
+  )
+
+measles_recon <- measles_dat %>%
+  mutate(
+    year = year(date)
+  ) %>%
+  left_join(niamey_pop_merge) %>%
+  mutate(
+    cum_cases = cumsum(cases),
+    cum_births = cumsum(num_births)
+  )
+
+# Estimate residuals from cum_cases ~ cum_births regression
+susc_dynamics <- resid(gam(cum_births ~ s(cum_cases), data = measles_recon))
+
+susceptible_deviations <- tibble(
+  date = measles_recon$date,
+  susc_dynamics = susc_dynamics
+)
+
+ggplot(susceptible_deviations, aes(x = date, y = susc_dynamics)) +
+  geom_point(size = 1.5, shape = 1) +
+  labs(x = "Date", y = "Deviation from mean susceptible size (z)")+
+  theme_minimal() +
+  ggtitle("Reconstructed susceptible dynamics")
+```
+
 ### 3. Define the basis vectors
 We need to define the basis vectors that will be multipled by the basis coefficients to generate the smooth seasonal curves for rate of transmission.
 These values form the matrix $\mathbf{W}$ that will be fed into the model fitting algorithm as knowns.
 
 ```{r basis-functions}
-num_weeks <- 52
+num_weeks <- 53
 num_knots <- 3
 bases <- bs(1:num_weeks, knots = num_knots)
 
 bases_df <- tibble(
-  week_num = 1:52,
+  week_num = 1:53,
   base_1 = bases[,1],
   base_2 = bases[,2],
   base_3 = bases[,3],
@@ -178,35 +214,72 @@ ggplot(bases_df, aes(x = week_num, y = value, color = base_id)) +
 
 ### JAGS model
 Here I define the JAGS model to be fit via MCMC.
-This mode is called using the `rjags::jags.model()` function.
+This model is called using the `rjags::jags.model()` function.
 
 ```{r jags-model}
 measles_model <- "model{
 
 # Data model
-for(i in 1:num_obs){
-  y[i] ~ dbinom(p, I[i])
-}
+for(i in 2:num_obs){
+  y[i] ~ dnorm(I[i], tau2)
+}  # end observation loop
 
 # Process model
-
-## TODO: get subscripting right here...
-for(t in 1:ntimes){
-  beta[t] <- mu[yr[t]] + inprod(W[t,], eta[yr[iweek],])  # spline model for rate of transmission
-}
-
-
-# Transmission rate
-for(iyr in 1:nyrs){
-  eta[iyr] ~ dnorm(0, 1)
-  
-  for(iweek in 1:(nweeks[iyr])){
-    beta[iyr, iweek] <- mu[yr[iweek]] + inprod(W[iweek,], eta[yr[iweek],])  # spline model for rate of transmission
-  }
-
-}
+for(t in 1:(num_obs-1)){
+  # beta[t] <- mu[yr[t]] + inprod(W[wk[t],], eta[yr[t],])  # spline model for rate of transmission
+  muI[t+1] <- max(1, log(beta[t]) + alpha*log(I[t]) + log(z[t] + S0))  # determinstic update for infections
+  I[t+1] ~ dlnorm(muI[t+1], tau)  #, I[t])  # stochastic update for infections
+  S[t+1] <- S[t] - I[t+1] + b[t]  # determinstic update for susceptibles
+}  # end process loop
 
 # Priors
+I[1] <- I1  # initial number of infections, from data
+S[1] <- S0 + z[1]  # initial number of susceptibles
+S0 ~ dpois(100000)  # prior for mean susceptible size
+alpha ~ dnorm(0, 0.001)
+tau ~ dgamma(0.001,0.001)
+tau2 ~ dgamma(0.001,0.001)
+
+for(i in 1:num_obs){
+  beta[i] ~ dnorm(0,0.001)
+}
+
+# for(iyr in num_years){
+#   mu[iyr] ~ dnorm(0, 0.1)  # prior for mean in transmission spline
+# 
+#   for(iknot in 1:num_knots+1){
+#     eta[iyr, iknot] ~ dnorm(0, 0.1)  # priors for coefficients in transmission spline
+#   }  # end knot loop
+# 
+# }  # end year loop
 
 }"
+
+jags_data <- list(
+  y = measles_recon$cases+1,
+  I1 = measles_recon$cases[1],
+  z = round(susceptible_deviations$susc_dynamics),
+  b = measles_recon$num_births,
+  W = bases,
+  p = 0.15,
+  num_obs = nrow(measles_recon),
+  num_years = length(unique(year(measles_recon$date))),
+  num_knots = num_knots,
+  yr = as.numeric(as.factor(year(measles_recon$date))),
+  wk = as.numeric(as.factor(week(measles_recon$date)))
+)
+
+model <- jags.model(
+  textConnection(measles_model),
+  data = jags_data,
+  n.chains = 1,
+  n.adapt = 2000
+)
+
+mcmc_results <- coda.samples(model, variable.names = c("I"), n.iter = 2000)
+plot(measles_recon$cases)
+lines(summary(mcmc_results)$stat[,1])
 ```
+
+
+
