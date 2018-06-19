@@ -22,6 +22,8 @@ library(viridis)    # pleasing color palette
 library(spaero)     # project AERO code; EWS metrics, etc.
 library(forecast)   # time series functions
 library(moments)    # skewness function
+library(sf)         # working with spatial data
+library(spdep)      # spatial neighborhood functions
 
 theme_set(theme_minimal())  # set the ggplot2 theme globally
 ```
@@ -168,13 +170,13 @@ The 2003-2004 epidemic year is the only one for which the random component excee
 In spatially extended systems, there are several spatially-based metrics that can serve as indicators of imminent regime shifts:
 
 1. Increase in spatial variance ([Dakos et al. 2011, The American Naturalist](https://www.journals.uchicago.edu/doi/full/10.1086/659945))
-2. Increase in spatial correlation ([Dakos et al. 2010, Theoretical Ecology](https://link.springer.com/article/10.1007/s12080-009-0060-6))
+2. Increase in spatial correlation/coherence ([Dakos et al. 2010, Theoretical Ecology](https://link.springer.com/article/10.1007/s12080-009-0060-6))
 3. Peaking of spatial skewness ([Guttal and Jayaprakash 2009, Theoretical Ecology](https://link.springer.com/article/10.1007/s12080-008-0033-1))
 4. Discrete Fourier transform ([Carpenter and Brock 2010, Ecosphere](https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1890/ES10-00016.1))
 
 Measles dynamics in Niger following metapopulation dynamics (Ferrari et al. 2008, Nature), meaning it is a spatially-extended system. Therefore, signals of the national scale outbreak in 2004 might be detectable in the temporal dynamics of measles across space, which in this case are the case reports within regions.
 
-We'll start by looking at the dynamics across space and do an initial test with spatial variance and skewness. The individual metrics will be converted to indices through time by calculating their standardized difference over a moving window from all times from the beginning of the sampling period to the time of the focal sample. Then the individual indices are combined into a composite early warning index, which is simply the sum of all the individual indices ([Drake and Griffen 2010, Nature](https://www.nature.com/articles/nature09389#s1)).
+We'll start by looking at the dynamics across space and do an initial test with spatial coherence. The individual metrics will be converted to indices through time by calculating their standardized difference over a moving window from all times from the beginning of the sampling period to the time of the focal sample. Then the individual indices are combined into a composite early warning index, which is simply the sum of all the individual indices ([Drake and Griffen 2010, Nature](https://www.nature.com/articles/nature09389#s1)).
 
 ```{r plot-spacetime, fig.height=6}
 # Set 0 reports to NA for visualization
@@ -198,7 +200,134 @@ heat_plot <- ggplot(niger_measles_0na, aes(x = date, y = region, fill = log(case
 plot_grid(totals_plot, heat_plot, align = "v", nrow = 2, rel_heights = c(0.25,1))
 ```
 
-```{r ews-space, fig.height=4, fig.width=5}
+### Create nieghbor weights for Moran's I
+To calculate spatial coherence (or correlation), we first need to create a list of spatial weights that define the spatial connection between different districts.
+
+```{r create-neighbors}
+# Read in shapfile of districts
+region_boundaries <- sf::st_read("./spatial_data/NER_adm2.shp") %>%
+  rename(region = NAME_2) %>%
+  mutate(region = as.character(region)) %>%
+  mutate(  # rename several regions to match incidence data
+    region = ifelse(region == "Aguié", "Aguie", region),
+    region = ifelse(region == "Filingué", "Filingue", region),
+    region = ifelse(region == "Gouré", "Goure", region),
+    region = ifelse(region == "Illéla", "Illela", region),
+    region = ifelse(region == "Maïné-Soroa", "Maine-Sora", region),
+    region = ifelse(region == "N'Guigmi", "N'Guimi", region),
+    region = ifelse(region == "Téra", "Tera", region),
+    region = ifelse(region == "Tillabéry", "Tillabery", region),
+    region = ifelse(region == "Groumdji", "Guidan-Roumdji", region),
+    region = ifelse(region == "Mirriah", "Miria", region),
+    region = ifelse(region == "Tanout", "Tannout", region),
+    region = ifelse(region == "Tchighozerine", "Tchirozerine", region),
+    region = ifelse(region == "Tchin-Tabarade", "Tchin-Tabaraden", region)
+  ) %>%
+  arrange(region)
+
+# Subset measles data to districts present in shapefile, i.e. remove cities
+niger_measles_inspace <- niger_measles %>%
+  filter(region != "Agadez (City)") %>%
+  filter(region != "Maradi (City)") %>%
+  filter(region != "Zinder (City)") %>%
+  mutate(region = ifelse(region == "Niamey (City)", "Niamey", region)) %>%
+  arrange(region) %>%
+  filter(region %in% unique(region_boundaries$region))
+
+# Subset spatial data to regions that are present in the incidence data
+region_boundaries <- region_boundaries %>%
+  filter(region %in% unique(niger_measles_inspace$region))
+
+
+# Plot Niger with district boundaries
+ggplot(region_boundaries)+
+  geom_sf(fill = NA) +  # requires development version of ggplot2 from Github
+  labs(x = "Longitude", y = "Latitude")
+
+# Calculate neighbor weights
+regions_nb <- poly2nb(sf::as_Spatial(region_boundaries$geom))
+nblist <- nb2listw(regions_nb)
+
+# Calculate Moran's I across districs for each week
+all_weeks <- unique(niger_measles_inspace$date)
+morans_over_time <- {}  # empty object for storage
+
+for(i in 1:length(all_weeks)){
+  cases <- niger_measles_inspace %>%
+    filter(date == all_weeks[i]) %>%
+    pull(cases)
+  
+  morans_now <- moran(
+    x = cases, 
+    listw = nblist, 
+    n = length(regions_nb), 
+    S0 = Szero(nblist), 
+    zero.policy = TRUE, 
+    NAOK = TRUE
+  )
+  
+  tmpdf <- tibble(
+    date = all_weeks[i],
+    morans_i = morans_now$I,
+    morans_k = morans_now$K
+  )
+  
+  morans_over_time <- bind_rows(
+    morans_over_time,
+    tmpdf
+  )
+}
+
+morans_over_time <- morans_over_time %>%
+  mutate(
+    runmean_two_year = zoo::rollmean(morans_i, k = 104, align = "right", fill = NA)
+  )
+
+
+date_of_max_cases <- niger_measles_inspace %>%
+  group_by(date) %>%
+  summarise(total_cases = sum(cases, na.rm = TRUE)) %>%
+  filter(total_cases == max(total_cases)) %>%
+  pull(date)
+
+ggplot(morans_over_time, aes(x = date, y = runmean_two_year)) +
+  geom_line(aes(y = morans_i), color = "steelblue", alpha = 0.25) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_vline(aes(xintercept = date_of_max_cases), color = "coral", size = 1) +
+  labs(x = "Date", y = expression(paste("Moran's ", italic(I))))
+
+```
+
+Now we need to calculate Kendall's $\tau$ to look at within-epidemic year correlations between Moran's *I* and time.
+This first requires defining "epidemic year," which I will as October to September (see figure below).
+
+```{r epi-years}
+total_cases_inspace <- niger_measles_inspace %>%
+  group_by(date) %>%
+  summarise(total_cases = sum(cases, na.rm = TRUE))
+
+epi_starts <- ymd(paste0(as.character(seq(1995,2005)), "1001"))
+
+ggplot()+
+  geom_line(data = total_cases_inspace, aes(x = date, y = total_cases)) +
+  geom_vline(aes(xintercept = epi_starts), linetype = 2, color = "grey")
+
+total_cases_inspace <- total_cases_inspace %>%
+  mutate(
+    epidemic_year = year(date),
+    epidemic_year = ifelse(month(date) >= 10, epidemic_year+1, epidemic_year)
+  ) %>%
+  group_by(epidemic_year) %>%
+  mutate(epidemic_week = seq(1:n()))
+
+epidemic_timings <- total_cases_inspace %>%
+  dplyr::select(date, epidemic_year, epidemic_week)
+```
+
+
+
+
+```{r ews-space, fig.height=4, fig.width=5, eval=FALSE, echo=FALSE}
 # Calculate spatial variance and skewness at each time point
 spatial_var <- niger_measles %>%
   group_by(date) %>%
@@ -270,5 +399,3 @@ ggplot(indicator_df) +
   theme_minimal(base_size = 13)
 
 ```
-
-**DOES NOT WORK!!** Basically, the metrics just scale with each individual epidemic year and always indicate a large outbreak.
