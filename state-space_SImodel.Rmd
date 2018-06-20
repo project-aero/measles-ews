@@ -1,0 +1,220 @@
+---
+title: "Bayesian state-space SI model with year-specific, smooth seasonality"
+author: "Andrew Tredennick"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height = 4)
+
+library(tidyverse)  # data wrangling
+library(lubridate)  # time and date functions
+library(ggthemes)   # pleasing ggplot2 themes
+library(rjags)      # Gibbs MCMC sampling algorithm for Bayesian models
+library(ggmcmc)     # quick conversions of MCMC output to data frames
+library(splines)    # generating basis functions
+library(mgcv)       # fitting generalized additive models
+library(viridis)    # pleasing color palette
+library(spaero)     # project AERO code; EWS metrics, etc.
+
+theme_set(theme_minimal())  # set ggplot2 theme globally
+```
+
+## The model
+The idea is to fit a discrete-time state-space model following susceptible-infected (SI) dynamics.
+Previous TSIR (time-series SIR) models allowed for seasonality in transmission rate, but that seasonality was shared among all years.
+This creates problems when attempting to calculating time-varying quantities of interest, such as effective reproductive rate ($R_e(t)$).
+Here, I will implement a more flexible approach, where seasonality is incorporated with a smooth basis function (spline) that has year-specific parameters.
+
+The model is as follows:
+
+$$
+y_t \sim \text{Poisson}(\rho I_t) \\
+\lambda_t = \beta_t S_t\left(I_t + i\right) \\
+I_{t+1} \sim \text{Poisson}\left(\lambda_t\right), \\
+S_{t+1} = b_t + S_t - I_{t+1},\\
+\beta_t = \gamma_t \left[1 + \epsilon\;\text{sin}\left(\frac{2 \pi t}{26} + \theta \right) \right] , \\
+\gamma_t = \text{random walk}.
+$$
+
+| Parameter | Definition | 
+| --------- | ----------------------------------|
+| $I_t$ | Number of infected individuals at time *t* (latent). |
+| $S_t$ | Number of susceptible individuals at time *t* (latent). |
+| $y_t$ | Number of reported cases at time *t* (observed). |
+| $\rho$ | Reporting fraction. |
+| $b_t$ | Number of births at time *t*. |
+| $\lambda_t$ | Force of infection (hazard) at time *t*. |
+| $\beta_t$ | Seasonally forced transmission rate at time *t*. |
+| $\gamma_t$ | Transmission rate at time *t*. |
+| $\epsilon$ | Amplitude of sin wave. |
+| $\theta}$ | Phase of sin wave. |
+
+## Fitting the model
+I will use a subset of the Niger measles data that come from the capitol, Niamey.
+
+```{r load-data}
+file_name <- "../niger_measles/niger_regional_1995_2005.csv"
+niger_measles_raw <- read_csv(file_name, col_types = cols())
+
+num_regions <- nrow(niger_measles_raw)
+num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because first column are regions
+weeks_per_year <- num_weeks/11
+weeks <- rep(1:52, times = 11)
+
+# Create a vector of years for all num_weeks
+years <- rep(1995:2005, each = weeks_per_year)
+
+# Function for calculating start of week based on week number and year
+calculate_start_of_week = function(week, year) {
+  date <- ymd(paste(year, 1, 1, sep="-"))
+  week(date) = week
+  return(date)
+}
+
+# Clean up the data frame
+measles_data <- niger_measles_raw %>%
+  gather(key = week, value = cases, -X1) %>%
+  mutate(
+    week_num = rep(1:num_weeks, each = num_regions),
+    year = rep(years, each  = num_regions),
+    week = rep(weeks, each = num_regions),
+    date = calculate_start_of_week(week, year)
+  ) %>%
+  dplyr::rename(region = X1) %>%
+  filter(region == "Niamey (City)")
+
+# Plot the time series
+ggplot(measles_data, aes(x = date)) +
+  geom_ribbon(aes(ymax = cases, ymin = 0), fill = "grey35") +
+  labs(x = "Date", y = "Reported cases") +
+  ggtitle("Reported cases of measles", subtitle = "Niamey, Niger")
+```
+
+I will fit the model using a Bayesian state-space approach, implemented in JAGS.
+
+### JAGS Model
+```{r jags-model}
+measles_model <- "
+model{
+  # Likelihood/Data Model
+  for(i in 1:nobs){
+    # y[i] ~ dpois(rho*I[i])
+    p[i] = r/(r+I[i]*rho)
+    y[i] ~ dnegbin(p[i],r)
+  }
+
+  # Process model
+  for(t in 1:(ntimes-1)){
+    lambda[t] = beta[t] * S[t] * (I[t] + 1)
+    dI[t] ~ dpois(lambda[t])
+    I[t+1] = dI[t] + 1
+    S[t+1] = b[t] + S[t] - (dI[t] + 1)
+  }
+
+  # Parameter model
+  for(t in 1:(ntimes-1)){
+    beta[t] = gamma[t] * (1 + epsilon * sin( (2*pi*t)/26 + theta ) )
+    gamma[t] = mean_gamma + exp(noise[t])
+    noise[t] ~ dunif(-20,-5)
+  }
+
+  mean_gamma ~ dgamma(1, 1000)
+  epsilon ~ dunif(0, 1)
+  theta ~ dunif(1, 3)
+  rho ~ dbeta(3.6, 6.3)
+  r ~ dunif(0,100)
+  # sigma ~ dgamma(0.01, 0.01)
+
+  # Initial conditions
+  S0 ~ dunif(10000, 100000)
+  S[1] = S0
+  I[1] ~ dpois(initI)
+}
+"
+```
+
+### Run the MCMC via JAGS
+```{r run-mcmc}
+# Read in population data and estimate births
+population <- read_csv("../niger_measles/district_pops.csv") %>%
+  gather(key = year, value = population, -X1) %>%
+  rename(district = X1) %>%
+  filter(district == "Niamey I")
+
+birth_rate <- 50.73/1000  # from Matt F. and national statistics
+
+births <- population %>%
+  mutate(
+    births_per_year = population * birth_rate,
+    births_per_week = births_per_year / 52
+  )
+
+# Aggregate weekly data to biweeks
+biweek_data <- measles_data %>%
+  mutate(biweek = rep(1:(n()/2), each = 2)) %>%
+  group_by(biweek) %>%
+  summarise(
+    cases = sum(cases),
+    date = min(date)
+  ) %>%
+  mutate(
+    births = round(rep(births$births_per_week*2, each = 26))
+  ) %>%
+  filter(biweek < 105)
+  
+
+# Gather data
+y <- biweek_data$cases
+initI <- biweek_data$cases[1]
+b <- biweek_data$births
+ntimes <- nrow(biweek_data)
+nobs <- nrow(biweek_data)
+# rho <- 0.48  # reporting rate
+
+# List up data for JAGS
+jags_data <- list(
+  y = y,
+  initI = initI,
+  b = b,
+  ntimes = ntimes,
+  nobs = nobs,
+  pi = pi
+)
+
+jags_inits <- list(
+  mean_gamma = 0.00001,
+  epsilon = 0.5,
+  theta = 1
+)
+
+# Initialize model in JAGS
+model <- jags.model(
+  textConnection(measles_model),
+  data = jags_data,
+  n.chains = 1,
+  n.adapt = 2000,
+  inits = jags_inits
+)
+
+# mcmc_results <- coda.samples(model, variable.names = c("dI", "S","I","beta","gamma","epsilon","lambda","theta"), n.iter = 500)
+mcmc_results <- coda.samples(model, variable.names = c("I", "beta"), n.iter = 2000)
+quants <- summary(mcmc_results)$quantile
+I_quants <- quants[grep("I", rownames(quants)), ]
+gamma_quants <- quants[grep("beta", rownames(quants)), ]
+
+model_df <- tibble(
+  date = biweek_data$date,
+  observations = biweek_data$cases,
+  median_prediction = I_quants[,3],
+  upper_prediction = I_quants[,5],
+  lower_prediction = I_quants[,1]
+)
+
+ggplot(model_df, aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_prediction, ymax = upper_prediction), alpha = 0.25) +
+  geom_line(aes(y = median_prediction)) +
+  geom_point(aes(y = observations), shape = 1)
+```
+
