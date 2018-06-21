@@ -30,7 +30,7 @@ Here, I will implement a more flexible approach, where seasonality is incorporat
 The model is as follows:
 
 $$
-y_t \sim \text{Poisson}(\rho I_t) \\
+y_t \sim \text{Negative Binomial}(\rho I_t, \eta_t) \\
 \lambda_t = \beta_t S_t\left(I_t + i\right) \\
 I_{t+1} \sim \text{Poisson}\left(\lambda_t\right), \\
 S_{t+1} = b_t + S_t - I_{t+1},\\
@@ -101,42 +101,50 @@ model{
   # Likelihood/Data Model
   for(i in 1:nobs){
     # y[i] ~ dpois(rho*I[i])
-    p[i] = r/(r+I[i]*rho)
-    y[i] ~ dnegbin(p[i],r)
+    y[i] ~ dlnorm(max(0.000001, log(rho*I[i])), tau)
   }
-
+  tau = pow(sigma, -2)
+  sigma ~ dunif(0, 100)
+  
   # Process model
   for(t in 1:(ntimes-1)){
-    lambda[t] = beta[t] * S[t] * (I[t] + 1)
+    lambda[t] = beta[t] * S[t] * (I[t] + 0.01)
     dI[t] ~ dpois(lambda[t])
-    I[t+1] = dI[t] + 1
-    S[t+1] = b[t] + S[t] - (dI[t] + 1)
+    I[t+1] = dI[t] + 0.0000001
+    S[t+1] = b[t] + S[t] - (dI[t] + 0.0000001)
   }
 
   # Parameter model
   for(t in 1:(ntimes-1)){
     beta[t] = gamma[t] * (1 + epsilon * sin( (2*pi*t)/26 + theta ) )
-    gamma[t] = mean_gamma + exp(noise[t])
-    noise[t] ~ dunif(-20,-5)
   }
-
+  for(t in 2:ntimes){
+    gamma[t] ~ dnorm(gamma[t-1], tau_gamma)
+  }
+  
+  gamma[1] ~ dnorm(mean_gamma, tau_gamma)
   mean_gamma ~ dgamma(1, 1000)
   epsilon ~ dunif(0, 1)
   theta ~ dunif(1, 3)
   rho ~ dbeta(3.6, 6.3)
-  r ~ dunif(0,100)
-  # sigma ~ dgamma(0.01, 0.01)
+  tau_gamma = pow(sigma_gamma, -2)
+  sigma_gamma ~ dunif(0, 100)
 
   # Initial conditions
-  S0 ~ dunif(10000, 100000)
+  S0 ~ dunif(1000, 100000)
   S[1] = S0
-  I[1] ~ dpois(initI)
+  I[1] ~ dnorm(initI, 0.001)
+
+  # Derived quantity
+  for(i in 1:nobs){
+    Iobs[i] = I[i]*rho 
+  }
 }
 "
 ```
 
 ### Run the MCMC via JAGS
-```{r run-mcmc}
+```{r run-mcmc, fig.height = 6, fig.width=10}
 # Read in population data and estimate births
 population <- read_csv("../niger_measles/district_pops.csv") %>%
   gather(key = year, value = population, -X1) %>%
@@ -161,17 +169,16 @@ biweek_data <- measles_data %>%
   ) %>%
   mutate(
     births = round(rep(births$births_per_week*2, each = 26))
-  ) %>%
-  filter(biweek < 105)
+  ) #%>%
+  #filter(biweek < 105)
   
 
 # Gather data
-y <- biweek_data$cases
+y <- biweek_data$cases + 0.1
 initI <- biweek_data$cases[1]
 b <- biweek_data$births
 ntimes <- nrow(biweek_data)
 nobs <- nrow(biweek_data)
-# rho <- 0.48  # reporting rate
 
 # List up data for JAGS
 jags_data <- list(
@@ -199,22 +206,68 @@ model <- jags.model(
 )
 
 # mcmc_results <- coda.samples(model, variable.names = c("dI", "S","I","beta","gamma","epsilon","lambda","theta"), n.iter = 500)
-mcmc_results <- coda.samples(model, variable.names = c("I", "beta"), n.iter = 2000)
-quants <- summary(mcmc_results)$quantile
-I_quants <- quants[grep("I", rownames(quants)), ]
-gamma_quants <- quants[grep("beta", rownames(quants)), ]
+mcmc_results <- coda.samples(model, variable.names = c("Iobs", "I", "S", "gamma", "beta", "mean_gamma"), n.iter = 10000, n.thin = 10)
 
-model_df <- tibble(
-  date = biweek_data$date,
-  observations = biweek_data$cases,
-  median_prediction = I_quants[,3],
-  upper_prediction = I_quants[,5],
-  lower_prediction = I_quants[,1]
-)
+mcmc_tbl <- ggs(mcmc_results) %>%
+  group_by(Parameter) %>%
+  summarise(
+    median_value = median(value),
+    upper_95 = quantile(value, 0.975),
+    lower_95 = quantile(value, 0.025),
+    upper_50 = quantile(value, 0.75),
+    lower_50 = quantile(value, 0.25)
+  )
 
-ggplot(model_df, aes(x = date)) +
-  geom_ribbon(aes(ymin = lower_prediction, ymax = upper_prediction), alpha = 0.25) +
-  geom_line(aes(y = median_prediction)) +
-  geom_point(aes(y = observations), shape = 1)
+model_observations <- mcmc_tbl %>%
+  filter(grepl("Iobs\\[", Parameter)) %>%
+  mutate(
+    observed_cases = biweek_data$cases,
+    date = biweek_data$date
+  )
+
+model_latents <- mcmc_tbl %>%
+  filter(grepl("I\\[", Parameter) | grepl("S\\[", Parameter)) %>%
+  mutate(
+    date = rep(biweek_data$date, times = 2)
+  ) %>%
+  separate(Parameter, into = c("param_family", "trash"), sep ="\\[") %>%
+  select(-trash) %>%
+  mutate(
+    param_name = ifelse(param_family == "S", "Susceptible", "Infectious")
+  )
+
+transmission_rate <- mcmc_tbl %>%
+  filter(grepl("gamma\\[", Parameter)) %>%
+  mutate(
+    date = biweek_data$date
+  )
+
+mycolors <- c("coral","steelblue")
+obscomp <- ggplot(model_observations, aes(x = date)) +
+  geom_point(aes(y = observed_cases), shape = 1, color = "grey45", size = 0.75) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15, fill = mycolors[1]) +
+  geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35, fill = mycolors[1]) +
+  geom_line(aes(y = median_value), color = mycolors[1], linetype = 2) +
+  labs(x = "Date", y = "Number of reported cases")
+
+latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = param_name), alpha = 0.15) +
+  geom_ribbon(aes(ymin = lower_50, ymax = upper_50, fill = param_name), alpha = 0.35) +
+  geom_line(aes(color = param_name), linetype = 2) +
+  facet_wrap(~param_name, scales = "free_y", ncol = 1) +
+  scale_color_manual(values = mycolors) +
+  scale_fill_manual(values = mycolors) +
+  guides(color = FALSE, fill = FALSE) +
+  labs(x = "Date", y = "Number of persons")
+
+gamma <- ggplot(transmission_rate, aes(x = date, y = median_value)) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15) +
+  geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35) +
+  geom_line(linetype = 2, color = "grey45") +
+  labs(x = "Date", y = "Transmission rate")
+
+grid1 <- cowplot::plot_grid(obscomp, gamma, ncol = 1, align = "v")
+grid2 <- cowplot::plot_grid(grid1, latents, ncol = 2)
+grid2
 ```
 
