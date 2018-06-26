@@ -149,17 +149,16 @@ measles_model <- "
 model{
   # Likelihood/Data Model
   for(i in 1:nobs){
-    # y[i] ~ dnorm(rho * I[i], rho * I[i] + tau)  # approximates overdispersed Poisson
-    y[i] ~ dpois(rho * I[i])
+    p[i] <- r/(r + rho*I[i])
+    y[i] ~ dnegbin(p[i], r)
   }
-  tau = pow(sigma, -2)
-  sigma ~ dunif(0, 10)
+  r ~ dunif(0, 50)
   
   # Process model
   for(t in 1:(ntimes-1)){
     escape_prob[t] = exp(-beta[t] * (I[t] + 1))
     escapees[t] ~ dbin(escape_prob[t], S[t])
-    I[t+1] = S[t] - escapees[t] + 0.00001
+    I[t+1] = max(0.0000001, S[t] - escapees[t])
     S[t+1] = b[t] + escapees[t]
   }
 
@@ -173,21 +172,22 @@ model{
   }
   
   noise[1] ~ dnorm(0, tau_gamma)
-  gamma[1] = psi*mean_gamma + (1 - psi)*noise[1]
-  mean_gamma ~ dgamma(1, 1000)
+  gamma[1] = psi*exp(gamma0) + (1 - psi)*noise[1]
+  gamma0 ~ dunif(-15, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 5)
+  sigma_gamma ~ dunif(0, 100)
   psi ~ dunif(0, 1)
 
   epsilon ~ dunif(0, 1)
-  theta ~ dunif(1, 3)
+  theta ~ dunif(0, 26)
   rho ~ dbeta(3.6, 6.3)
 
   # Initial conditions
-  S0 ~ dunif(1000, 100000)
-  S[1] = trunc(S0)
-  I0 ~ dnorm(initI, 0.001)
-  I[1] = I0 + I0*rho
+  S0 ~ dunif(10000, 100000)
+  S02 ~ dpois(S0)
+  S[1] <- S02
+  I0 ~ dpois(initI + initI*rho)
+  I[1] = I0
 
   # Derived quantities
   for(i in 1:nobs){
@@ -227,11 +227,11 @@ biweek_data <- measles_data %>%
     births = round(rep(births$births_per_week*2, each = 26)),
     population = round(rep(population$population, each = 26))
   ) %>%
-  filter(biweek < 105)
+  filter(biweek < 53)
   
 
 # Gather data
-y <- biweek_data$cases #+ 0.01
+y <- biweek_data$cases
 initI <- biweek_data$cases[1]
 b <- biweek_data$births
 ntimes <- nrow(biweek_data)
@@ -248,26 +248,26 @@ jags_data <- list(
   N = biweek_data$population
 )
 
-jags_inits <- list(
-  mean_gamma = 0.00001,
-  epsilon = 0.5,
-  theta = 1
-)
+# jags_inits <- list(
+#   mean_gamma = 0.00001,
+#   epsilon = 0.5,
+#   theta = 1
+# )
 
 # Initialize model in JAGS
 model <- jags.model(
   textConnection(measles_model),
   data = jags_data,
   n.chains = 1,
-  n.adapt = 2000,
+  n.adapt = 5000,
   inits = jags_inits
 )
 
 mcmc_results <- coda.samples(
   model, 
-  variable.names = c("Iobs", "I", "S", "Rnaught", "beta", "rho"), 
-  n.iter = 2000, 
-  n.thin = 1
+  variable.names = c("Iobs", "I", "S", "Rnaught", "beta", "rho", "escape_prob", "psi"), 
+  n.iter = 10000, 
+  n.thin = 10
 )
 
 mcmc_tbl <- ggs(mcmc_results) %>%
@@ -279,6 +279,12 @@ mcmc_tbl <- ggs(mcmc_results) %>%
     upper_50 = quantile(value, 0.75),
     lower_50 = quantile(value, 0.25)
   )
+
+ttt <- mcmc_tbl %>%
+  filter(grepl("psi", Parameter))
+
+ttt2 <- mcmc_tbl %>%
+  filter(grepl("beta\\[", Parameter))
 
 model_observations <- mcmc_tbl %>%
   filter(grepl("Iobs\\[", Parameter)) %>%
@@ -310,7 +316,7 @@ obscomp <- ggplot(model_observations, aes(x = date)) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15, fill = mycolors[1]) +
   geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35, fill = mycolors[1]) +
   geom_line(aes(y = median_value), color = mycolors[1], linetype = 2) +
-  labs(x = "Date", y = "Number of reported cases")
+  labs(x = "Date", y = "Number of reported cases") 
 
 latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = param_name), alpha = 0.15) +
@@ -326,7 +332,7 @@ gamma <- ggplot(transmission_rate, aes(x = date, y = median_value)) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15) +
   geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35) +
   geom_line(linetype = 2, color = "grey45") +
-  labs(x = "Date", y = "Transmission rate")
+  labs(x = "Date", y = expression(italic(R[t])))
 
 grid1 <- cowplot::plot_grid(obscomp, gamma, ncol = 1, align = "v")
 grid2 <- cowplot::plot_grid(grid1, latents, ncol = 2)
