@@ -156,11 +156,11 @@ model{
     # y[i] ~ dpois(rho*I[i])
   }
   some ~ dunif(0, 10)
-  r ~ dunif(0, 50)
+  r ~ dgamma(0.001, 0.001)
   
   # Process model
   for(t in 1:(ntimes-1)){
-    escape_prob[t] = exp(-beta[t] * (I[t] + 0.00001))
+    escape_prob[t] = exp(-beta[t] * (I[t] + 1))
     escapees[t] ~ dbin(escape_prob[t], S[t])
     I[t+1] = max(0.0000001, S[t] - escapees[t])
     S[t+1] = b[t] + escapees[t]
@@ -187,7 +187,7 @@ model{
   rho ~ dbeta(3.6, 6.3)
 
   # Initial conditions
-  S0 ~ dunif(100000, 500000)
+  S0 ~ dunif(10000, 100000)
   S02 ~ dpois(S0)
   S[1] <- S02
   I0 ~ dpois(initI * (1+rho))
@@ -238,7 +238,7 @@ biweek_data <- measles_data %>%
     births = round(rep(births$births_per_week*2, each = 26)),
     population = round(rep(population$population, each = 26))
   ) %>%
-  filter(biweek < 27)
+  filter(biweek < 105)
   
 
 # Gather data
@@ -275,7 +275,7 @@ model <- jags.model(
 
 mcmc_results <- coda.samples(
   model, 
-  variable.names = c("Iobs", "I", "S", "Rnaught", "beta", "rho", "escape_prob", "psi"), 
+  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "theta"), 
   n.iter = 10000, 
   n.thin = 10
 )
@@ -289,6 +289,8 @@ mcmc_tbl <- ggs(mcmc_results) %>%
     upper_50 = quantile(value, 0.75),
     lower_50 = quantile(value, 0.25)
   )
+
+write_csv(mcmc_tbl, path = "./mcmc_results.csv")
 
 ttt <- mcmc_tbl %>%
   filter(grepl("psi", Parameter))
