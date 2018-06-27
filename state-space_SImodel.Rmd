@@ -151,12 +151,16 @@ model{
   for(i in 1:nobs){
     p[i] <- r/(r + rho*I[i])
     y[i] ~ dnegbin(p[i], r)
+    # error[i] <- 1/(rho*I[i] + some)^2
+    # y[i] ~ dnorm(rho*I[i],  error[i])
+    # y[i] ~ dpois(rho*I[i])
   }
+  some ~ dunif(0, 10)
   r ~ dunif(0, 50)
   
   # Process model
   for(t in 1:(ntimes-1)){
-    escape_prob[t] = exp(-beta[t] * (I[t] + 1))
+    escape_prob[t] = exp(-beta[t] * (I[t] + 0.00001))
     escapees[t] ~ dbin(escape_prob[t], S[t])
     I[t+1] = max(0.0000001, S[t] - escapees[t])
     S[t+1] = b[t] + escapees[t]
@@ -175,7 +179,7 @@ model{
   gamma[1] = psi*exp(gamma0) + (1 - psi)*noise[1]
   gamma0 ~ dunif(-15, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 100)
+  sigma_gamma ~ dunif(0, 10)
   psi ~ dunif(0, 1)
 
   epsilon ~ dunif(0, 1)
@@ -183,10 +187,10 @@ model{
   rho ~ dbeta(3.6, 6.3)
 
   # Initial conditions
-  S0 ~ dunif(10000, 100000)
+  S0 ~ dunif(100000, 500000)
   S02 ~ dpois(S0)
   S[1] <- S02
-  I0 ~ dpois(initI + initI*rho)
+  I0 ~ dpois(initI * (1+rho))
   I[1] = I0
 
   # Derived quantities
@@ -207,11 +211,18 @@ population <- read_csv("../niger_measles/district_pops.csv") %>%
   rename(district = X1) %>%
   filter(district == "Niamey I")
 
-birth_rate <- 50.73/1000  # from Matt F. and national statistics
+birth_rates <- read_csv("../niger_measles/niger_crude_birth_rates.csv") %>%
+  mutate(
+    date = mdy(date),  # lubridate prefixes any 2digit year 00-68 with 20, not a problem for us though
+    year = as.character(year(date)),
+    rate_per_person = births_per_thousand/1000
+  ) %>%
+  select(year, rate_per_person)
 
 births <- population %>%
+  left_join(birth_rates, by = "year") %>%
   mutate(
-    births_per_year = population * birth_rate,
+    births_per_year = population * rate_per_person,
     births_per_week = births_per_year / 52
   )
 
@@ -227,7 +238,7 @@ biweek_data <- measles_data %>%
     births = round(rep(births$births_per_week*2, each = 26)),
     population = round(rep(population$population, each = 26))
   ) %>%
-  filter(biweek < 53)
+  filter(biweek < 27)
   
 
 # Gather data
@@ -259,8 +270,7 @@ model <- jags.model(
   textConnection(measles_model),
   data = jags_data,
   n.chains = 1,
-  n.adapt = 5000,
-  inits = jags_inits
+  n.adapt = 5000
 )
 
 mcmc_results <- coda.samples(
