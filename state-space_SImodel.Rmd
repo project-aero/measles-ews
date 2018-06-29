@@ -93,6 +93,26 @@ ggplot(measles_data, aes(x = date)) +
 ```
 
 I will fit the model using a Bayesian state-space approach, implemented in JAGS.
+But first, let's look at results from Matt Ferrari's 2008 Nature paper.
+
+### Previous TSIR results
+These are the posterior estimates/draws from the TSIR model fit in Ferrari et al. 2008.
+
+```{r ferrari-results}
+# source("./ferrari_results_2008/niamey_new_1.q")
+# 
+# si_states <- tibble(
+#   susceptibles = res[[1]],
+#   infecteds = res[[2]],
+#   week_num = 1:length(res[[2]])
+# )
+# 
+# ggplot(si_states, aes(x = week_num, y = susceptibles))+
+#   geom_line()
+# 
+# mean_susceptibles <- mean(res[[1]])
+# sd_susceptibles <- sd(res[[1]])
+```
 
 ### JAGS Model
 ```{r jags-model, eval = FALSE, echo=FALSE}
@@ -151,12 +171,13 @@ model{
   for(i in 1:nobs){
     p[i] <- r/(r + rho*I[i])
     y[i] ~ dnegbin(p[i], r)
+
     # error[i] <- 1/(rho*I[i] + some)^2
     # y[i] ~ dnorm(rho*I[i],  error[i])
     # y[i] ~ dpois(rho*I[i])
   }
-  some ~ dunif(0, 10)
-  r ~ dgamma(0.001, 0.001)
+  # some ~ dunif(0, 10)
+  r ~ dunif(0, 50)
   
   # Process model
   for(t in 1:(ntimes-1)){
@@ -172,11 +193,11 @@ model{
   }
   for(t in 2:ntimes){
     noise[t] ~ dnorm(0, tau_gamma)
-    gamma[t] = psi*gamma[t-1] + (1 - psi)*noise[t]
+    gamma[t] = psi*gamma[t-1] + (1-psi)*noise[t]
   }
   
   noise[1] ~ dnorm(0, tau_gamma)
-  gamma[1] = psi*exp(gamma0) + (1 - psi)*noise[1]
+  gamma[1] = psi*exp(gamma0) + (1-psi)*noise[1]
   gamma0 ~ dunif(-15, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
   sigma_gamma ~ dunif(0, 10)
@@ -187,7 +208,7 @@ model{
   rho ~ dbeta(3.6, 6.3)
 
   # Initial conditions
-  S0 ~ dunif(10000, 100000)
+  S0 ~ dunif(200000, 700000)
   S02 ~ dpois(S0)
   S[1] <- S02
   I0 ~ dpois(initI * (1+rho))
@@ -238,7 +259,7 @@ biweek_data <- measles_data %>%
     births = round(rep(births$births_per_week*2, each = 26)),
     population = round(rep(population$population, each = 26))
   ) %>%
-  filter(biweek < 105)
+  filter(year(date) < 1997)
   
 
 # Gather data
@@ -276,8 +297,8 @@ model <- jags.model(
 mcmc_results <- coda.samples(
   model, 
   variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "theta"), 
-  n.iter = 10000, 
-  n.thin = 10
+  n.iter = 5000, 
+  n.thin = 2
 )
 
 mcmc_tbl <- ggs(mcmc_results) %>%
