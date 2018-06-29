@@ -189,26 +189,29 @@ model{
 
   # Parameter model
   for(t in 1:(ntimes-1)){
-    beta[t] = gamma[t] * (1 + epsilon * sin( (2*pi*t)/26 + theta ) )
+    beta[t] = exp(gamma[t]) * (1 + epsilon * sin( (2*pi*t)/26 + theta ) )
   }
   for(t in 2:ntimes){
     noise[t] ~ dnorm(0, tau_gamma)
-    gamma[t] = psi*gamma[t-1] + (1-psi)*noise[t]
+    gamma[t] = psi*gamma[t-1] + psi2*noise[t]
   }
   
   noise[1] ~ dnorm(0, tau_gamma)
-  gamma[1] = psi*exp(gamma0) + (1-psi)*noise[1]
-  gamma0 ~ dunif(-15, -9)  # prior ranging from Re = 1 to Re = 25
+  gamma[1] = psi*gamma0 + psi2*noise[1]
+  gamma0 ~ dunif(-12, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 10)
-  psi ~ dunif(0, 1)
+  sigma_gamma ~ dunif(0, 5)
+  # psi ~ dunif(0, 1)
+  # psi2 ~ dunif(0, 1)
+  psi = 1
+  psi2 = 0
 
   epsilon ~ dunif(0, 1)
   theta ~ dunif(0, 26)
   rho ~ dbeta(3.6, 6.3)
 
   # Initial conditions
-  S0 ~ dunif(200000, 700000)
+  S0 ~ dunif(200000, 400000)
   S02 ~ dpois(S0)
   S[1] <- S02
   I0 ~ dpois(initI * (1+rho))
@@ -217,7 +220,7 @@ model{
   # Derived quantities
   for(i in 1:nobs){
     Iobs[i] = I[i]*rho 
-    Rnaught[i] = gamma[i]*N[i]
+    Rnaught[i] = exp(gamma[i]) #*N[i]
   }
 }
 "
@@ -259,7 +262,7 @@ biweek_data <- measles_data %>%
     births = round(rep(births$births_per_week*2, each = 26)),
     population = round(rep(population$population, each = 26))
   ) %>%
-  filter(year(date) < 1997)
+  filter(year(date) < 1996)
   
 
 # Gather data
@@ -296,9 +299,9 @@ model <- jags.model(
 
 mcmc_results <- coda.samples(
   model, 
-  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "theta"), 
+  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "theta", "r"), 
   n.iter = 5000, 
-  n.thin = 2
+  n.thin = 1
 )
 
 mcmc_tbl <- ggs(mcmc_results) %>%
@@ -318,6 +321,9 @@ ttt <- mcmc_tbl %>%
 
 ttt2 <- mcmc_tbl %>%
   filter(grepl("beta\\[", Parameter))
+
+ttt3 <- mcmc_tbl %>%
+  filter(grepl("r", Parameter))
 
 model_observations <- mcmc_tbl %>%
   filter(grepl("Iobs\\[", Parameter)) %>%
@@ -349,7 +355,8 @@ obscomp <- ggplot(model_observations, aes(x = date)) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15, fill = mycolors[1]) +
   geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35, fill = mycolors[1]) +
   geom_line(aes(y = median_value), color = mycolors[1], linetype = 2) +
-  labs(x = "Date", y = "Number of reported cases") 
+  labs(x = "Date", y = "Number of reported cases") +
+  scale_y_continuous(trans = "log")
 
 latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = param_name), alpha = 0.15) +
@@ -359,11 +366,12 @@ latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
   scale_color_manual(values = mycolors) +
   scale_fill_manual(values = mycolors) +
   guides(color = FALSE, fill = FALSE) +
-  labs(x = "Date", y = "Number of persons")
+  labs(x = "Date", y = "Number of persons") +
+  scale_y_continuous(trans = "log")
 
 gamma <- ggplot(transmission_rate, aes(x = date, y = median_value)) +
-  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15) +
-  geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35) +
+  # geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15) +
+  # geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35) +
   geom_line(linetype = 2, color = "grey45") +
   labs(x = "Date", y = expression(italic(R[t])))
 
