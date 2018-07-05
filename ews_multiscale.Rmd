@@ -188,9 +188,10 @@ niger_measles_0na <- niger_measles %>%
 totals_plot <- ggplot(national_data, aes(x = date)) +
   geom_ribbon(fill = "grey", aes(ymin = 0, ymax = total_cases)) +
   labs(x = NULL, y = "Total\ncases") +
-  theme_minimal(base_size = 10)
+  theme_minimal(base_size = 10) +
+  scale_y_continuous(trans = "sqrt")
 
-heat_plot <- ggplot(niger_measles_0na, aes(x = date, y = region, fill = log(cases))) +
+heat_plot <- ggplot(niger_measles, aes(x = date, y = region, fill = log10(cases+1))) +
   geom_tile() +
   scale_fill_viridis() +
   labs(x = "Date", y = "District") +
@@ -280,7 +281,7 @@ for(i in 1:length(all_weeks)){
 
 morans_over_time <- morans_over_time %>%
   mutate(
-    runmean_two_year = zoo::rollmean(morans_i, k = 104, align = "right", fill = NA)
+    runmean_two_year = zoo::rollmean(morans_i, k = 52, align = "right", fill = NA)
   )
 
 
@@ -322,6 +323,24 @@ total_cases_inspace <- total_cases_inspace %>%
 
 epidemic_timings <- total_cases_inspace %>%
   dplyr::select(date, epidemic_year, epidemic_week)
+
+morans_kendall <- morans_over_time %>%
+  filter(is.na(runmean_two_year) == FALSE) %>%
+  left_join(epidemic_timings, by = "date") %>%
+  group_by(epidemic_year) %>%
+  summarise(
+    kens_tau = cor(runmean_two_year, epidemic_week, method = "kendall"),
+    kens_test = cor.test(runmean_two_year, epidemic_week, method = "kendall", alternative = "greater")$p.value
+  )
+
+peak_cases <- total_cases_inspace %>%
+  group_by(epidemic_year) %>%
+  summarise(
+    peak = max(total_cases)
+  )
+
+plot(morans_kendall$kens_tau, peak_cases$peak[3:(nrow(peak_cases))])
+summary(lm(peak_cases$peak[3:(nrow(peak_cases))] ~ morans_kendall$kens_tau))
 ```
 
 
