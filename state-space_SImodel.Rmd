@@ -177,11 +177,13 @@ model{
   
   # Process model
   for(t in 1:(ntimes-1)){
-    escape_prob[t] = exp(-beta[t] * (I[t]))
+    # escape_prob[t] = exp(-beta[t] * (I[t]))
+    escape_prob[t] = (1 + (beta[t] * I[t]) / kappa)^(-kappa)
     escapees[t] ~ dbin(escape_prob[t], S[t])
     I[t+1] = max(0.000001, S[t] - escapees[t])
     S[t+1] = b[t] + escapees[t]
   }
+  kappa ~ dunif(0, 50)
 
   # Parameter model
   for(t in 1:(ntimes-1)){
@@ -190,15 +192,19 @@ model{
   for(t in 2:ntimes){
     noise[t] ~ dnorm(0, tau_gamma)
     gamma[t] = psi*gamma[t-1] + psi2*noise[t]
+    # gamma[t] = intercept + base * gamma[t-1] + noise[t]
   }
 
   noise[1] ~ dnorm(0, tau_gamma)
   gamma[1] = psi*gamma0 + psi2*noise[1]
+  # gamma[1] = intercept + base * gamma0 + noise[1]
   gamma0 ~ dunif(-12, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
   sigma_gamma ~ dunif(0, 1)
   psi ~ dunif(0.8, 1.3)  # slightly weird range b/c AR(1) is on log scale now
   psi2 ~ dunif(0,1)
+  # intercept ~ dunif(-10, -2)
+  # base ~ dunif(0,1)
 
   epsilon ~ dunif(0, 1)
   theta ~ dunif(0, 26)
@@ -289,13 +295,13 @@ model <- jags.model(
   textConnection(measles_model),
   data = jags_data,
   n.chains = 1,
-  n.adapt = 50000
+  n.adapt = 5000
 )
 
 mcmc_results <- coda.samples(
   model, 
-  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S02", "I0", "gamma0"), 
-  n.iter = 50000, 
+  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S02", "I0", "gamma0", "intercept", "base"), 
+  n.iter = 5000, 
   n.thin = 1
 )
 
@@ -344,7 +350,7 @@ transmission_rate <- mcmc_tbl %>%
 
 mycolors <- c("coral","steelblue")
 obscomp <- ggplot(model_observations, aes(x = date)) +
-  geom_point(aes(y = observed_cases+0.1), shape = 1, color = "grey45", size = 0.75) +
+  geom_point(aes(y = observed_cases), shape = 1, color = "grey45", size = 0.75) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15, fill = mycolors[1]) +
   geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35, fill = mycolors[1]) +
   geom_line(aes(y = median_value), color = mycolors[1], linetype = 2) +
