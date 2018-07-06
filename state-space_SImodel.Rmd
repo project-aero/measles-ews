@@ -179,7 +179,7 @@ model{
   for(t in 1:(ntimes-1)){
     escape_prob[t] = exp(-beta[t] * (I[t]))
     escapees[t] ~ dbin(escape_prob[t], S[t])
-    I[t+1] = max(0.000001, S[t] - escapees[t]) #+ m
+    I[t+1] = max(0.000001, S[t] - escapees[t])
     S[t+1] = b[t] + escapees[t]
   }
 
@@ -196,11 +196,9 @@ model{
   gamma[1] = psi*gamma0 + psi2*noise[1]
   gamma0 ~ dunif(-12, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 50)
+  sigma_gamma ~ dunif(0, 1)
   psi ~ dunif(0.8, 1.3)  # slightly weird range b/c AR(1) is on log scale now
   psi2 ~ dunif(0,1)
-  m ~ dpois(em)
-  em ~ dunif(0, 10)
 
   epsilon ~ dunif(0, 1)
   theta ~ dunif(0, 26)
@@ -263,6 +261,7 @@ biweek_data <- measles_data %>%
 
 # Gather data
 y <- biweek_data$cases
+y[y<1] <- NA
 initI <- biweek_data$cases[1]
 b <- biweek_data$births
 ntimes <- nrow(biweek_data)
@@ -295,7 +294,7 @@ model <- jags.model(
 
 mcmc_results <- coda.samples(
   model, 
-  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "m"), 
+  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S02", "I0", "gamma0"), 
   n.iter = 50000, 
   n.thin = 1
 )
@@ -312,14 +311,12 @@ mcmc_tbl <- ggs(mcmc_results) %>%
 
 # write_csv(mcmc_tbl, path = "./mcmc_results.csv")
 
-ttt <- mcmc_tbl %>%
-  filter(grepl("m", Parameter))
+time_invariants <- mcmc_tbl %>%
+  filter(!grepl("\\[", Parameter))
+knitr::kable(time_invariants)
 
-ttt2 <- mcmc_tbl %>%
-  filter(grepl("beta\\[", Parameter))
-
-ttt3 <- mcmc_tbl %>%
-  filter(grepl("r", Parameter))
+escape_probs <- mcmc_tbl %>%
+  filter(grepl("escape_prob", Parameter))
 
 model_observations <- mcmc_tbl %>%
   filter(grepl("Iobs\\[", Parameter)) %>%
@@ -352,7 +349,7 @@ obscomp <- ggplot(model_observations, aes(x = date)) +
   geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35, fill = mycolors[1]) +
   geom_line(aes(y = median_value), color = mycolors[1], linetype = 2) +
   labs(x = "Date", y = "Number of reported cases") +
-  # scale_y_continuous(trans = "log") +
+  scale_y_continuous(trans = "log") +
   NULL
 
 latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
@@ -364,7 +361,7 @@ latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
   scale_fill_manual(values = mycolors) +
   guides(color = FALSE, fill = FALSE) +
   labs(x = "Date", y = "Number of persons") +
-  # scale_y_continuous(trans = "log") +
+  scale_y_continuous(trans = "log") +
   NULL
 
 gamma <- ggplot(transmission_rate, aes(x = date, y = median_value)) +
@@ -382,7 +379,7 @@ grid2
 rho_est <- filter(mcmc_tbl, Parameter == "rho")
 ```
 
-```{r log-rw}
+```{r log-rw, eval=FALSE}
 rw <- function(times, x1, psi, psi2){
   x <- numeric(times)
   x[1] <- x1
