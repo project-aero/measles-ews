@@ -156,12 +156,12 @@ ggplot(rand_df, aes(x = date, y = value)) +
   geom_line(aes(color = as.factor(year(date)))) +
   geom_hline(aes(yintercept = anom_thresh), linetype = 2) +
   labs(y = "Random component", x = "Date") +
-  scale_color_discrete(name = "Year") +
-  annotate("text", 
-           x = min(national_data$date)+365, 
-           y = 3.25, 
-           label = expression(paste("anomaly threshold (4", sigma, ")")), 
-           size = 3)
+  scale_color_discrete(name = "Year") #+
+  # annotate("text", 
+  #          x = min(national_data$date)+365, 
+  #          y = 3.25, 
+  #          label = expression(paste("anomaly threshold (4", sigma, ")")), 
+  #          size = 3)
 ```
 
 The 2003-2004 epidemic year is the only one for which the random component exceeds the anomaly threshold of 4$\sigma$. Thus, our goal is to anticipate this national level outbreak in 2003-2004. The flip side is to avoid signaling an expceptionally large outbreak in the other years (i.e., false positives).
@@ -247,7 +247,7 @@ ggplot(region_boundaries)+
 
 # Calculate neighbor weights
 regions_nb <- poly2nb(sf::as_Spatial(region_boundaries$geom))
-nblist <- nb2listw(regions_nb)
+nblist <- nb2listw(regions_nb, style = "B")
 
 # Calculate Moran's I across districs for each week
 all_weeks <- unique(niger_measles_inspace$date)
@@ -281,7 +281,7 @@ for(i in 1:length(all_weeks)){
 
 morans_over_time <- morans_over_time %>%
   mutate(
-    runmean_two_year = zoo::rollmean(morans_i, k = 52, align = "right", fill = NA)
+    runmean_two_year = zoo::rollmean(morans_i, k = 104, align = "right", fill = NA)
   )
 
 
@@ -300,10 +300,11 @@ ggplot(morans_over_time, aes(x = date, y = runmean_two_year)) +
 ```
 
 Now we need to calculate Kendall's $\tau$ to look at within-epidemic year correlations between Moran's *I* and time.
-This first requires defining "epidemic year," which I will as October to September (see figure below).
+This first requires defining "epidemic year," which I will define as October to September (see figure below).
 
 ```{r epi-years}
 total_cases_inspace <- niger_measles_inspace %>%
+  filter(region == "Niamey") %>%
   group_by(date) %>%
   summarise(total_cases = sum(cases, na.rm = TRUE))
 
@@ -339,8 +340,8 @@ peak_cases <- total_cases_inspace %>%
     peak = max(total_cases)
   )
 
-plot(morans_kendall$kens_tau, peak_cases$peak[3:(nrow(peak_cases))])
-summary(lm(peak_cases$peak[3:(nrow(peak_cases))] ~ morans_kendall$kens_tau))
+plot(morans_kendall$kens_tau, peak_cases$peak[4:(nrow(peak_cases))])
+summary(lm(peak_cases$peak[4:(nrow(peak_cases))] ~ morans_kendall$kens_tau))
 ```
 
 
