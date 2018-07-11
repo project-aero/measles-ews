@@ -1,0 +1,100 @@
+---
+title: "Bayesian state-space SI model with year-specific, smooth seasonality"
+author: "Andrew Tredennick"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height = 4)
+
+library(tidyverse)  # data wrangling
+library(lubridate)  # time and date functions
+library(viridis)    # pleasing color palette
+library(spaero)     # project AERO code; EWS metrics, etc.
+
+theme_set(theme_minimal())  # set ggplot2 theme globally
+```
+
+## Goal and objectives
+The goal of this analysis to test early warning signals (EWS) using real datasets -- can they detect outbreaks before they occur?
+I will use regional-level data from Niger, focusing independently on each region for which data exists.
+EWS metrics will be calculated using the `spaero` package.
+
+```{r load-data}
+file_name <- "../niger_measles/niger_regional_1995_2005.csv"
+niger_measles_raw <- read_csv(file_name, col_types = cols())
+
+num_regions <- nrow(niger_measles_raw)
+num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because first column are regions
+weeks_per_year <- num_weeks/11
+weeks <- rep(1:52, times = 11)
+
+# Create a vector of years for all num_weeks
+years <- rep(1995:2005, each = weeks_per_year)
+
+# Function for calculating start of week based on week number and year
+calculate_start_of_week = function(week, year) {
+  date <- ymd(paste(year, 1, 1, sep="-"))
+  week(date) = week
+  return(date)
+}
+
+# Clean up the data frame
+measles_data <- niger_measles_raw %>%
+  gather(key = week, value = cases, -X1) %>%
+  mutate(
+    week_num = rep(1:num_weeks, each = num_regions),
+    year = rep(years, each  = num_regions),
+    week = rep(weeks, each = num_regions),
+    date = calculate_start_of_week(week, year)
+  ) %>%
+  dplyr::rename(region = X1)
+
+# Plot the time series
+ggplot(measles_data, aes(x = date, y = cases)) +
+  geom_line() +
+  labs(x = "Date", y = "Reported cases") +
+  facet_wrap(~region)
+```
+
+## Example
+Start with `region == "Tannout" as exemplar.
+
+```{r ews-tannout}
+plot_st <- function(st, ts_freq) {
+  # A function to plot results from spaero::get_stats()
+  # Author:
+  #  Eamon O'Dea
+  
+  plot_vars <- ts(
+    cbind(
+      Residual=st$centered$x[, 1], 
+      Mean=st$stats$mean,
+      Autocorrelation=st$stats$autocor,
+      Variance=st$stats$variance,
+      DeltaVariance=st$stats$variance_first_diff,
+      Skewness=st$stats$skew
+    ), 
+    freq <- ts_freq
+  )
+  
+  plot(plot_vars, main="")
+}
+
+tannout_data <- measles_data %>%
+  filter(region == "Tannout")
+
+ggplot(tannout_data, aes(x = date, y = cases)) +
+  geom_col()
+
+st1 <- get_stats(
+  tannout_data$cases, 
+  center_kernel = "uniform",
+  center_trend = "local_constant", 
+  center_bandwidth = 52,
+  stat_bandwidth = 52
+)
+
+plot_st(st1, 52)
+```
