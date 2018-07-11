@@ -169,7 +169,7 @@ model <- jags.model(
   textConnection(measles_model),
   data = jags_data,
   n.chains = 1,
-  n.adapt = 100000
+  n.adapt = 75000
 )
 
 vars_to_collect <- c(
@@ -181,7 +181,7 @@ vars_to_collect <- c(
 mcmc_results <- coda.samples(
   model, 
   variable.names = vars_to_collect, 
-  n.iter = 500000, 
+  n.iter = 200000, 
   n.thin = 10
 )
 
