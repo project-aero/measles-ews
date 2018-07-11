@@ -69,7 +69,7 @@ model{
     I[t+1] = max(0.000001, S[t] - escapees[t])
     S[t+1] = b[t] + escapees[t]
   }
-  m ~ dunif(0, 100)
+  m ~ dunif(0, 200)
   
   # Parameter model
   for(t in 1:(ntimes-1)){
@@ -78,16 +78,15 @@ model{
 
   for(t in 2:ntimes){
     noise[t] ~ dnorm(0, tau_gamma)
-    gamma[t] = psi*gamma[t-1] + psi2*noise[t]
+    gamma[t] = gamma0 + t * log(1+rg) + noise[t]
   }
   
   noise[1] ~ dnorm(0, tau_gamma)
-  gamma[1] = psi*gamma0 + psi2*noise[1]
-  gamma0 ~ dunif(-12, -9)  # prior ranging from Re = 1 to Re = 25
+  gamma[1] = gamma0 + 1 * log(1+rg) + noise[1]
+  gamma0 ~ dunif(-20, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 2)
-  psi ~ dunif(0.8, 1.3)  # slightly weird range b/c AR(1) is on log scale now
-  psi2 ~ dunif(0,1)
+  sigma_gamma ~ dunif(0, 1)
+  rg ~ dunif(-0.2, 0.2)
   
   epsilon ~ dunif(0, 1)
   theta ~ dunif(0, 26)
@@ -95,8 +94,8 @@ model{
   
   # Initial conditions
   S0 ~ dunif(50000, 400000)
-  S02 ~ dpois(S0)
-  S[1] <- S02
+  # S02 ~ dpois(S0)
+  S[1] <- trunc(S0)
   I0 ~ dpois(initI/rho)
   I[1] = I0
   
@@ -143,7 +142,7 @@ biweek_data <- measles_data %>%
     births = round(rep(births$births_per_week*2, each = 26)),
     population = round(rep(population$population, each = 26))
   ) %>%
-  filter(year(date) < 2000)
+  filter(year(date) < 2001)
 
 
 # Gather data
@@ -169,19 +168,23 @@ model <- jags.model(
   textConnection(measles_model),
   data = jags_data,
   n.chains = 1,
-  n.adapt = 75000
+  n.adapt = 50000
 )
 
+# Update chain with long burn-in
+update(model, n.iter = 300000)
+
+# Collect samples from posterior
 vars_to_collect <- c(
   "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", 
   "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S02", "I0", 
-  "gamma0", "m"
+  "gamma0", "m", "rg"
 )
 
 mcmc_results <- coda.samples(
   model, 
   variable.names = vars_to_collect, 
-  n.iter = 200000, 
+  n.iter = 100000, 
   n.thin = 10
 )
 

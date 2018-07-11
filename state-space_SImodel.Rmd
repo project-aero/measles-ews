@@ -31,12 +31,13 @@ The model is as follows:
 
 $$
 y_t \sim \text{Negative Binomial}(\rho I_t, \eta) \\
-\lambda_t = \text{exp}(-\beta_t (I_t + 1)) \\
-\Delta_t = \text{Binomial}(\lambda_t, S_t) \\
+\lambda_t = e^{-\beta_t (I_t + \psi)} \\
+\Delta_t \sim \text{Binomial}(\lambda_t, S_t) \\
 I_{t+1} = S_t - \Delta_t, \\
 S_{t+1} = b_t + \Delta_t,\\
-\beta_t = \gamma_t \left[1 + \epsilon\;\text{sin}\left(\frac{2 \pi t}{26} + \theta \right) \right] , \\
-\gamma_t = \text{random walk}.
+\beta_t = \gamma_t \left[1 + \upsilon\;\text{sin}\left(\frac{2 \pi t}{26} + \theta \right) \right] , \\
+\gamma_t = \gamma_0 + t\;\text{log}(1-r) + \varepsilon_t, \\
+\varepsilon_t \sim \text{Normal}(0,\sigma^2)
 $$
 
 | Parameter | Definition | 
@@ -46,11 +47,15 @@ $$
 | $y_t$ | Number of reported cases at time *t* (observed). |
 | $\rho$ | Reporting fraction. |
 | $b_t$ | Number of births at time *t*. |
-| $\lambda_t$ | Force of infection (hazard) at time *t*. |
+| $\lambda_t$ | Probability of escaping infection at time *t*. |
+| $\Delta_t$ | Number of susceptibles that escape infection at *t*. |
 | $\beta_t$ | Seasonally forced transmission rate at time *t*. |
 | $\gamma_t$ | Transmission rate at time *t*. |
-| $\epsilon$ | Amplitude of sin wave. |
-| $\theta}$ | Phase of sin wave. |
+| $\gamma_0$ | Initial T transmission rate at time 0. |
+| $\upsilon$ | Amplitude of sin wave. |
+| $\theta$ | Phase of sin wave. |
+| $\varepsilon_t$ | Noise on transmission rate at time *t*. |
+| $\sigma^2$ | Variance of noise term for transmission rate. |
 
 ## Fitting the model
 I will use a subset of the Niger measles data that come from the capitol, Niamey.
@@ -94,25 +99,23 @@ ggplot(measles_data, aes(x = date)) +
 ```
 
 I will fit the model using a Bayesian state-space approach, implemented in JAGS.
-But first, let's look at results from Matt Ferrari's 2008 Nature paper.
 
-### Previous TSIR results
-These are the posterior estimates/draws from the TSIR model fit in Ferrari et al. 2008.
+```{r ferrari-results, include=FALSE, eval=FALSE}
+# These are the posterior estimates/draws from the TSIR model fit 
+#  in Ferrari et al. 2008.
+source("./ferrari_results_2008/niamey_new_1.q")
 
-```{r ferrari-results}
-# source("./ferrari_results_2008/niamey_new_1.q")
-# 
-# si_states <- tibble(
-#   susceptibles = res[[1]],
-#   infecteds = res[[2]],
-#   week_num = 1:length(res[[2]])
-# )
-# 
-# ggplot(si_states, aes(x = week_num, y = susceptibles))+
-#   geom_line()
-# 
-# mean_susceptibles <- mean(res[[1]])
-# sd_susceptibles <- sd(res[[1]])
+si_states <- tibble(
+  susceptibles = res[[1]],
+  infecteds = res[[2]],
+  week_num = 1:length(res[[2]])
+)
+
+ggplot(si_states, aes(x = week_num, y = susceptibles))+
+  geom_line()
+
+mean_susceptibles <- mean(res[[1]])
+sd_susceptibles <- sd(res[[1]])
 ```
 
 ### JAGS Model
@@ -192,20 +195,22 @@ model{
   }
   for(t in 2:ntimes){
     noise[t] ~ dnorm(0, tau_gamma)
-    gamma[t] = psi*gamma[t-1] + psi2*noise[t]
-    # gamma[t] = intercept + base * gamma[t-1] + noise[t]
+    # gamma[t] = psi*gamma[t-1] + psi2*noise[t]
+    gamma[t] = gamma0 + t * log(1+rg) + noise[t]
   }
 
   noise[1] ~ dnorm(0, tau_gamma)
-  gamma[1] = psi*gamma0 + psi2*noise[1]
+  # gamma[1] = psi*gamma0 + psi2*noise[1]
+  gamma[1] = gamma0 + 1 * log(1+rg) + noise[1]
   # gamma[1] = intercept + base * gamma0 + noise[1]
-  gamma0 ~ dunif(-12, -9)  # prior ranging from Re = 1 to Re = 25
+  gamma0 ~ dunif(-20, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 2)
-  psi ~ dunif(0.8, 1.3)  # slightly weird range b/c AR(1) is on log scale now
-  psi2 ~ dunif(0,1)
+  sigma_gamma ~ dunif(0, 1)
+  # psi ~ dunif(0.8, 1.3)  # slightly weird range b/c AR(1) is on log scale now
+  # psi2 ~ dunif(0,1)
   # intercept ~ dunif(-10, -2)
   # base ~ dunif(0,1)
+  rg ~ dunif(-0.2, 0.2)
 
   epsilon ~ dunif(0, 1)
   theta ~ dunif(0, 26)
@@ -228,8 +233,8 @@ model{
 ```
 
 
-### Run the MCMC via JAGS
-```{r run-mcmc, fig.height = 6, fig.width=10}
+### Set up data for JAGS
+```{r setup-jagas}
 # Read in population data and estimate births
 population <- read_csv("../niger_measles/district_pops.csv") %>%
   gather(key = year, value = population, -X1) %>%
@@ -263,7 +268,7 @@ biweek_data <- measles_data %>%
     births = round(rep(births$births_per_week*2, each = 26)),
     population = round(rep(population$population, each = 26))
   ) %>%
-  filter(year(date) < 2000)
+  filter(year(date) < 2001)
   
 
 # Gather data
@@ -273,7 +278,10 @@ initI <- biweek_data$cases[1]
 b <- biweek_data$births
 ntimes <- nrow(biweek_data)
 nobs <- nrow(biweek_data)
+```
 
+### Run the MCMC via JAGS
+```{r run-jags, eval = FALSE}
 # List up data for JAGS
 jags_data <- list(
   y = y,
@@ -285,23 +293,21 @@ jags_data <- list(
   N = biweek_data$population
 )
 
-# jags_inits <- list(
-#   mean_gamma = 0.00004
-# )
-
 # Initialize model in JAGS
 model <- jags.model(
   textConnection(measles_model),
   data = jags_data,
   n.chains = 1,
-  n.adapt = 50000
+  n.adapt = 20000
 )
 
+update(model, n.iter = 20000)
+
 mcmc_results <- coda.samples(
-  model, 
-  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S02", "I0", "gamma0", "m"), 
-  n.iter = 200000, 
-  n.thin = 10
+  model,
+  variable.names = c("Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S02", "I0", "gamma0", "m", "rg"),
+  n.iter = 20000,
+  n.thin = 1
 )
 
 mcmc_tbl <- ggs(mcmc_results) %>%
@@ -313,8 +319,13 @@ mcmc_tbl <- ggs(mcmc_results) %>%
     upper_50 = quantile(value, 0.75),
     lower_50 = quantile(value, 0.25)
   )
+# write_csv(mcmc_tbl, path = "./mcmc_results.csv")
+```
 
-write_csv(mcmc_tbl, path = "./mcmc_results.csv")
+### Summarize posterior samples and plot results
+
+```{r summarize-plot}
+mcmc_tbl <- read_csv("./mcmc_results.csv")
 
 time_invariants <- mcmc_tbl %>%
   filter(!grepl("\\[", Parameter))
@@ -373,7 +384,7 @@ gamma <- ggplot(transmission_rate, aes(x = date, y = median_value)) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15) +
   geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35) +
   geom_line(linetype = 2, color = "grey45") +
-  labs(x = "Date", y = expression(beta[t])) +
+  labs(x = "Date", y = expression(R[e])) +
   # scale_y_continuous(trans = "log") +
   NULL
 
@@ -381,10 +392,16 @@ grid1 <- cowplot::plot_grid(obscomp, gamma, ncol = 1, align = "v")
 grid2 <- cowplot::plot_grid(grid1, latents, ncol = 2)
 grid2
 
-rho_est <- filter(mcmc_tbl, Parameter == "rho")
+one_to_one_scatter <- ggplot(model_observations, aes(x = log10(observed_cases+1), y = log10(median_value+1))) +
+  geom_point(size = 3, alpha = 0.5) +
+  geom_abline(aes(intercept = 0, slope = 1), linetype = 2) +
+  xlab(expression(paste("Observed ", log[10], "(cases + 1)"))) +
+  ylab(expression(paste("Expected ", log[10], "(cases + 1)")))
+one_to_one_scatter
+
 ```
 
-```{r log-rw, eval=FALSE}
+```{r log-rw, eval=FALSE, include=FALSE}
 rw <- function(times, x1, psi, psi2){
   x <- numeric(times)
   x[1] <- x1
@@ -402,17 +419,17 @@ par(mfrow = c(2,1))
 plot(out)
 plot(log(out))
 
-exp_func <- function(base, intercept, start_value, times){
+exp_func <- function(r, start_value, times){
   outs <- numeric(times)
   outs[1] <- start_value
   for(t in 2:times){
-    outs[t] <- intercept + base * outs[t-1] + rnorm(1,0,2)
+    outs[t] <- start_value + t * log(1+r) + rnorm(1,0,0.1)
   }
   return(outs)
 } 
 
 
-test <- exp_func(intercept = -7, base = 0.542, start_value = -10.6, times = 50)
+test <- exp_func(r = -0.01, start_value = -10, times = 50)
 
 plot(exp(test))
 
