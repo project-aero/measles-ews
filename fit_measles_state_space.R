@@ -16,6 +16,7 @@ library(tidyverse)  # data wrangling
 library(lubridate)  # time and date functions
 library(rjags)      # MCMC sampling algorithms for Bayesian models
 library(ggmcmc)     # quick conversions of MCMC output to data frames
+library(parallel)   # functions for parallel computing on multiple cores
 
 
 # Read in data ------------------------------------------------------------
@@ -64,12 +65,13 @@ model{
   
   # Process model
   for(t in 1:(ntimes-1)){
-    escape_prob[t] = exp(-beta[t] * (I[t] + m))
+    m[t] ~ dunif(0, 200)
+    escape_prob[t] = exp(-beta[t] * (I[t] + m[t]))
     escapees[t] ~ dbin(escape_prob[t], S[t])
     I[t+1] = max(0.000001, S[t] - escapees[t])
     S[t+1] = b[t] + escapees[t]
   }
-  m ~ dunif(0, 200)
+  # m ~ dunif(0, 200)
   
   # Parameter model
   for(t in 1:(ntimes-1)){
@@ -94,7 +96,6 @@ model{
   
   # Initial conditions
   S0 ~ dunif(50000, 400000)
-  # S02 ~ dpois(S0)
   S[1] <- trunc(S0)
   I0 ~ dpois(initI/rho)
   I[1] = I0
@@ -108,7 +109,7 @@ model{
 "
 
 
-# Fit the model with JAGS -------------------------------------------------
+# Format data for model fitting -------------------------------------------
 
 population <- read_csv("../niger_measles/district_pops.csv") %>%
   gather(key = year, value = population, -X1) %>%
@@ -152,6 +153,9 @@ b <- biweek_data$births
 ntimes <- nrow(biweek_data)
 nobs <- nrow(biweek_data)
 
+
+# Set up JAGS variables ---------------------------------------------------
+
 # List up data for JAGS
 jags_data <- list(
   y = y,
@@ -163,35 +167,90 @@ jags_data <- list(
   N = biweek_data$population
 )
 
-# Initialize model in JAGS
-model <- jags.model(
-  textConnection(measles_model),
-  data = jags_data,
-  n.chains = 1,
-  n.adapt = 50000
+# Create initial value function for parallel MCMC
+generate_initial_values <- function(){
+  init_list <- list(
+    Iobs = rpois(nobs, 100),  # observed cases state vector
+    I = rpois(nobs, 100/0.5),  # latent infected class state vector
+    S = rpois(nobs, 200000),  # latent susceptible class state vector
+    gamma = runif(nobs, log(1e-07), log(1e-04)),  # time-varying transmission rate vector
+    beta = runif(nobs, 1e-07, 1e-04),  # time-varying seasonal transmission rate vector
+    rho = runif(1, 0.3, 0.7),  # reporting fraction
+    escape_prob = runif((ntimes-1), 0.9, 0.99),  # time-varying escape-from-infection probability vector
+    theta = runif(1, 10, 14),  # phase of sin wave seasonality
+    r = runif(1, 0.001, 2),  # dispersion of negative binomial observation process
+    sigma_gamma = runif(1, 0.1, 0.6),  # std. dev. of noise on transmission rate
+    epsilon = runif(1, 0.4, 0.8),  # amplitude of sin wave seasonality
+    S0 = rpois(1, 200000),  # initial condition for susceptible class
+    I0 = rpois(1, initI),  # initial condition for infected class
+    gamma0 = runif(1, -13, -10),  # initial condition for transmission rate
+    m = rpois(nobs, 10),  # susceptible immigration
+    rg = runif(1, -0.006, -0.0009)  # exponential growth/decay rate of transmission rate through time
+  )
+}
+
+
+# Run the MCMC ------------------------------------------------------------
+
+# Set MCMC parameters
+n_adapt <- 50000  # iterations for adaptation phase
+n_update <- 300000  # iterations for burn-in to stationary distributions
+n_sample <- 50000  # iterations for sampling from posterior
+
+# Set up cluster
+if(detectCores() < 4){  # make sure there are enough cores
+  stop("Too few cores on this machine for parallel MCMC.")
+}
+
+cl <- makeCluster(3)
+
+# Run JAGS in parallel
+clusterExport(
+  cl,
+  c("jags_data", "generate_initial_values", "n_adapt", "n_update", "n_sample", "measles_model")
 )
 
-# Update chain with long burn-in
-update(model, n.iter = 300000)
+mcmc_results <- clusterEvalQ(
+  cl, {
+    library(rjags)  # reload rjags for each core
+    set.seed(1)
+    
+    # Initialize model in JAGS (adaptation phase)
+    model <- jags.model(
+      textConnection(measles_model),
+      data = jags_data,
+      n.chains = 1,
+      n.adapt = n_adapt
+    )
+    
+    # Update chain with long burn-in
+    update(model, n.iter = n_update)
+    
+    # Collect samples from posterior
+    vars_to_collect <- c(
+      "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", 
+      "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S0", "I0", 
+      "gamma0", "m", "rg"
+    )
+    
+    mcmc_core<- coda.samples(
+      model, 
+      variable.names = vars_to_collect, 
+      n.iter = n_sample, 
+      n.thin = 10
+    )
+    
+    return(as.mcmc(mcmc_core))
+  }  # end cluster-specific calls
+)  # end cluster definition
 
-# Collect samples from posterior
-vars_to_collect <- c(
-  "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", 
-  "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S02", "I0", 
-  "gamma0", "m", "rg"
-)
-
-mcmc_results <- coda.samples(
-  model, 
-  variable.names = vars_to_collect, 
-  n.iter = 100000, 
-  n.thin = 10
-)
+mcmc_all <- mcmc.list(mcmc_results)  # grab all chains
+stopCluster(cl)  # stop the cluster
 
 
 # Summarize and save output -----------------------------------------------
 
-ggs(mcmc_results) %>%
+ggs(mcmc_all) %>%
   group_by(Parameter) %>%
   summarise(
     median_value = median(value),
