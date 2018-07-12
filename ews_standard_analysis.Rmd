@@ -98,3 +98,25 @@ st1 <- get_stats(
 
 plot_st(st1, 52)
 ```
+
+## Can we simulate the dynamics many times using GAMs?
+The idea here is that we need to score our EWS like we do in the theoretical studies.
+One way to do this is simulate the data-generating process many, many times, then apply EWS to those series, and see if they can detect transitions.
+So we need to do a couple things:
+
+1. Simulate the data generating process.
+2. Define critical transitions.
+
+We might be able to both with **generalized additive models**.
+
+```{r gam-test}
+library(mgcv)
+
+gam_data <- tannout_data %>%
+  mutate(
+    month = month(date),
+    time = as.numeric(date)/1000
+  )
+mod <- gamm(cases ~ s(month, bs = "cc", k = 12) + s(week_num), data = gam_data)
+plot(mod$gam)
+```
