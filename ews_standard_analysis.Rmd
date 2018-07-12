@@ -117,6 +117,40 @@ gam_data <- tannout_data %>%
     month = month(date),
     time = as.numeric(date)/1000
   )
-mod <- gamm(cases ~ s(month, bs = "cc", k = 12) + s(week_num), data = gam_data)
-plot(mod$gam)
+
+mod <- gamm( 
+  cases ~ s(month, bs = "cc", k = 12) + s(week_num), 
+  correlation = corARMA(form = ~ week_num, p = 1), 
+  family = "poisson",
+  data = gam_data
+)
+
+num_pred_years <- length(unique(tannout_data$year))
+newdata <- tibble(
+  week_num = seq(1, nrow(tannout_data), length.out = nrow(tannout_data)/num_pred_years*12),
+  month = rep(1:12, times = nrow(tannout_data)/num_pred_years)
+)
+preds <- predict(mod$gam, newdata = newdata, type = "response", se.fit = TRUE)
+
+preds_tbl <- tibble(
+  mean_prediction = preds$fit,
+  upper_prediction = preds$fit + 2*preds$se.fit,
+  lower_prediction = preds$fit - 2*preds$se.fit,
+  observation = tannout_data$cases,
+  date = tannout_data$date
+)
+
+ggplot(preds_tbl, aes(x = date)) +
+  # geom_ribbon(aes(ymin = lower_prediction, ymax = upper_prediction)) +
+  geom_point(aes(y = observation), col = "grey25", size = 1) +
+  geom_line(aes(y = exp(mean_prediction)), col = "coral")
+
+library(MASS)
+Rbeta <- mvrnorm(n = 1000, coef(mod$gam), vcov(mod$gam))
+Xp <- predict(mod$gam, type = "lpmatrix")
+sim1 <- Xp %*% t(Rbeta)
+
+set.seed(321)
+want <- sample(1000, 25)
+matplot(exp(sim1[,want]), col = "black", lty = 1, pch = NA, type = "l")
 ```
