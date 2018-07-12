@@ -65,13 +65,12 @@ model{
   
   # Process model
   for(t in 1:(ntimes-1)){
-    m[t] ~ dunif(0, 200)
-    escape_prob[t] = exp(-beta[t] * (I[t] + m[t]))
+    escape_prob[t] = exp(-beta[t] * (I[t] + m))
     escapees[t] ~ dbin(escape_prob[t], S[t])
     I[t+1] = max(0.000001, S[t] - escapees[t])
     S[t+1] = b[t] + escapees[t]
   }
-  # m ~ dunif(0, 200)
+  m ~ dunif(0, 100)
   
   # Parameter model
   for(t in 1:(ntimes-1)){
@@ -87,7 +86,7 @@ model{
   gamma[1] = gamma0 + 1 * log(1+rg) + noise[1]
   gamma0 ~ dunif(-20, -9)  # prior ranging from Re = 1 to Re = 25
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 1)
+  sigma_gamma ~ dunif(0, 5)
   rg ~ dunif(-0.2, 0.2)
   
   epsilon ~ dunif(0, 1)
@@ -230,7 +229,7 @@ mcmc_results <- clusterEvalQ(
     vars_to_collect <- c(
       "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", 
       "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S0", "I0", 
-      "gamma0", "m", "rg"
+      "gamma0", "rg"
     )
     
     mcmc_core<- coda.samples(

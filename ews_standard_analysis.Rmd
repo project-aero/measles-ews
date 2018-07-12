@@ -8,12 +8,16 @@ output: html_document
 ```{r setup, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height = 4)
 
-library(tidyverse)  # data wrangling
-library(lubridate)  # time and date functions
-library(viridis)    # pleasing color palette
-library(spaero)     # project AERO code; EWS metrics, etc.
+library(schoenberg)
+library(tidyverse)   # data wrangling
+library(lubridate)   # time and date functions
+library(viridis)     # pleasing color palette
+library(spaero)      # project AERO code; EWS metrics, etc.
+library(mgcv)        # functions for fitting generalized additive models
+library(MASS)        # additional distributions
 
 theme_set(theme_minimal())  # set ggplot2 theme globally
+
 ```
 
 ## Goal and objectives
@@ -110,8 +114,6 @@ So we need to do a couple things:
 We might be able to both with **generalized additive models**.
 
 ```{r gam-test}
-library(mgcv)
-
 gam_data <- tannout_data %>%
   mutate(
     month = month(date),
@@ -119,18 +121,18 @@ gam_data <- tannout_data %>%
   )
 
 mod <- gamm( 
-  cases ~ s(month, bs = "cc", k = 12) + s(week_num), 
+  # cases ~ s(month, bs = "cc", k = 12) + s(week_num), 
+  cases ~ s(week_num, bs = "cr"), 
   correlation = corARMA(form = ~ week_num, p = 1), 
   family = "poisson",
   data = gam_data
 )
 
-num_pred_years <- length(unique(tannout_data$year))
-newdata <- tibble(
-  week_num = seq(1, nrow(tannout_data), length.out = nrow(tannout_data)/num_pred_years*12),
-  month = rep(1:12, times = nrow(tannout_data)/num_pred_years)
+new_data <- tibble(
+  month = gam_data$month,
+  week_num = sample(gam_data$week_num, size = nrow(gam_data), replace = FALSE)
 )
-preds <- predict(mod$gam, newdata = newdata, type = "response", se.fit = TRUE)
+preds <- predict(mod$gam, type = "response", se.fit = TRUE)
 
 preds_tbl <- tibble(
   mean_prediction = preds$fit,
@@ -141,16 +143,40 @@ preds_tbl <- tibble(
 )
 
 ggplot(preds_tbl, aes(x = date)) +
-  # geom_ribbon(aes(ymin = lower_prediction, ymax = upper_prediction)) +
   geom_point(aes(y = observation), col = "grey25", size = 1) +
-  geom_line(aes(y = exp(mean_prediction)), col = "coral")
+  geom_line(aes(y = mean_prediction), col = "coral")
 
-library(MASS)
-Rbeta <- mvrnorm(n = 1000, coef(mod$gam), vcov(mod$gam))
-Xp <- predict(mod$gam, type = "lpmatrix")
-sim1 <- Xp %*% t(Rbeta)
+# library(MASS)
+# Rbeta <- mvrnorm(n = 1000, coef(mod$gam), vcov(mod$gam))
+# Xp <- predict(mod$gam, newdata = new_data, type = "lpmatrix")
+# sim1 <- Xp %*% t(Rbeta)
+# 
+# set.seed(321)
+# want <- sample(1000, 25)
+# matplot(exp(sim1[,want]), col = "black", lty = 1, pch = NA, type = "l")
+```
 
-set.seed(321)
-want <- sample(1000, 25)
-matplot(exp(sim1[,want]), col = "black", lty = 1, pch = NA, type = "l")
+## Detect periods of change using derivatives
+```{r change-detection}
+mod_deriv <- fderiv(mod, n = nrow(tannout_data))
+deriv_cis <- confint(mod_deriv, nsim = 20, type = "simultaneous") %>%
+  as_tibble() %>%
+  mutate(
+    date = tannout_data$date
+  )
+
+ggplot(deriv_cis, aes(x = date, y = est)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, fill = "black") +
+  geom_line() +
+  geom_hline(aes(yintercept = 0)) +
+  labs(x = "Date", y = "First derivative")
+
+# library(MASS)
+# Rbeta <- mvrnorm(n = 1000, coef(mod$gam), vcov(mod$gam))
+# Xp <- predict(mod$gam, type = "lpmatrix")
+# sim1 <- Xp %*% t(Rbeta)
+# 
+# set.seed(321)
+# want <- sample(1000, 25)
+# matplot(exp(sim1[,want]), col = "black", lty = 1, pch = NA, type = "l")
 ```
