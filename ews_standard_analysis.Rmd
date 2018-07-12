@@ -1,5 +1,5 @@
 ---
-title: "Bayesian state-space SI model with year-specific, smooth seasonality"
+title: "Standard EWS time-series analysis with spaero metrics"
 author: "Andrew Tredennick"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
@@ -59,7 +59,7 @@ ggplot(measles_data, aes(x = date, y = cases)) +
 ```
 
 ## Example
-Start with `region == "Tannout" as exemplar.
+Start with `region == "Tannout"` as exemplar.
 
 ```{r ews-tannout}
 plot_st <- function(st, ts_freq) {
