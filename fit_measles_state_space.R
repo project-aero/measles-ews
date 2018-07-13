@@ -8,6 +8,7 @@
 # Authors:
 #  Andrew Tredennick (atredenn@gmail.com)
 #  Pejman Rohani
+#  Andrew Park
 
 
 # Load libraries ----------------------------------------------------------
@@ -84,14 +85,16 @@ model{
   
   noise[1] ~ dnorm(0, tau_gamma)
   gamma[1] = gamma0 + 1 * log(1+rg) + noise[1]
-  gamma0 ~ dunif(-20, -9)  # prior ranging from Re = 1 to Re = 25
+  # gamma0 ~ dunif(-20, -9)  # prior ranging from Re = 1 to Re = 25
+  gamma0 ~ dnorm(-10.735, 1.29)  # informed prior based on Ferrari et al. 2008 model
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 5)
+  sigma_gamma ~ dunif(0, 2)
   rg ~ dunif(-0.2, 0.2)
   
   epsilon ~ dunif(0, 1)
   theta ~ dunif(0, 26)
-  rho ~ dbeta(3.6, 6.3)
+  # rho ~ dbeta(2, 10)  # informed prior based on Ferrari et al. 2008 model
+  rho ~ dnorm(0.1596, 1000) T(0, 1) # informed prior based on Ferrari et al. 2008 model
   
   # Initial conditions
   S0 ~ dunif(50000, 400000)
@@ -174,16 +177,16 @@ generate_initial_values <- function(){
     S = rpois(nobs, 200000),  # latent susceptible class state vector
     gamma = runif(nobs, log(1e-07), log(1e-04)),  # time-varying transmission rate vector
     beta = runif(nobs, 1e-07, 1e-04),  # time-varying seasonal transmission rate vector
-    rho = runif(1, 0.3, 0.7),  # reporting fraction
+    rho = rnorm(1, 0.16, 0.00001),  # reporting fraction, centered on ~0.166
     escape_prob = runif((ntimes-1), 0.9, 0.99),  # time-varying escape-from-infection probability vector
     theta = runif(1, 10, 14),  # phase of sin wave seasonality
-    r = runif(1, 0.001, 2),  # dispersion of negative binomial observation process
+    r = runif(1, 0.001, 5),  # dispersion of negative binomial observation process
     sigma_gamma = runif(1, 0.1, 0.6),  # std. dev. of noise on transmission rate
     epsilon = runif(1, 0.4, 0.8),  # amplitude of sin wave seasonality
     S0 = rpois(1, 200000),  # initial condition for susceptible class
     I0 = rpois(1, initI),  # initial condition for infected class
-    gamma0 = runif(1, -13, -10),  # initial condition for transmission rate
-    m = rpois(nobs, 10),  # susceptible immigration
+    gamma0 = runif(1, -13, -9),  # initial condition for transmission rate
+    m = rpois(1, 10),  # susceptible immigration
     rg = runif(1, -0.006, -0.0009)  # exponential growth/decay rate of transmission rate through time
   )
 }
@@ -193,7 +196,7 @@ generate_initial_values <- function(){
 
 # Set MCMC parameters
 n_adapt <- 50000  # iterations for adaptation phase
-n_update <- 300000  # iterations for burn-in to stationary distributions
+n_update <- 200000  # iterations for burn-in to stationary distributions
 n_sample <- 50000  # iterations for sampling from posterior
 
 # Set up cluster
@@ -229,7 +232,7 @@ mcmc_results <- clusterEvalQ(
     vars_to_collect <- c(
       "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", 
       "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S0", "I0", 
-      "gamma0", "rg"
+      "gamma0", "rg", "m"
     )
     
     mcmc_core<- coda.samples(

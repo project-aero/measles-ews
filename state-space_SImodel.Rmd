@@ -102,17 +102,19 @@ I will fit the model using a Bayesian state-space approach, implemented in JAGS.
 
 ```{r ferrari-results, include=FALSE, eval=FALSE}
 # These are the posterior estimates/draws from the TSIR model fit 
-#  in Ferrari et al. 2008.
+# in Ferrari et al. 2008.
 source("./ferrari_results_2008/niamey_new_1.q")
 
 si_states <- tibble(
   susceptibles = res[[1]],
   infecteds = res[[2]],
   week_num = 1:length(res[[2]])
-)
+) %>%
+  gather(key = state, value = number, -week_num)
 
-ggplot(si_states, aes(x = week_num, y = susceptibles))+
-  geom_line()
+ggplot(si_states, aes(x = week_num, y = number))+
+  geom_line() +
+  facet_wrap(~state, scales = "free_y")
 
 mean_susceptibles <- mean(res[[1]])
 sd_susceptibles <- sd(res[[1]])
@@ -368,6 +370,11 @@ obscomp <- ggplot(model_observations, aes(x = date)) +
   # scale_y_continuous(trans = "log") +
   NULL
 
+post_rho <- time_invariants %>%
+  filter(Parameter == "rho") %>%
+  pull(median_value) %>%
+  round(2)
+
 latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = param_name), alpha = 0.15) +
   geom_ribbon(aes(ymin = lower_50, ymax = upper_50, fill = param_name), alpha = 0.35) +
@@ -377,6 +384,8 @@ latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
   scale_fill_manual(values = mycolors) +
   guides(color = FALSE, fill = FALSE) +
   labs(x = "Date", y = "Number of persons") +
+  ggtitle(bquote(rho~"="~.(post_rho))) +
+  theme(plot.title = element_text(size = 8)) +
   # scale_y_continuous(trans = "log") +
   NULL
 
