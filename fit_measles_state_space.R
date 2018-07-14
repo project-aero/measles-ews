@@ -94,7 +94,7 @@ model{
   epsilon ~ dunif(0, 1)
   theta ~ dunif(0, 26)
   # rho ~ dbeta(2, 10)  # informed prior based on Ferrari et al. 2008 model
-  rho ~ dnorm(0.1596, 1000) T(0, 1) # informed prior based on Ferrari et al. 2008 model
+  rho ~ dnorm(0.48, 400) T(0, 1) # informed prior based on Ferrari et al. 2008 model results
   
   # Initial conditions
   S0 ~ dunif(50000, 400000)

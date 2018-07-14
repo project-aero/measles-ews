@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height 
 library(tidyverse)  # data wrangling
 library(lubridate)  # time and date functions
 library(ggthemes)   # pleasing ggplot2 themes
-library(rjags)      # Gibbs MCMC sampling algorithm for Bayesian models
+library(rjags)      # Gibbs & Metroplis MCMC sampling algorithm for Bayesian models
 library(ggmcmc)     # quick conversions of MCMC output to data frames
 library(splines)    # generating basis functions
 library(mgcv)       # fitting generalized additive models
@@ -118,6 +118,31 @@ ggplot(si_states, aes(x = week_num, y = number))+
 
 mean_susceptibles <- mean(res[[1]])
 sd_susceptibles <- sd(res[[1]])
+
+n <- length(res[["P"]])
+prior <- rbeta(n, 3.6, 6.3)
+P <- res[["P"]]
+plot_p <- tibble(
+  iteration = 1:n,
+  post = P,
+  prior = prior
+) %>%
+  gather(key = dist, value = value, -iteration)
+
+ggplot(plot_p, aes(x = value)) +
+  geom_histogram(aes(fill = dist)) +
+  scale_fill_manual(values = c("red", "grey"), labels = c("Posterior", "Prior"), name = NULL) +
+  geom_vline(aes(xintercept = 0.48), color = "blue") +
+  annotate(geom = "text", x = 0.65, y = 8100, 
+           label = "Posterior mean from\nFerrari et al. 2008", color = "blue") +
+  annotate(geom = "text", x = 0.25, y = 5100, 
+           label = "Posterior in\nres list", color = "red") +
+    annotate(geom = "text", x = 0.75, y = 1000, 
+           label = "Prior from\nFerrari et al. 2008", color = "black") +
+  guides(fill = FALSE) +
+  labs(x = expression(P[obs.]), y = "Frequency")
+
+
 ```
 
 ### JAGS Model
