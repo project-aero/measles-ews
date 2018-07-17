@@ -66,12 +66,14 @@ model{
   
   # Process model
   for(t in 1:(ntimes-1)){
-    lambda[t] = exp(-beta[t] * (I[t] + psi))
+    # lambda[t] = exp(-beta[t] * (I[t] + psi))
+    lambda[t] = (1 + (beta[t] * (I[t] + psi)) / kappa)^(-kappa)
     Delta[t] ~ dbin(lambda[t], S[t])
     I[t+1] = max(0.000001, S[t] - Delta[t])
     S[t+1] = b[t] + Delta[t]
   }
   psi ~ dunif(0, 100)
+  kappa ~ dunif(0, 100)
   
   # Parameter model
   for(t in 1:(ntimes-1)){
@@ -87,7 +89,7 @@ model{
   gamma[1] = gamma0 + 1 * log(1+r) + epsilon[1]
   gamma0 ~ dunif(-12, -9)  # semi-informed prior based on Ferrari et al. 2008 model results (sd*2)
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 1)
+  sigma_gamma ~ dunif(0, 5)
   r ~ dunif(-0.2, 0.2)
   
   upsilon ~ dunif(0, 1)
@@ -230,7 +232,7 @@ mcmc_results <- clusterEvalQ(
     vars_to_collect <- c(
       "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "lambda", 
       "psi", "upsilon", "theta", "eta", "r", "sigma_gamma", "S0", "I0", 
-      "gamma0"
+      "gamma0", "kappa"
     )
     
     mcmc_core <- coda.samples(
