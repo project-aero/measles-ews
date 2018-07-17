@@ -86,7 +86,7 @@ The forecast accuracy, measured as correlation between predictions and observati
 # Iteratively loop through and make one-step-ahead predictions
 pred_data <- measles_data$cases
 
-num_sims <- 1500
+num_sims <- 200
 for(i in 1:num_sims){
   lib_ids <- c(1, (length(pred_data)-52))
   pred_ids <- c((length(pred_data)-51), (length(pred_data) + 1))
