@@ -25,7 +25,7 @@ theme_set(theme_minimal())  # set ggplot2 theme globally
 The idea is to fit a discrete-time state-space model following susceptible-infected (SI) dynamics.
 Previous TSIR (time-series SIR) models allowed for seasonality in transmission rate, but that seasonality was shared among all years.
 This creates problems when attempting to calculating time-varying quantities of interest, such as effective reproductive rate ($R_e(t)$).
-Here, I will implement a more flexible approach, where seasonality is incorporated with a smooth basis function (spline) that has year-specific parameters.
+Here, I will implement a more flexible approach, where seasonality is incorporated with a sin wave and year-specific noise.
 
 The model is as follows:
 
@@ -103,7 +103,7 @@ I will fit the model using a Bayesian state-space approach, implemented in JAGS.
 ```{r ferrari-results, include=FALSE, eval=FALSE}
 # These are the posterior estimates/draws from the TSIR model fit 
 # in Ferrari et al. 2008.
-source("./ferrari_results_2008/niamey_new_1.q")
+source("./ferrari_results_2008/niameyMCMC.1.q")
 
 si_states <- tibble(
   susceptibles = res[[1]],
@@ -195,7 +195,7 @@ model{
 "
 ```
 
-```{r jags-model2}
+```{r jags-model2, eval = FALSE, echo = FALSE}
 measles_model <- "
 model{
   # Likelihood/Data Model
@@ -259,6 +259,60 @@ model{
 "
 ```
 
+```{r jags-model-3}
+measles_model <- "
+model{
+  # Likelihood/Data Model
+  for(i in 1:nobs){
+    p[i] <- eta/(eta + rho*I[i])
+    y[i] ~ dnegbin(p[i], eta)
+  }
+  eta ~ dunif(0, 50)
+  
+  # Process model
+  for(t in 1:(ntimes-1)){
+    lambda[t] = exp(-beta[t] * (I[t] + psi))
+    Delta[t] ~ dbin(lambda[t], S[t])
+    I[t+1] = max(0.000001, S[t] - Delta[t])
+    S[t+1] = b[t] + Delta[t]
+  }
+  psi ~ dunif(0, 100)
+  
+  # Parameter model
+  for(t in 1:(ntimes-1)){
+    beta[t] = exp(gamma[t]) * (1 + upsilon * sin( (2*pi*t)/26 + phi ) )
+  }
+
+  for(t in 2:ntimes){
+    epsilon[t] ~ dnorm(0, tau_gamma)
+    gamma[t] = gamma0 + t * log(1+r) + epsilon[t]
+  }
+  
+  epsilon[1] ~ dnorm(0, tau_gamma)
+  gamma[1] = gamma0 + 1 * log(1+r) + epsilon[1]
+  gamma0 ~ dnorm(-10.735, 1.29)  # informed prior based on Ferrari et al. 2008 model
+  tau_gamma = pow(sigma_gamma, -2)
+  sigma_gamma ~ dunif(0, 2)
+  r ~ dunif(-0.2, 0.2)
+  
+  upsilon ~ dunif(0, 1)
+  phi ~ dunif(0, 26)
+  rho ~ dnorm(0.48, 400) T(0, 1) # informed prior based on Ferrari et al. 2008 model results
+  
+  # Initial conditions
+  S0 ~ dunif(50000, 400000)
+  S[1] <- trunc(S0)
+  I0 ~ dpois(initI/rho)
+  I[1] = I0
+  
+  # Derived quantities
+  for(i in 1:nobs){
+    Iobs[i] = I[i]*rho 
+    Rnaught[i] = exp(gamma[i])*N[i]
+  }
+}
+"
+```
 
 ### Set up data for JAGS
 ```{r setup-jagas}
@@ -379,8 +433,14 @@ model_latents <- mcmc_tbl %>%
     param_name = ifelse(param_family == "S", "Susceptible", "Infectious")
   )
 
-transmission_rate <- mcmc_tbl %>%
+effective_rep_rate <- mcmc_tbl %>%
   filter(grepl("Rnaught\\[", Parameter)) %>%
+  mutate(
+    date = biweek_data$date
+  )
+
+tranmission_rate <- mcmc_tbl %>%
+  filter(grepl("gamma\\[", Parameter)) %>%
   mutate(
     date = biweek_data$date
   )
@@ -414,7 +474,7 @@ latents <- ggplot(model_latents, aes(x = date, y = median_value)) +
   # scale_y_continuous(trans = "log") +
   NULL
 
-gamma <- ggplot(transmission_rate, aes(x = date, y = median_value)) +
+gamma <- ggplot(effective_rep_rate, aes(x = date, y = median_value)) +
   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.15) +
   geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35) +
   geom_line(linetype = 2, color = "grey45") +

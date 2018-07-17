@@ -59,45 +59,43 @@ measles_model <- "
 model{
   # Likelihood/Data Model
   for(i in 1:nobs){
-    p[i] <- r/(r + rho*I[i])
-    y[i] ~ dnegbin(p[i], r)
+    p[i] <- eta/(eta + rho*I[i])
+    y[i] ~ dnegbin(p[i], eta)
   }
-  r ~ dunif(0, 50)
+  eta ~ dunif(0, 50)
   
   # Process model
   for(t in 1:(ntimes-1)){
-    escape_prob[t] = exp(-beta[t] * (I[t] + m))
-    escapees[t] ~ dbin(escape_prob[t], S[t])
-    I[t+1] = max(0.000001, S[t] - escapees[t])
-    S[t+1] = b[t] + escapees[t]
+    lambda[t] = exp(-beta[t] * (I[t] + psi))
+    Delta[t] ~ dbin(lambda[t], S[t])
+    I[t+1] = max(0.000001, S[t] - Delta[t])
+    S[t+1] = b[t] + Delta[t]
   }
-  m ~ dunif(0, 100)
+  psi ~ dunif(0, 100)
   
   # Parameter model
   for(t in 1:(ntimes-1)){
-    beta[t] = exp(gamma[t]) * (1 + epsilon * sin( (2*pi*t)/26 + theta ) )
+    beta[t] = exp(gamma[t]) * (1 + upsilon * sin( (2*pi*t)/26 + phi ) )
   }
 
   for(t in 2:ntimes){
-    noise[t] ~ dnorm(0, tau_gamma)
-    gamma[t] = gamma0 + t * log(1+rg) + noise[t]
+    epsilon[t] ~ dnorm(0, tau_gamma)
+    gamma[t] = gamma0 + t * log(1+r) + epsilon[t]
   }
   
-  noise[1] ~ dnorm(0, tau_gamma)
-  gamma[1] = gamma0 + 1 * log(1+rg) + noise[1]
-  # gamma0 ~ dunif(-20, -9)  # prior ranging from Re = 1 to Re = 25
-  gamma0 ~ dnorm(-10.735, 1.29)  # informed prior based on Ferrari et al. 2008 model
+  epsilon[1] ~ dnorm(0, tau_gamma)
+  gamma[1] = gamma0 + 1 * log(1+r) + epsilon[1]
+  gamma0 ~ dunif(-12, -9)  # semi-informed prior based on Ferrari et al. 2008 model results (sd*2)
   tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 2)
-  rg ~ dunif(-0.2, 0.2)
+  sigma_gamma ~ dunif(0, 1)
+  r ~ dunif(-0.2, 0.2)
   
-  epsilon ~ dunif(0, 1)
-  theta ~ dunif(0, 26)
-  # rho ~ dbeta(2, 10)  # informed prior based on Ferrari et al. 2008 model
-  rho ~ dnorm(0.48, 400) T(0, 1) # informed prior based on Ferrari et al. 2008 model results
+  upsilon ~ dunif(0, 1)
+  phi ~ dunif(0, 26)
+  rho ~ dnorm(0.48, 1000) T(0, 1) # informed prior based on Ferrari et al. 2008 model results
   
   # Initial conditions
-  S0 ~ dunif(50000, 400000)
+  S0 ~ dunif(5000, 70000)  # informed prior based on Ferrari et al. 2008 model results
   S[1] <- trunc(S0)
   I0 ~ dpois(initI/rho)
   I[1] = I0
@@ -174,7 +172,7 @@ generate_initial_values <- function(){
   init_list <- list(
     Iobs = rpois(nobs, 100),  # observed cases state vector
     I = rpois(nobs, 100/0.5),  # latent infected class state vector
-    S = rpois(nobs, 200000),  # latent susceptible class state vector
+    S = rpois(nobs, 30000),  # latent susceptible class state vector
     gamma = runif(nobs, log(1e-07), log(1e-04)),  # time-varying transmission rate vector
     beta = runif(nobs, 1e-07, 1e-04),  # time-varying seasonal transmission rate vector
     rho = rnorm(1, 0.16, 0.00001),  # reporting fraction, centered on ~0.166
@@ -183,7 +181,7 @@ generate_initial_values <- function(){
     r = runif(1, 0.001, 5),  # dispersion of negative binomial observation process
     sigma_gamma = runif(1, 0.1, 0.6),  # std. dev. of noise on transmission rate
     epsilon = runif(1, 0.4, 0.8),  # amplitude of sin wave seasonality
-    S0 = rpois(1, 200000),  # initial condition for susceptible class
+    S0 = rpois(1, 30000),  # initial condition for susceptible class
     I0 = rpois(1, initI),  # initial condition for infected class
     gamma0 = runif(1, -13, -9),  # initial condition for transmission rate
     m = rpois(1, 10),  # susceptible immigration
@@ -230,12 +228,12 @@ mcmc_results <- clusterEvalQ(
     
     # Collect samples from posterior
     vars_to_collect <- c(
-      "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "escape_prob", 
-      "psi", "psi2", "theta", "r", "sigma_gamma","epsilon", "S0", "I0", 
-      "gamma0", "rg", "m"
+      "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "lambda", 
+      "psi", "upsilon", "theta", "eta", "r", "sigma_gamma", "S0", "I0", 
+      "gamma0"
     )
     
-    mcmc_core<- coda.samples(
+    mcmc_core <- coda.samples(
       model, 
       variable.names = vars_to_collect, 
       n.iter = n_sample, 
