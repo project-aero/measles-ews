@@ -65,31 +65,32 @@ model{
   
   # Process model
   for(t in 1:(ntimes-1)){
-    # lambda[t] = exp(-beta[t] * (I[t] + psi))
-    lambda[t] = (1 + (beta[t] * (I[t] + psi)) / kappa)^(-kappa)
+    psi[t] ~ dnorm(0, tau_psi) T(0,)
+    lambda[t] = exp(-beta[t] * (I[t] + psi[t]))
     Delta[t] ~ dbin(lambda[t], S[t])
     I[t+1] = max(0.000001, S[t] - Delta[t])
     S[t+1] = b[t] + Delta[t]
   }
-  psi ~ dunif(0, 100)
-  kappa ~ dunif(0, 100)
+  # psi ~ dunif(0, 100)
+  tau_psi <- pow(sigma_psi, -2)
+  sigma_psi ~ dunif(0, 10)
   
   # Parameter model
   for(t in 1:(ntimes-1)){
-    beta[t] = exp(gamma[t]) * (1 + upsilon * sin( (2*pi*t)/26 + phi ) )
+    beta[t] = exp(gamma0) * (1 + upsilon * sin( (2*pi*t)/26 + phi ) )
   }
 
-  for(t in 2:ntimes){
-    epsilon[t] ~ dnorm(0, tau_gamma)
-    gamma[t] = gamma0 + t * log(1+r) + epsilon[t]
-  }
+  # for(t in 2:ntimes){
+  #   epsilon[t] ~ dnorm(0, tau_gamma)
+  #   gamma[t] = gamma0 + t * log(1+r) + epsilon[t]
+  # }
   
-  epsilon[1] ~ dnorm(0, tau_gamma)
-  gamma[1] = gamma0 + 1 * log(1+r) + epsilon[1]
+  # epsilon[1] ~ dnorm(0, tau_gamma)
+  # gamma[1] = gamma0 + 1 * log(1+r) + epsilon[1]
   gamma0 ~ dunif(-12, -9)  # semi-informed prior based on Ferrari et al. 2008 model results (sd*2)
-  tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 5)
-  r ~ dunif(-0.2, 0.2)
+  # tau_gamma = pow(sigma_gamma, -2)
+  # sigma_gamma ~ dunif(0, 5)
+  # r ~ dunif(-0.2, 0.2)
   
   upsilon ~ dunif(0, 1)
   phi ~ dunif(0, 26)
@@ -104,7 +105,7 @@ model{
   # Derived quantities
   for(i in 1:nobs){
     Iobs[i] = I[i]*rho 
-    Rnaught[i] = exp(gamma[i])*N[i]
+    Rnaught[i] = exp(gamma0)*N[i]
   }
 }
 "
@@ -195,7 +196,7 @@ generate_initial_values <- function(){
 
 # Set MCMC parameters
 n_adapt <- 50000  # iterations for adaptation phase
-n_update <- 200000  # iterations for burn-in to stationary distributions
+n_update <- 300000  # iterations for burn-in to stationary distributions
 n_sample <- 50000  # iterations for sampling from posterior
 
 # Set up cluster
