@@ -65,39 +65,45 @@ model{
   
   # Process model
   for(t in 1:(ntimes-1)){
-    psi[t] ~ dnorm(0, tau_psi) T(0,)
-    lambda[t] = exp(-beta[t] * (I[t] + psi[t]))
+    # psi[t] ~ dnorm(0, tau_psi) T(0,)
+    lambda[t] = exp(-beta[t] * (I[t] + psi))
     Delta[t] ~ dbin(lambda[t], S[t])
     I[t+1] = max(0.000001, S[t] - Delta[t])
     S[t+1] = b[t] + Delta[t]
   }
-  # psi ~ dunif(0, 100)
-  tau_psi <- pow(sigma_psi, -2)
-  sigma_psi ~ dunif(0, 10)
+  psi ~ dunif(0, 100)
+  # tau_psi <- pow(sigma_psi, -2)
+  # sigma_psi ~ dunif(0, 10)
   
   # Parameter model
   for(t in 1:(ntimes-1)){
-    beta[t] = exp(gamma0) * (1 + upsilon * sin( (2*pi*t)/26 + phi ) )
+    beta[t] = exp(gamma[yr_id[t]]) * (1 + upsilon * sin( (2*pi*t)/26 + phi ) ) + epsilon[t]
   }
 
-  # for(t in 2:ntimes){
-  #   epsilon[t] ~ dnorm(0, tau_gamma)
-  #   gamma[t] = gamma0 + t * log(1+r) + epsilon[t]
-  # }
-  
-  # epsilon[1] ~ dnorm(0, tau_gamma)
+  for(t in 2:ntimes){
+    epsilon[t] ~ dnorm(0, tau_gamma)
+    # gamma[t] = gamma0 + t * log(1+r) + epsilon[t]
+  }
+
+  for(y in 1:epiyears){
+    gamma[y] ~ dnorm(gamma0, tau_gamma)
+  }
+
+  epsilon[1] ~ dnorm(0, tau_noise)
   # gamma[1] = gamma0 + 1 * log(1+r) + epsilon[1]
   gamma0 ~ dunif(-12, -9)  # semi-informed prior based on Ferrari et al. 2008 model results (sd*2)
-  # tau_gamma = pow(sigma_gamma, -2)
-  # sigma_gamma ~ dunif(0, 5)
-  # r ~ dunif(-0.2, 0.2)
+  tau_gamma = pow(sigma_gamma, -2)
+  sigma_gamma ~ dunif(0, 5)
+  tau_noise = pow(sigma_noise, -2)
+  sigma_noise ~ dunif(0, 5)
+  # r ~ dunif(0, 1)
   
   upsilon ~ dunif(0, 1)
   phi ~ dunif(0, 26)
   rho ~ dnorm(0.48, 1000) T(0, 1) # informed prior based on Ferrari et al. 2008 model results
   
   # Initial conditions
-  S0 ~ dunif(5000, 70000)  # informed prior based on Ferrari et al. 2008 model results
+  S0 ~ dnorm(40000, 1e-08)  # semi-informed prior based on Ferrari et al. 2008 model results
   S[1] <- trunc(S0)
   I0 ~ dpois(initI/rho)
   I[1] = I0
@@ -154,6 +160,7 @@ initI <- biweek_data$cases[1]
 b <- biweek_data$births
 ntimes <- nrow(biweek_data)
 nobs <- nrow(biweek_data)
+yr_id <- rep(1:length(unique(year(biweek_data$date))), each = 26)
 
 
 # Set up JAGS variables ---------------------------------------------------
@@ -166,7 +173,9 @@ jags_data <- list(
   ntimes = ntimes,
   nobs = nobs,
   pi = pi,
-  N = biweek_data$population
+  N = biweek_data$population,
+  yr_id = yr_id,
+  epiyears = 6
 )
 
 # Create initial value function for parallel MCMC
@@ -175,7 +184,7 @@ generate_initial_values <- function(){
     Iobs = rpois(nobs, 100),  # observed cases state vector
     I = rpois(nobs, 100/0.5),  # latent infected class state vector
     S = rpois(nobs, 30000),  # latent susceptible class state vector
-    gamma = runif(nobs, log(1e-07), log(1e-04)),  # time-varying transmission rate vector
+    gamma = runif(6, log(1e-07), log(1e-04)),  # time-varying transmission rate vector
     beta = runif(nobs, 1e-07, 1e-04),  # time-varying seasonal transmission rate vector
     rho = rnorm(1, 0.16, 0.00001),  # reporting fraction, centered on ~0.166
     escape_prob = runif((ntimes-1), 0.9, 0.99),  # time-varying escape-from-infection probability vector
@@ -196,8 +205,8 @@ generate_initial_values <- function(){
 
 # Set MCMC parameters
 n_adapt <- 50000  # iterations for adaptation phase
-n_update <- 300000  # iterations for burn-in to stationary distributions
-n_sample <- 50000  # iterations for sampling from posterior
+n_update <- 150000  # iterations for burn-in to stationary distributions
+n_sample <- 100000  # iterations for sampling from posterior
 
 # Set up cluster
 if(detectCores() < 4){  # make sure there are enough cores
@@ -232,7 +241,7 @@ mcmc_results <- clusterEvalQ(
     vars_to_collect <- c(
       "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "lambda", 
       "psi", "upsilon", "theta", "eta", "r", "sigma_gamma", "S0", "I0", 
-      "gamma0", "kappa"
+      "gamma0", "kappa", "phi"
     )
     
     mcmc_core <- coda.samples(
