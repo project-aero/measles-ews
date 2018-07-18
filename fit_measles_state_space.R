@@ -8,7 +8,6 @@
 # Authors:
 #  Andrew Tredennick (atredenn@gmail.com)
 #  Pejman Rohani
-#  Andrew Park
 
 
 # Load libraries ----------------------------------------------------------

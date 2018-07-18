@@ -55,7 +55,7 @@ ggplot(measles_data, aes(x = date, y = cases)) +
 ```
 
 ## Determine optimal embedding dimension
-```{r embed-opt}
+```{r embed-opt, eval = FALSE, include=FALSE}
 n <- nrow(measles_data)
 lib <- c(1, floor(2/3 * n))  # indices for the first 2/3 of the time series
 pred <- c(floor(2/3 * n) + 1, n)  # indices for the final 1/3 of the time series
@@ -79,10 +79,10 @@ opt_E <- simplex_output %>%
   pull(E)
 ```
 
-The forecast accuracy, measured as correlation between predictions and observations ($\rho$), is maximized at *E* = `r opt_E`. So, I'll use and embedding dimension of `r opt_E`.
+
 
 ## Make predictions from the model to serve as replicates of data
-```{r pred-sims}
+```{r pred-sims, eval = FALSE, include=FALSE}
 # Iteratively loop through and make one-step-ahead predictions
 pred_data <- measles_data$cases
 
@@ -122,3 +122,56 @@ ggplot(real_and_simmed, aes(x = iteration, y = cases)) +
 ```
 
 ## TODO: Add seasonality.
+
+## Calculate early warning signals and their correlation with time
+```{r ews-calcs}
+bws <- seq(26, 200, by = 26)
+out_tbl <- {}
+for(dobw in bws){
+  tmp_stats <- get_stats(
+    measles_data$cases, 
+    center_kernel = "uniform",
+    center_trend = "local_constant", 
+    center_bandwidth = dobw,
+    stat_bandwidth = dobw,
+    backward_only = TRUE
+  )
+  
+  tmp_var <- tmp_stats$stats$variance
+  tmp_tbl <- tibble(
+    date = measles_data$date,
+    variance = tmp_stats$stats$variance,
+    bandwidth = dobw
+  ) %>%
+    mutate(
+      variance = ifelse(variance == 0, NA, variance)
+    )
+  
+  out_tbl <- bind_rows(out_tbl, tmp_tbl)
+}
+
+max_cases_date <- measles_data %>%
+  filter(cases == max(cases)) %>%
+  pull(date)
+
+varstats <- ggplot(out_tbl, aes(x = date, y = variance, color = factor(bandwidth))) +
+  geom_line() +
+  geom_vline(aes(xintercept = max_cases_date), linetype = 2) +
+  scale_color_brewer(palette = "Set1") +
+  guides(color = FALSE)
+
+cases <- ggplot(measles_data, aes(x = date, y = cases)) +
+  geom_line(color = "grey35") +
+  geom_vline(aes(xintercept = max_cases_date), linetype = 2)
+
+mainplot <- cowplot::plot_grid(cases, varstats, align = "v", ncol = 1)
+
+inset <- ggplot(filter(out_tbl, year(date)>2000 & year(date)<2003),
+                 aes(x = date, y = variance, color = factor(bandwidth))) +
+  geom_line() +
+  geom_vline(aes(xintercept = max_cases_date), linetype = 2) +
+  scale_color_brewer(palette = "Set1", name = "Bandwidth")
+
+cowplot::plot_grid(mainplot, inset, ncol = 2)
+
+```

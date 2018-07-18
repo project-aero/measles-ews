@@ -101,6 +101,8 @@ st1 <- get_stats(
 )
 
 plot_st(st1, 52)
+
+ews_var <- st1$stats$variance
 ```
 
 ## Can we simulate the dynamics many times using GAMs?
