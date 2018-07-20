@@ -23,7 +23,7 @@ n <- length(Y)
 
 # Basis functions ---------------------------------------------------------
 
-J <- 6
+J <- 4
 B <- bs(X,J)
 dim(B)
 matplot(X,B,type="l",xlab="Time",ylab="Basis function, Bj(X)",cex.lab=1.5,cex.axis=1.5,lwd=2)
