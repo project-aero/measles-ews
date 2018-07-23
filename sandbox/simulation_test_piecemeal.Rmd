@@ -223,86 +223,50 @@ The model we fit is exactly as specified for the simulation process, except that
 ```{r jags-model}
 measles_model <- "
 model{
-  # Likelihood/Data Model
-  for(i in 1:nobs){
-    p[i] <- eta/(eta + (rho*I[i]))
-    y[i] ~ dnegbin(p[i], eta)
-    # ynew[i] ~ dnegbin(p[i], eta)
-  }
-  eta ~ dunif(0,50)
-  
-  # Process model
-  for(t in 1:(ntimes-1)){
-    lambda[t] = exp(-beta[t] * (I[t] + psi))
-    Delta[t] ~ dbin(lambda[t], S[t])
-    I[t+1] = S[t] - Delta[t]
-    S[t+1] = b[t] + Delta[t]
-  }
-  psi ~ dunif(0, 50)
-  
-  # Parameter model
-  for(t in 1:(ntimes-1)){
-    beta[t] = exp(gamma[t]) * (1 + season[s[t]])
+  # Priors
+  gamma0 ~ dunif(-12, -8)
+  rho ~ dbeta(3.6, 6.3)
+  eta ~ dunif(0, 50)
+  psi ~ dunif(0, 100)
+  taub <- pow(sigmab, -2)
+  sigmab ~ dunif(0.1, 10)
+
+  for(i in 1:biweeks){
+    season[i] <- inprod(bases[i,], alpha[])
   }
 
-  for(t in 2:ntimes){
-    epsilon[t] ~ dnorm(0, tau_proc)
-    gamma[t] = gamma0 + epsilon[t]
-  }
-  tau_proc ~ dgamma(0.001, 0.001)
-
-  for(t in 1:nseas){
-    season[t] <- inprod(base[t,], alpha[])
-  }
-
-  # b-splines
-  for(i in 1:J){
+  for(i in 1:knots){
     alpha[i] ~ dnorm(0, taub)
   }
-  taub ~ dgamma(0.1, 0.1)
+  
+  # Likelihood
+  for(i in 1:epiyears){
+    I0[i] ~ dunif(0, 100)
+    S0[i] ~ dunif(0, 80000)
+    I[1, i] <- trunc(I0[i])
+    S[1, i] <- trunc(S0[i])
+    p[1, i] <- eta/(eta + (rho*I[1, i]))
+    Y[1, i] ~ dnegbin(p[1, i], eta)
 
-  rho ~ dbeta(3.6, 6.3)
-  epsilon[1] ~ dnorm(0, 1)
-  gamma[1] = gamma0 + epsilon[1]
-  gamma0 ~ dunif(-12, -8)
-  # tau_gamma = pow(sigma_gamma, -2)
-  # sigma_gamma ~ dunif(0, 5)
-  # tau_noise = pow(sigma_noise, -2)
-  # sigma_noise ~ dunif(0, 5)
-  # peps ~ dunif(0,1)
-  # r ~ dunif(-0.2, 0.2)
-  
-  # Initial conditions
-  S0 ~ dnorm(30000,4e-08)
-  S[1] <- trunc(S0)
-  # I0 ~ dpois(initI/rho)
-  I[1] = initI/rho
-  
+    for(j in 1:(biweeks-1)){
+      epsilon[j, i] ~ dnorm(0, 1)
+      gamma[j, i] <- gamma0 + epsilon[j, i]
+      beta[j, i] <- exp(gamma[j, i]) * (1 + season[j])
+      lambda[j, i] <- exp(-beta[j, i] * (I[j, i] + psi))
+      Delta[j, i] ~ dbin(lambda[j, i], S[j, i])
+      I[j+1, i] <- S[j, i] - Delta[j, i]
+      S[j+1, i] <- b + Delta[j, i]
+      p[j+1, i] <- eta/(eta + (rho*I[j+1, i]))
+      Y[j+1, i] ~ dnegbin(p[j+1, i], eta)
+    }
+  }
+
   # Derived quantities
-  for(i in 1:nobs){
-    Iobs[i] = I[i]*rho 
+  for(i in 1:epiyears){
+    for(j in 1:biweeks){
+      Iobs[j, i] = I[j, i]*rho
+    }
   }
-
-  for(s in 1:nseas){
-    beta_season[s] = exp(gamma0) * (1+season[s])
-  }
-
-  # Posterior predictive checks
-  # cv_y <- sd(y[])/mean(y[])
-  # cv_ynew <- sd(ynew[])/mean(ynew[])
-  # pvalue_cv <- step(cv_ynew - cv_y)
-  # 
-  # mean_y <- mean(y[])
-  # mean_ynew <- mean(ynew[])
-  # pvalue_mean <- step(mean_ynew - mean_y)
-  # 
-  # for(i in 1:nobs){
-  #   sq[i] <- (y[i] - Iobs[i])^2
-  #   sqnew[i] <- (ynew[i] - Iobs[i])^2
-  # }
-  # fit <- sum(sq[])
-  # fitnew <- sum(sqnew[])
-  # pvalue_fit <- step(fitnew - fit)
 
 }  # end of model
 "
@@ -310,29 +274,34 @@ model{
 
 ### Collate data for JAGS and define basis functions
 ```{r jags-data}
-y <- sim_out$case_reports
-initI <- sim_out$case_reports[1]
-b <- b
-ntimes <- nrow(sim_out)
-nobs <- nrow(sim_out)
-nseas <- 26
-s <- rep(1:nseas, 10)
-base <- bSpline(1:26, df = 6, degree = 2, intercept = TRUE)
+sim_out <- sim_out %>%
+  mutate(
+    biweek = rep(1:26, times = max(year))
+  )
+
+Y <- sim_out %>%
+  dplyr::select(year, biweek, case_reports) %>%
+  spread(year, case_reports) %>%
+  dplyr::select(-biweek) %>%
+  as.matrix()
+
+epiyears <- length(unique(sim_out$year))
+biweeks <- length(unique(sim_out$biweek))
+knots <- 5
+bases <- bSpline(1:biweeks, df = knots, degree = 2, intercept = TRUE)
+births <- unique(b)
 ```
 
 ### Fit the model in JAGS
 ```{r jags-fit}
 # List up data for JAGS
 jags_data <- list(
-  y = y,
-  initI = initI,
-  b = b,
-  ntimes = ntimes,
-  nobs = nobs,
-  s = s,
-  nseas = 26,
-  base = base,
-  J = 6
+  Y = Y,
+  b = births,
+  bases = bases,
+  knots = knots,
+  epiyears = epiyears,
+  biweeks = biweeks
 )
 
 # Initialize model in JAGS
@@ -340,15 +309,14 @@ model <- jags.model(
   textConnection(measles_model),
   data = jags_data,
   n.chains = 1,
-  n.adapt = 50000
+  n.adapt = 20000
 )
 
-update(model, n.iter = 300000)
+update(model, n.iter = 50000)
 
 vars_to_collect <- c(
       "Iobs", "I", "S", "gamma", "beta", "rho", "lambda", 
-      "psi", "alpha", "eta", "r", "sigma_gamma", "S0", "I0", 
-      "gamma0", "pvalue_fit", "pvalue_mean", "pvalue_cv", "fit", "fitnew", "beta_season"
+      "psi", "alpha", "eta", "S0", "I0", "gamma0"
     )
     
 mcmc_results <- coda.samples(
@@ -358,70 +326,84 @@ mcmc_results <- coda.samples(
   n.thin = 1
 )
 
-# mcmcdf <- as.data.frame(mcmc_results[[1]])
-# fitdf <- mcmcdf[, grep("fit", colnames(mcmcdf))]
-# plot(fitdf$fit, fitdf$fitnew)
+mcmcdf <- as.data.frame(mcmc_results[[1]])
 
-mcmc_tbl <- ggs(mcmc_results) %>%
-  group_by(Parameter) %>%
-  summarise(
-    mean_value = mean(value),
-    median_value = median(value),
-    upper_95 = quantile(value, 0.975),
-    lower_95 = quantile(value, 0.025),
-    upper_50 = quantile(value, 0.75),
-    lower_50 = quantile(value, 0.25)
-  ) 
+mcmc_summ <- summary(mcmc_results)$quantiles
+Ipreds <- mcmc_summ[grep("Iobs", rownames(mcmc_summ)), 3]
+Ilow <- mcmc_summ[grep("Iobs", rownames(mcmc_summ)), 1]
+Ihi <- mcmc_summ[grep("Iobs", rownames(mcmc_summ)), 5]
+plot(Ihi,type = "l",lty=2)
+lines(Ilow, lty = 2)
+lines(Ipreds, lty=1)
+points(sim_out$case_reports)
 
-time_invariants <- mcmc_tbl %>%
-  filter(!grepl("\\[", Parameter))
-knitr::kable(time_invariants)
+Ipreds <- mcmc_summ[grep("I", rownames(mcmc_summ)), 3]
+Ipreds <- Ipreds[-grep("Iobs", names(Ipreds))]
+Ipreds <- Ipreds[-grep("I0", names(Ipreds))]
 
-alphas <- mcmc_tbl %>%
-  filter(grepl("alpha\\[", Parameter))
-
-seasonal_betas <- mcmc_tbl %>%
-  filter(grepl("beta_season", Parameter))
-
-model_observations <- mcmc_tbl %>%
-  filter(grepl("Iobs\\[", Parameter)) %>%
-  mutate(
-    observed_cases = sim_out$case_reports,
-    time = sim_out$time
-  )
-
-mycolors <- c("coral","steelblue")
-ggplot(model_observations, aes(x = time)) +
-  geom_point(aes(y = observed_cases), shape = 1, color = "grey45", size = 0.75) +
-  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.3, fill = mycolors[1]) +
-  # geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35, fill = mycolors[1]) +
-  geom_line(aes(y = median_value), color = mycolors[1], linetype = 2) +
-  labs(x = "Date", y = "Number of reported cases") +
-  # scale_y_continuous(trans = "log") +
-  NULL
-
-model_latents <- mcmc_tbl %>%
-  filter(grepl("I\\[", Parameter) | grepl("S\\[", Parameter)) %>%
-  mutate(
-    time = rep(sim_out$time, times = 2)
-  ) %>%
-  separate(Parameter, into = c("param_family", "trash"), sep ="\\[") %>%
-  dplyr::select(-trash) %>%
-  mutate(
-    param_name = ifelse(param_family == "S", "Susceptible", "Infectious")
-  )
-
-ggplot(model_latents, aes(x = time, y = median_value)) +
-  geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = param_name), alpha = 0.15) +
-  geom_ribbon(aes(ymin = lower_50, ymax = upper_50, fill = param_name), alpha = 0.35) +
-  geom_line(aes(color = param_name), linetype = 2) +
-  facet_wrap(~param_name, scales = "free_y", ncol = 1) +
-  scale_color_manual(values = mycolors) +
-  scale_fill_manual(values = mycolors) +
-  guides(color = FALSE, fill = FALSE) +
-  labs(x = "Date", y = "Number of persons") +
-  # scale_y_continuous(trans = "log") +
-  NULL
+# 
+# fitdf <- mcmcdf[, grep("Iobs", colnames(mcmcdf))]
+# 
+# mcmc_tbl <- ggs(mcmc_results) %>%
+#   group_by(Parameter) %>%
+#   summarise(
+#     mean_value = mean(value),
+#     median_value = median(value),
+#     upper_95 = quantile(value, 0.975),
+#     lower_95 = quantile(value, 0.025),
+#     upper_50 = quantile(value, 0.75),
+#     lower_50 = quantile(value, 0.25)
+#   ) 
+# 
+# time_invariants <- mcmc_tbl %>%
+#   filter(!grepl("\\[", Parameter))
+# knitr::kable(time_invariants)
+# 
+# alphas <- mcmc_tbl %>%
+#   filter(grepl("alpha\\[", Parameter))
+# 
+# seasonal_betas <- mcmc_tbl %>%
+#   filter(grepl("beta_season", Parameter))
+# 
+# model_observations <- mcmc_tbl %>%
+#   filter(grepl("Iobs\\[", Parameter)) %>%
+#   mutate(
+#     observed_cases = sim_out$case_reports,
+#     time = sim_out$time
+#   )
+# 
+# mycolors <- c("coral","steelblue")
+# ggplot(model_observations, aes(x = time)) +
+#   geom_point(aes(y = observed_cases), shape = 1, color = "grey45", size = 0.75) +
+#   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.3, fill = mycolors[1]) +
+#   # geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35, fill = mycolors[1]) +
+#   geom_line(aes(y = median_value), color = mycolors[1], linetype = 2) +
+#   labs(x = "Date", y = "Number of reported cases") +
+#   # scale_y_continuous(trans = "log") +
+#   NULL
+# 
+# model_latents <- mcmc_tbl %>%
+#   filter(grepl("I\\[", Parameter) | grepl("S\\[", Parameter)) %>%
+#   mutate(
+#     time = rep(sim_out$time, times = 2)
+#   ) %>%
+#   separate(Parameter, into = c("param_family", "trash"), sep ="\\[") %>%
+#   dplyr::select(-trash) %>%
+#   mutate(
+#     param_name = ifelse(param_family == "S", "Susceptible", "Infectious")
+#   )
+# 
+# ggplot(model_latents, aes(x = time, y = median_value)) +
+#   geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = param_name), alpha = 0.15) +
+#   geom_ribbon(aes(ymin = lower_50, ymax = upper_50, fill = param_name), alpha = 0.35) +
+#   geom_line(aes(color = param_name), linetype = 2) +
+#   facet_wrap(~param_name, scales = "free_y", ncol = 1) +
+#   scale_color_manual(values = mycolors) +
+#   scale_fill_manual(values = mycolors) +
+#   guides(color = FALSE, fill = FALSE) +
+#   labs(x = "Date", y = "Number of persons") +
+#   # scale_y_continuous(trans = "log") +
+#   NULL
 ```
 
 
