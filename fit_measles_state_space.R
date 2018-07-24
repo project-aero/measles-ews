@@ -17,6 +17,7 @@ library(lubridate)  # time and date functions
 library(rjags)      # MCMC sampling algorithms for Bayesian models
 library(ggmcmc)     # quick conversions of MCMC output to data frames
 library(parallel)   # functions for parallel computing on multiple cores
+library(splines2)
 
 
 # Read in data ------------------------------------------------------------
@@ -57,63 +58,63 @@ measles_data <- niger_measles_raw %>%
 measles_model <- "
 model{
   # Likelihood/Data Model
-  for(i in 1:nobs){
-    p[i] <- eta/(eta + rho*I[i])
-    y[i] ~ dnegbin(p[i], eta)
-  }
-  eta ~ dunif(0, 50)
-  
-  # Process model
-  for(t in 1:(ntimes-1)){
-    # psi[t] ~ dnorm(0, tau_psi) T(0,)
-    lambda[t] = exp(-beta[t] * (I[t] + psi))
-    Delta[t] ~ dbin(lambda[t], S[t])
-    I[t+1] = max(0.000001, S[t] - Delta[t])
-    S[t+1] = b[t] + Delta[t]
-  }
-  psi ~ dunif(0, 100)
-  # tau_psi <- pow(sigma_psi, -2)
-  # sigma_psi ~ dunif(0, 10)
-  
-  # Parameter model
-  for(t in 1:(ntimes-1)){
-    beta[t] = exp(gamma[yr_id[t]]) * (1 + upsilon * sin( (2*pi*t)/26 + phi ) ) + epsilon[t]
-  }
-
-  for(t in 2:ntimes){
-    epsilon[t] ~ dnorm(0, tau_gamma)
-    # gamma[t] = gamma0 + t * log(1+r) + epsilon[t]
-  }
-
-  for(y in 1:epiyears){
-    gamma[y] ~ dnorm(gamma0, tau_gamma)
-  }
-
-  epsilon[1] ~ dnorm(0, tau_noise)
-  # gamma[1] = gamma0 + 1 * log(1+r) + epsilon[1]
-  gamma0 ~ dunif(-12, -9)  # semi-informed prior based on Ferrari et al. 2008 model results (sd*2)
-  tau_gamma = pow(sigma_gamma, -2)
-  sigma_gamma ~ dunif(0, 5)
-  tau_noise = pow(sigma_noise, -2)
-  sigma_noise ~ dunif(0, 5)
-  # r ~ dunif(0, 1)
-  
-  upsilon ~ dunif(0, 1)
-  phi ~ dunif(0, 26)
-  rho ~ dnorm(0.48, 1000) T(0, 1) # informed prior based on Ferrari et al. 2008 model results
-  
-  # Initial conditions
-  S0 ~ dnorm(40000, 1e-08)  # semi-informed prior based on Ferrari et al. 2008 model results
-  S[1] <- trunc(S0)
-  I0 ~ dpois(initI/rho)
-  I[1] = I0
-  
-  # Derived quantities
-  for(i in 1:nobs){
-    Iobs[i] = I[i]*rho 
-    Rnaught[i] = exp(gamma0)*N[i]
-  }
+for(i in 1:nobs){
+p[i] <- eta/(eta + (rho*I[i]))
+y[i] ~ dnegbin(p[i], eta)
 }
+eta ~ dunif(0,50)
+
+# Process model
+for(t in 1:(ntimes-1)){
+lambda[t] = exp(-beta[t] * (I[t] + psi))
+Delta[t] ~ dbin(lambda[t], S[t])
+I[t+1] = S[t] - Delta[t]
+S[t+1] = b[t] + Delta[t]
+}
+psi ~ dunif(0, 50)
+
+# Parameter model
+for(t in 1:(ntimes-1)){
+beta[t] = exp(gamma[t]) * (1 + season[s[t]])
+}
+
+for(t in 2:ntimes){
+epsilon[t] ~ dnorm(0, tau_proc)
+gamma[t] = gamma[t-1] + epsilon[t]
+}
+tau_proc ~ dgamma(0.001, 0.001)
+
+for(t in 1:nseas){
+season[t] <- inprod(base[t,], alpha[])
+}
+
+# b-splines
+for(i in 1:J){
+alpha[i] ~ dnorm(0, taub)
+}
+taub ~ dgamma(0.1, 0.1)
+
+rho ~ dbeta(3.6, 6.3)
+epsilon[1] ~ dnorm(0, tau_proc)
+gamma[1] = gamma0 + epsilon[1]
+gamma0 ~ dunif(-12, -8)
+
+# Initial conditions
+S0 ~ dnorm(30000,4e-08)
+S[1] <- trunc(S0)
+I0 ~ dunif(0, 100)
+I[1] <- trunc(I0)
+
+# Derived quantities
+for(i in 1:nobs){
+Iobs[i] = I[i]*rho 
+}
+
+for(s in 1:nseas){
+beta_season[s] = exp(gamma0) * (1+season[s])
+}
+
+}  # end of model
 "
 
 
@@ -175,7 +176,9 @@ jags_data <- list(
   pi = pi,
   N = biweek_data$population,
   yr_id = yr_id,
-  epiyears = 6
+  epiyears = 6,
+  s = rep(1:nseas, 10),
+  base = periodic.bspline.basis(x = 1:26, nbasis = 6, degree = 2, period = 26)
 )
 
 # Create initial value function for parallel MCMC
@@ -195,8 +198,7 @@ generate_initial_values <- function(){
     S0 = rpois(1, 30000),  # initial condition for susceptible class
     I0 = rpois(1, initI),  # initial condition for infected class
     gamma0 = runif(1, -13, -9),  # initial condition for transmission rate
-    m = rpois(1, 10),  # susceptible immigration
-    rg = runif(1, -0.006, -0.0009)  # exponential growth/decay rate of transmission rate through time
+    m = rpois(1, 10)
   )
 }
 
