@@ -247,7 +247,7 @@ model{
 
   for(t in 2:ntimes){
     epsilon[t] ~ dnorm(0, tau_proc)
-    gamma[t] = gamma0 + epsilon[t]
+    gamma[t] = gamma[t-1] + epsilon[t]
   }
   tau_proc ~ dgamma(0.001, 0.001)
 
@@ -262,9 +262,10 @@ model{
   taub ~ dgamma(0.1, 0.1)
 
   rho ~ dbeta(3.6, 6.3)
-  epsilon[1] ~ dnorm(0, 1)
+  epsilon[1] ~ dnorm(0, tau_proc)
   gamma[1] = gamma0 + epsilon[1]
   gamma0 ~ dunif(-12, -8)
+
   # tau_gamma = pow(sigma_gamma, -2)
   # sigma_gamma ~ dunif(0, 5)
   # tau_noise = pow(sigma_noise, -2)
@@ -275,8 +276,8 @@ model{
   # Initial conditions
   S0 ~ dnorm(30000,4e-08)
   S[1] <- trunc(S0)
-  # I0 ~ dpois(initI/rho)
-  I[1] = initI/rho
+  I0 ~ dunif(0, 100)
+  I[1] <- trunc(I0)
   
   # Derived quantities
   for(i in 1:nobs){
@@ -317,7 +318,8 @@ ntimes <- nrow(sim_out)
 nobs <- nrow(sim_out)
 nseas <- 26
 s <- rep(1:nseas, 10)
-base <- bSpline(1:26, df = 6, degree = 2, intercept = TRUE)
+# base <- bSpline(1:26, df = 6, degree = 2, intercept = TRUE)
+base <- periodic.bspline.basis(x = 1:26, nbasis = 6, degree = 2, period = 26)
 ```
 
 ### Fit the model in JAGS
@@ -340,10 +342,10 @@ model <- jags.model(
   textConnection(measles_model),
   data = jags_data,
   n.chains = 1,
-  n.adapt = 50000
+  n.adapt = 2000
 )
 
-update(model, n.iter = 300000)
+update(model, n.iter = 30000)
 
 vars_to_collect <- c(
       "Iobs", "I", "S", "gamma", "beta", "rho", "lambda", 
@@ -354,12 +356,12 @@ vars_to_collect <- c(
 mcmc_results <- coda.samples(
   model, 
   variable.names = vars_to_collect, 
-  n.iter = 50000, 
+  n.iter = 5000, 
   n.thin = 1
 )
 
-# mcmcdf <- as.data.frame(mcmc_results[[1]])
-# fitdf <- mcmcdf[, grep("fit", colnames(mcmcdf))]
+mcmcdf <- as.data.frame(mcmc_results[[1]])
+fitdf <- mcmcdf[, grep("Iobs", colnames(mcmcdf))]
 # plot(fitdf$fit, fitdf$fitnew)
 
 mcmc_tbl <- ggs(mcmc_results) %>%
@@ -372,6 +374,8 @@ mcmc_tbl <- ggs(mcmc_results) %>%
     upper_50 = quantile(value, 0.75),
     lower_50 = quantile(value, 0.25)
   ) 
+
+# write.csv(mcmc_tbl, file = "/Users/atredenn/Desktop/mcmcout.csv")
 
 time_invariants <- mcmc_tbl %>%
   filter(!grepl("\\[", Parameter))
