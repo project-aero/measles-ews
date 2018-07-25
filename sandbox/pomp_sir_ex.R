@@ -8,9 +8,6 @@ library(pomp)
 
 
 # Define stochastic SIR model ---------------------------------------------
-par(mfrow=c(1,2))
-hist(100+rbinom(1000, 8125, (exp(-beta*(14+0.1)))))
-hist(8125-rbinom(1000, 8125, (exp(-beta*(14+0.1)))))
 
 stoch_sir <- function(ntimes, S0, I0, births, beta){
   S <- I <- numeric(ntimes)
@@ -70,26 +67,26 @@ case_data <- sim %>%
 sir_proc <- Csnippet(
   "
   double dN[2];
-  double inv_lambda = exp(-beta_r * (I + 0.1));
-  unsigned long delta = rbinom(S, inv_lambda);
+  double inv_lambda = exp(-beta_r * (nearbyint(I) + 0.1));
+  double delta = rbinom(nearbyint(S), inv_lambda);
   dN[0] = delta + births;
   dN[1] = S - delta;
-  S = dN[0];
-  I = dN[1];
+  S = nearbyint(dN[0]);
+  I = nearbyint(dN[1]);
   "
 )
 
 # Measurement model
 rmeas <- Csnippet(
   "
-  cases = rnbinom_mu(1/od, rho * I);
+  cases = rnbinom_mu(1/od, nearbyint(rho * I));
   "
 )
 
 # Likelihood density model
 dmeas <- Csnippet(
   "
-  lik = dnbinom_mu(cases, 1/od, rho * I, give_log);
+  lik = dnbinom_mu(cases, 1/od, nearbyint(rho * I), give_log);
   "
 )
 
@@ -156,7 +153,7 @@ guesses <- sobolDesign(
 guesses$S.0 <- round(guesses$S.0, 0)
 guesses$I.0 <- round(guesses$I.0, 0)
 
-pomp_test <- simulate(sir_pomp, params = unlist(guesses[1, ]))
+pomp_test <- simulate(sir_pomp, params = unlist(guesses[10, ]))
 plot(pomp_test)
 
 mles_out <- {}
@@ -169,7 +166,7 @@ for(i in 1:nrow(guesses)){
     transform = TRUE,
     cooling.fraction.50 = 0.8,
     cooling.type = "geometric",
-    rw.sd = rw.sd(beta_r = 0.02, rho = 0.02, od = 0.002)
+    rw.sd = rw.sd(beta_r = 0.02, rho = 0.02, od = 0.01, I.0 = 0.02, S.0 = 0.1)
   ) %>%
     mif2()
   
@@ -182,5 +179,5 @@ for(i in 1:nrow(guesses)){
 }
 
 test <- pfilter(sir_pomp, params = unlist(guesses[1,]), Np = 1000)
-test <- pfilter(sir_pomp, params = c(beta_r = 1.066219e-04, rho = 4.664018e-01, od = 0.001, S.0 = 1.187500e+04, I.0 = 12), Np = 1000)
+test <- pfilter(sir_pomp, params = c(beta_r = 1.066219e-04, rho = 4.664018e-01, od = 0.01, S.0 = 1.187500e+04, I.0 = 12), Np = 1000)
 plot(test)
