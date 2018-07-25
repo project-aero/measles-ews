@@ -138,15 +138,15 @@ sir_pomp <- pomp(
 )
 
 # Make sure the model simulates reasonable dynamics -- It does!
-pomp_test <- simulate(sir_pomp, params = c(beta_r = 0.0002, rho = 0.5, od = 0.1, S.0 = 10000, I.0 = 1))
-plot(pomp_test)
+# pomp_test <- simulate(sir_pomp, params = c(beta_r = 0.0002, rho = 0.5, od = 0.1, S.0 = 10000, I.0 = 1))
+# plot(pomp_test)
 
 
 # Perform iterated filter to find MLEs ------------------------------------
 
 guesses <- sobolDesign(
   lower = c(beta_r = 0.00001, rho = 0.3, od = 0.01, S.0 = 5000, I.0 = 1),
-  upper = c(beta_r = 0.0005, rho = 0.7, od = 0.1, S.0 = 15000, I.0 = 20),
+  upper = c(beta_r = 0.001, rho = 0.7, od = 0.1, S.0 = 15000, I.0 = 20),
   nseq = 10
 )
 
@@ -161,23 +161,20 @@ for(i in 1:nrow(guesses)){
   mf <- mif2(
     object = sir_pomp, 
     start = unlist(guesses[i, ]),
-    Nmif = 50,
-    Np = 1000,
+    Nmif = 100,
+    Np = 2000,
     transform = TRUE,
     cooling.fraction.50 = 0.8,
     cooling.type = "geometric",
-    rw.sd = rw.sd(beta_r = 0.02, rho = 0.02, od = 0.01, I.0 = 0.02, S.0 = 0.1)
+    rw.sd = rw.sd(beta_r = 0.02, rho = 0.02, od = 0.01, I.0 = 0.002, S.0 = 0.1)
   ) %>%
     mif2()
   
   ll <- logmeanexp(replicate(10, logLik(pfilter(mf))), se=TRUE)
-  mles <- data.frame(loglik=ll[1],loglik.se=ll[2],as.list(coef(mf)))
+  mles <- data.frame(loglik=ll[1], loglik.se=ll[2], as.list(coef(mf)))
   mles_out <- rbind(mles_out, mles)
   
   cat(paste("Done with mif run", i, "of", nrow(guesses)))
   cat("\n")
 }
 
-test <- pfilter(sir_pomp, params = unlist(guesses[1,]), Np = 1000)
-test <- pfilter(sir_pomp, params = c(beta_r = 1.066219e-04, rho = 4.664018e-01, od = 0.01, S.0 = 1.187500e+04, I.0 = 12), Np = 1000)
-plot(test)
