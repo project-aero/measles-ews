@@ -90,6 +90,9 @@ parus_bh <- pomp(
   paramnames = c("a", "b", "sigma")
 )
 
+pomp_test <- simulate(parus_bh, params = c(a = 3, b = 0.1, sigma = 1.5, N.0 =100))
+plot(pomp_test)
+
 # Perform iterated filtering
 guesses <- sobolDesign(lower=c(a=0.1,b=0.00001,sigma=0,N.0=100),
                        upper=c(a=20,b=0.01,sigma=5,N.0=400),
