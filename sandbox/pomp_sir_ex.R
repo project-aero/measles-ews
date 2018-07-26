@@ -211,7 +211,7 @@ stew(file="local_search.rda",{
                  Np=1000,
                  Nmif=50,
                  cooling.type="geometric",
-                 cooling.fraction.50=0.5,
+                 cooling.fraction.50=1,
                  transform=TRUE,
                  rw.sd=rw.sd(
                    beta_r=0.02, rho=0.02, tau=0.02,
