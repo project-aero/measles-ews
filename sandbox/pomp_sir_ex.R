@@ -5,6 +5,9 @@
 
 library(tidyverse)
 library(pomp)
+library(foreach)
+library(doParallel)
+registerDoParallel()
 
 
 # Define stochastic SIR model ---------------------------------------------
@@ -67,7 +70,7 @@ case_data <- sim %>%
 sir_proc <- Csnippet(
   "
   double dN[2];
-  double inv_lambda = exp(-beta_r * (nearbyint(I) + 0.1));
+  double inv_lambda = exp(-beta_r * (I + 0.1));
   double delta = rbinom(nearbyint(S), inv_lambda);
   dN[0] = delta + births;
   dN[1] = S - delta;
@@ -79,31 +82,60 @@ sir_proc <- Csnippet(
 # Measurement model
 rmeas <- Csnippet(
   "
-  cases = rnbinom_mu(1/od, nearbyint(rho * I));
+  cases = rnorm(rho*I, sqrt( pow(tau*I,2) + rho*I ) );
+  if (cases > 0.0) {
+    cases = nearbyint(cases);
+  } else {
+    cases = 0.0;
+  }
+  
+  //cases = rnbinom_mu(1/od, nearbyint(rho * I));
   "
 )
 
 # Likelihood density model
 dmeas <- Csnippet(
   "
-  lik = dnbinom_mu(cases, 1/od, nearbyint(rho * I), give_log);
+  double tol = 1.0e-25;
+  double mean_cases = rho*I;
+  double sd_cases = sqrt(pow(tau*I, 2) + mean_cases);
+  if (cases > 0.0) {
+    lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) - pnorm(cases-0.5,mean_cases,sd_cases,1,0) + tol; 
+  } else{
+    lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) + tol;
+  }
+  if (give_log) lik = log(lik);
+
+  //lik = dnbinom_mu(cases, 1/od, nearbyint(rho * I), give_log);
+  "
+)
+
+# Map initial value parameters to initial values of states
+init <- Csnippet(
+  "
+  I = nearbyint(I_0);
+  S = nearbyint(S_0);
   "
 )
 
 # Set up parameter transformations
-logtrans <- Csnippet(
+to_est <- Csnippet(
   "
   Tbeta_r = log(beta_r);
   Trho = logit(rho);
-  Tod = log(od);
+  Ttau = log(tau);
+  TS_0 = log(S_0);
+  TI_0 = log(I_0);
   "
 )
 
-exptrans <- Csnippet(
+from_est <- Csnippet(
   "
   Tbeta_r = exp(beta_r);
   Trho = expit(rho);
-  Tod = exp(od);
+  Ttau = exp(tau);
+  TS_0 = exp(S_0);
+  TI_0 = exp(I_0);
   "
 )
 
@@ -121,6 +153,9 @@ birth_data <- case_data %>%
   ) %>%
   arrange(week)
 
+# Set some realistic parameter values for testing via simulation
+params <- c(beta_r = 0.0001, rho = 0.45, tau = 0.1, S_0 = 9000, I_0 = 1)
+
 # Generate pomp object
 sir_pomp <- pomp(
   data = obs_data,
@@ -131,50 +166,235 @@ sir_pomp <- pomp(
   rprocess = discrete.time.sim(sir_proc, delta.t = 1),
   rmeasure = rmeas,
   dmeasure = dmeas,
+  initializer = init,
   statenames = c("S", "I"),
-  toEstimationScale = logtrans,
-  fromEstimationScale = exptrans,
-  paramnames = c("beta_r", "rho", "od")
+  toEstimationScale = to_est,
+  fromEstimationScale = from_est,
+  paramnames = c("beta_r", "rho", "tau", "S_0", "I_0"),
+  params = params
 )
 
 # Make sure the model simulates reasonable dynamics -- It does!
-# pomp_test <- simulate(sir_pomp, params = c(beta_r = 0.0002, rho = 0.5, od = 0.1, S.0 = 10000, I.0 = 1))
-# plot(pomp_test)
+nsim <- 9
+test_sim <- simulate(sir_pomp, nsim=nsim,as.data.frame=TRUE,include.data=TRUE)
+ggplot(data = test_sim, aes(x = time, y = cases, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
+# Make sure the likelihood function is working -- It is!
+pf <- pfilter(sir_pomp, Np = 1000)
+logLik(pf)
+
+set.seed(493536993,kind="L'Ecuyer")
+t1 <- system.time(
+  pf1 <- foreach(i=1:10,.packages='pomp',
+                 .options.multicore=list(set.seed=TRUE)
+  ) %dopar% {
+    pfilter(sir_pomp, Np=5000)
+  }
+)
+(L1 <- logmeanexp(sapply(pf1,logLik),se=TRUE))
+
+stew(file="local_search.rda",{
+  w1 <- getDoParWorkers()
+  t1 <- system.time({
+    m1 <- foreach(i=1:10,
+                  .packages='pomp',.combine=rbind,
+                  .options.multicore=list(set.seed=TRUE)
+    ) %dopar% {
+      mf <- mif2(sir_pomp,
+                 Np=1000,
+                 Nmif=50,
+                 cooling.type="geometric",
+                 cooling.fraction.50=0.5,
+                 transform=TRUE,
+                 rw.sd=rw.sd(
+                   beta_r=0.02, rho=0.02, tau=0.02,
+                   I_0=ivp(0.2), S_0=ivp(0.2)
+                 )
+      )
+      ll <- logmeanexp(replicate(10,logLik(pfilter(mf,Np=5000))),se=TRUE)
+      data.frame(as.list(coef(mf)),loglik=ll[1],loglik.se=ll[2])
+    }
+  }
+  )
+},seed=318817883,kind="L'Ecuyer")
+  
+pairs(~loglik+beta_r+rho+tau+I_0+S_0,data=m1)
+# write.csv(m1, file="sir_params.csv",row.names=FALSE,na="")
 
 
-# Perform iterated filter to find MLEs ------------------------------------
+# Global MLE search -------------------------------------------------------
 
-guesses <- sobolDesign(
-  lower = c(beta_r = 0.00001, rho = 0.3, od = 0.01, S.0 = 5000, I.0 = 1),
-  upper = c(beta_r = 0.001, rho = 0.7, od = 0.1, S.0 = 15000, I.0 = 20),
-  nseq = 10
+param_box <- rbind(
+  beta_r = c(0.00001, 0.001),
+  rho = c(0.3, 0.8),
+  tau = c(0.00001, 0.2),
+  S_0 = c(5000, 15000),
+  I_0 = c(0, 10)
 )
 
-guesses$S.0 <- round(guesses$S.0, 0)
-guesses$I.0 <- round(guesses$I.0, 0)
+stew(file="global_search.rda",{
+  w2 <- getDoParWorkers()
+  t2 <- system.time({
+    m2 <- foreach(i=1:10,.packages='pomp',.combine=rbind,
+                  .options.multicore=list(set.seed=TRUE)
+    ) %dopar% {
+      guess <- apply(param_box,1,function(x)runif(1,x[1],x[2]))
+      mf <- mif2(sir_pomp,
+                 start=c(guess),
+                 Np=2000,
+                 Nmif=300,
+                 cooling.type="geometric",
+                 cooling.fraction.50=0.5,
+                 transform=TRUE,
+                 rw.sd=rw.sd(
+                   beta_r=0.02, rho=0.02, tau=0.02,
+                   I_0=ivp(0.2), S_0=ivp(0.2)
+                 ))
+      ll <- logmeanexp(replicate(10,logLik(pfilter(mf,Np=5000))),se=TRUE)
+      data.frame(as.list(coef(mf)),loglik=ll[1],loglik.se=ll[2])
+    }
+  })
+},seed=290860873,kind="L'Ecuyer")
 
-pomp_test <- simulate(sir_pomp, params = unlist(guesses[10, ]))
-plot(pomp_test)
+mles <- unlist(
+  filter(m2, loglik == max(loglik)) %>%
+    dplyr::select(-loglik, -loglik.se)
+  )
 
-mles_out <- {}
-for(i in 1:nrow(guesses)){
-  mf <- mif2(
-    object = sir_pomp, 
-    start = unlist(guesses[i, ]),
-    Nmif = 100,
-    Np = 2000,
-    transform = TRUE,
-    cooling.fraction.50 = 0.8,
-    cooling.type = "geometric",
-    rw.sd = rw.sd(beta_r = 0.02, rho = 0.02, od = 0.01, I.0 = 0.002, S.0 = 0.1)
+fitted_sim <- simulate(sir_pomp, nsim=100, as.data.frame=TRUE, include.data=TRUE, params = mles)
+ggplot(data = fitted_sim, aes(x = time, y = cases, group = sim, color = (sim == "data"), alpha = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "black", `FALSE` = "orange"))+
+  scale_alpha_manual(values = c(`TRUE` = 1, `FALSE` = 0.1))+
+  guides(color = FALSE, alpha = FALSE) +
+  scale_y_sqrt()
+
+
+# Perform particle MCMC for final inference -------------------------------
+
+stew(
+  file = "sir_mcmc.rda",
+  {
+    outmcmc <- pmcmc(sir_pomp, Nmcmc=10000,Np=200,start=mles,
+                        proposal=mvn.rw.adaptive(rw.sd=c(beta_r=0.00001,S_0=100,tau=0.01,I_0 = 0.01, rho = 0.1),
+                                                 scale.start=10,shape.start=10))
+  },
+  seed=29086087,kind="L'Ecuyer"
+)
+
+traces <- conv.rec(outmcmc)
+traces <- window(traces,thin=1,start=1000)
+plot(traces[,"rho"])
+hist(traces[,"beta_r"], col = "grey", border = "white")
+abline(v = beta, col = "red", lwd = 2)
+mle_rho = mean(traces[,"rho"])
+
+test <- outmcmc %>% 
+  filter.traj() %>%
+  reshape2::melt() %>%
+  as_tibble() %>%
+  filter(rep > 1000) %>%
+  dplyr::group_by(variable, time) %>%
+  dplyr::summarise(
+    median_value = quantile(value, 0.5),
+    upper_value = quantile(value, 0.975),
+    lower_value = quantile(value, 0.025)
   ) %>%
-    mif2()
-  
-  ll <- logmeanexp(replicate(10, logLik(pfilter(mf))), se=TRUE)
-  mles <- data.frame(loglik=ll[1], loglik.se=ll[2], as.list(coef(mf)))
-  mles_out <- rbind(mles_out, mles)
-  
-  cat(paste("Done with mif run", i, "of", nrow(guesses)))
-  cat("\n")
-}
+  filter(time > 0) %>%
+  mutate(
+    observation = obs_data$cases
+  )
 
+ggplot(test, aes(x = time)) +
+  geom_ribbon(aes(ymin = lower_value, ymax = upper_value), alpha = 0.3) +
+  geom_line(aes(y = median_value)) +
+  facet_wrap(~variable, scales = "free", ncol = 1) +
+  scale_y_sqrt()
+
+ggplot(filter(test, variable == "I"), aes(x = time)) +
+  geom_ribbon(aes(ymin = lower_value, ymax = upper_value), alpha = 0.3, fill = "coral") +
+  geom_line(aes(y = median_value), color = "coral") +
+  geom_point(aes(y = observation/mle_rho), color = "grey35", size = 1, alpha = 0.6) +
+  scale_y_sqrt() 
+  
+
+
+# 
+# 
+# # Perform iterated filter to find MLEs ------------------------------------
+# 
+# guesses <- sobolDesign(
+#   lower = c(beta_r = 0.00001, rho = 0.3, od = 0.01, S.0 = 5000, I.0 = 1),
+#   upper = c(beta_r = 0.001, rho = 0.7, od = 0.1, S.0 = 15000, I.0 = 20),
+#   nseq = 10
+# )
+# 
+# guesses$S.0 <- round(guesses$S.0, 0)
+# guesses$I.0 <- round(guesses$I.0, 0)
+# 
+# pomp_test <- simulate(sir_pomp, params = unlist(guesses[10, ]))
+# plot(pomp_test)
+# 
+# mles_out <- {}
+# for(i in 1:nrow(guesses)){
+#   mf <- mif2(
+#     object = sir_pomp, 
+#     start = unlist(guesses[i, ]),
+#     Nmif = 100,
+#     Np = 2000,
+#     transform = TRUE,
+#     cooling.fraction.50 = 0.5,
+#     cooling.type = "geometric",
+#     rw.sd = rw.sd(beta_r = 0.02, rho = 0.02, od = 0.01, I.0 = 0.002, S.0 = 0.1)
+#   ) %>%
+#     mif2()
+#   
+#   ll <- logmeanexp(replicate(10, logLik(pfilter(mf))), se=TRUE)
+#   mles <- data.frame(loglik=ll[1], loglik.se=ll[2], as.list(coef(mf)))
+#   mles_out <- rbind(mles_out, mles)
+#   
+#   cat(paste("Done with mif run", i, "of", nrow(guesses)))
+#   cat("\n")
+# }
+# 
+# 
+# # Conduct particle MCMC for inference -------------------------------------
+# 
+# # Start from MLE from iterative filtering
+# theta_mle <- mles_out %>%
+#   filter(loglik == max(loglik)) %>%
+#   dplyr::select(-loglik, -loglik.se) %>%
+#   mutate(
+#     S.0 = round(S.0, 0),
+#     I.0 = round(I.0, 0)
+#   )
+# 
+# # Define prior function for MCMC
+# set_priors <- function(params, ..., log){
+#   f <- dlnorm(params[1], meanlog = log(0.0001), sdlog = 0.2, log = TRUE) +
+#     dbeta(params[2], shape1 = 3.6, shape2 = 6.3, log = TRUE) +
+#     dgamma(params[3], shape = 0.01, rate = 0.1, log = TRUE) +
+#     dnorm(params[4], mean = 15000, sd = 3200, log = TRUE) +
+#     dlnorm(params[5], meanlog = log(10), sdlog = 0.5, log = TRUE)
+#   if (log) f else exp(f)
+# }
+# 
+# # Run pMCMC
+# out_pmcmc <- pmcmc(
+#   pomp(sir_pomp, dprior = set_priors),
+#   start = unlist(theta_mle),
+#   Nmcmc = 3000,
+#   Np = 100,
+#   max.fail = Inf,
+#   proposal = mvn.diag.rw(
+#     c(beta_r = 0.02, rho = 0.02, od = 0.002, S.0 = 0.2, I.0 = 0.2)
+#   )
+# )
+# 
+# plot(conv.rec(out_pmcmc,"beta_r"))
