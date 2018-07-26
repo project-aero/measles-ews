@@ -42,6 +42,7 @@ births <- 100
 beta <- 0.0001
 report_fraction <- 0.5
 
+set.seed(72826496)
 sim <- stoch_sir(ntimes, S0, I0, births, beta) %>%
   gather(key = state, value = abundance, S:I)
 
@@ -308,7 +309,7 @@ test <- outmcmc %>%
   ) %>%
   filter(time > 0) %>%
   mutate(
-    observation = obs_data$cases
+    observation = filter(fitted_sim, sim == "data") %>% pull(cases)
   )
 
 ggplot(test, aes(x = time)) +
@@ -323,78 +324,3 @@ ggplot(filter(test, variable == "I"), aes(x = time)) +
   geom_point(aes(y = observation/mle_rho), color = "grey35", size = 1, alpha = 0.6) +
   scale_y_sqrt() 
   
-
-
-# 
-# 
-# # Perform iterated filter to find MLEs ------------------------------------
-# 
-# guesses <- sobolDesign(
-#   lower = c(beta_r = 0.00001, rho = 0.3, od = 0.01, S.0 = 5000, I.0 = 1),
-#   upper = c(beta_r = 0.001, rho = 0.7, od = 0.1, S.0 = 15000, I.0 = 20),
-#   nseq = 10
-# )
-# 
-# guesses$S.0 <- round(guesses$S.0, 0)
-# guesses$I.0 <- round(guesses$I.0, 0)
-# 
-# pomp_test <- simulate(sir_pomp, params = unlist(guesses[10, ]))
-# plot(pomp_test)
-# 
-# mles_out <- {}
-# for(i in 1:nrow(guesses)){
-#   mf <- mif2(
-#     object = sir_pomp, 
-#     start = unlist(guesses[i, ]),
-#     Nmif = 100,
-#     Np = 2000,
-#     transform = TRUE,
-#     cooling.fraction.50 = 0.5,
-#     cooling.type = "geometric",
-#     rw.sd = rw.sd(beta_r = 0.02, rho = 0.02, od = 0.01, I.0 = 0.002, S.0 = 0.1)
-#   ) %>%
-#     mif2()
-#   
-#   ll <- logmeanexp(replicate(10, logLik(pfilter(mf))), se=TRUE)
-#   mles <- data.frame(loglik=ll[1], loglik.se=ll[2], as.list(coef(mf)))
-#   mles_out <- rbind(mles_out, mles)
-#   
-#   cat(paste("Done with mif run", i, "of", nrow(guesses)))
-#   cat("\n")
-# }
-# 
-# 
-# # Conduct particle MCMC for inference -------------------------------------
-# 
-# # Start from MLE from iterative filtering
-# theta_mle <- mles_out %>%
-#   filter(loglik == max(loglik)) %>%
-#   dplyr::select(-loglik, -loglik.se) %>%
-#   mutate(
-#     S.0 = round(S.0, 0),
-#     I.0 = round(I.0, 0)
-#   )
-# 
-# # Define prior function for MCMC
-# set_priors <- function(params, ..., log){
-#   f <- dlnorm(params[1], meanlog = log(0.0001), sdlog = 0.2, log = TRUE) +
-#     dbeta(params[2], shape1 = 3.6, shape2 = 6.3, log = TRUE) +
-#     dgamma(params[3], shape = 0.01, rate = 0.1, log = TRUE) +
-#     dnorm(params[4], mean = 15000, sd = 3200, log = TRUE) +
-#     dlnorm(params[5], meanlog = log(10), sdlog = 0.5, log = TRUE)
-#   if (log) f else exp(f)
-# }
-# 
-# # Run pMCMC
-# out_pmcmc <- pmcmc(
-#   pomp(sir_pomp, dprior = set_priors),
-#   start = unlist(theta_mle),
-#   Nmcmc = 3000,
-#   Np = 100,
-#   max.fail = Inf,
-#   proposal = mvn.diag.rw(
-#     c(beta_r = 0.02, rho = 0.02, od = 0.002, S.0 = 0.2, I.0 = 0.2)
-#   )
-# )
-# 
-# plot(conv.rec(out_pmcmc,"beta_r"))
