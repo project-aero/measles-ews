@@ -22,7 +22,7 @@ theme_set(theme_minimal())
 First, we load the data and aggregate the weekly case reports into biweekly reports to match the time step of our process model.
 
 ```{r load-data}
-file_name <- "../niger_measles/niger_regional_1995_2005.csv"
+file_name <- "../../niger_measles/niger_regional_1995_2005.csv"
 niger_measles_raw <- read_csv(file_name, col_types = cols())
 
 num_regions <- nrow(niger_measles_raw)
@@ -53,12 +53,12 @@ measles_data <- niger_measles_raw %>%
   filter(region == "Niamey (City)")
 
 # Read in population data and estimate births
-population <- read_csv("../niger_measles/district_pops.csv") %>%
+population <- read_csv("../../niger_measles/district_pops.csv") %>%
   gather(key = year, value = population, -X1) %>%
   rename(district = X1) %>%
   filter(district == "Niamey I")
 
-birth_rates <- read_csv("../niger_measles/niger_crude_birth_rates.csv") %>%
+birth_rates <- read_csv("../../niger_measles/niger_crude_birth_rates.csv") %>%
   mutate(
     date = mdy(date),  # lubridate prefixes any 2digit year 00-68 with 20, not a problem for us though
     year = as.character(year(date)),
@@ -103,6 +103,11 @@ measles_process <- Csnippet(
   double dN[2];
   double beta_r = beta_mu * (1 + dot_product(K, &xi1, &b1));
   double inv_lambda = exp(-beta_r * (I + psi));
+  double var_epsilon = pow(sigma_dem,2)/inv_lambda +  sigma_env*sigma_env;
+  inv_lambda *= (var_epsilon < 1.0e-6) ? 1 : rgamma(1/var_epsilon,var_epsilon);
+  if(inv_lambda > 1){
+    inv_lambda = 1;
+  }
   double delta = rbinom(nearbyint(S), inv_lambda);
   dN[0] = delta + births;
   dN[1] = S - delta;
@@ -161,8 +166,11 @@ to_est <- Csnippet(
   Tbeta_mu = log(beta_mu);
   Trho = logit(rho);
   Ttau = log(tau);
+  Tsigma_dem = log(sigma_dem);
+  Tsigma_env = log(sigma_env);
   TS_0 = log(S_0);
   TI_0 = log(I_0);
+  Tpsi = log(psi);
   "
 )
 
@@ -171,8 +179,11 @@ from_est <- Csnippet(
   Tbeta_mu = exp(beta_mu);
   Trho = expit(rho);
   Ttau = exp(tau);
+  Tsigma_dem = exp(sigma_dem);
+  Tsigma_env = exp(sigma_env);
   TS_0 = exp(S_0);
   TI_0 = exp(I_0);
+  Tpsi = exp(psi);
   "
 )
 ```
@@ -211,7 +222,7 @@ We also set reasonable parameter values as place holders for making sure the mod
 ```{r pomp-container}
 # Set some realistic parameter values for testing via simulation
 params <- c(
-  beta_mu = 0.000003,
+  beta_mu = 0.00001,
   b1 = 3,
   b2 = 0,
   b3 = 1.5,
@@ -221,6 +232,8 @@ params <- c(
   psi = 1,
   rho = 0.5,
   tau = 0.1,
+  sigma_dem = 0.004,
+  sigma_env = 0.005,
   S_0 = 20000, 
   I_0 = 20
 )
@@ -280,6 +293,71 @@ MIF varies parameters throughout the filtering process and selectively propogate
 We use the `pomp::mif2()` function to perform a grid search over parameter space that lets us hone in on the maximum likelihood estimates (MLE) for each parameter.
 We start with a global search, and the proceed to a localized search around the MLEs from the global search.
 
+### Probe matching a la Wood 2010 (*Nature*)
+First, we utilize probe matching to hone in on parameter values that result in model simulations with similar statistical properties as the observed data.
+Here, we estimate parameters based on the synthetic likelihood (Wood 2010, *Nature*).
+We used three statistics:
+1. The number of weeks with zero reported cases.
+2. The maximum number of reported cases over the entire time series.
+3. The autocorrelation of cases at lag 1, which is a lag of 2 weeks in real time since we are dealing with biweekly data.
+
+We use the parameter estimates from this step as starting points for the MIF.
+ 
+```{r probe}
+probe.zeroes <- function(y){
+  xy <- y["cases",]
+  as.numeric(length(which(xy == 0)))
+}
+probe.max <- function(y){
+  max(y["cases",], na.rm = TRUE)
+}
+
+# probe(measles_pomp, probes = list(probe.zeroes), nsim = 500)
+
+plist <- list(
+  probe.zeroes,
+  probe.max,
+  probe.acf("cases",lags=1,transform=sqrt, type = "correlation")
+  # probe.nlar("cases",lags=c(1,1,1,2),powers=c(1,2,3,1),transform=sqrt)
+)
+
+
+stew(
+  file = "probe_match_results.rda", {
+    pm <- probe.match(
+      measles_pomp,
+      probes = plist,
+      est = names(params),
+      nsim = 4000,
+      transform = TRUE,
+      start = params,
+      method = "Nelder-Mead",
+      seed = 10666L
+    )
+  },
+  seed = 290860832,
+  kind = "L'Ecuyer"
+)
+
+pm_ll <- logLik(pfilter(measles_pomp, Np = 1000, params = coef(pm)))
+
+simulate(
+  measles_pomp, 
+  params = coef(pm),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = cases, group = sim, color = (sim == "data"))) +
+    geom_line() +
+    scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+    guides(color = FALSE) +
+    facet_wrap(~sim, ncol = 2) +
+    scale_y_sqrt() +
+    theme(strip.text=element_blank())
+```
+
+The log-likelihood at these parameter values is `r pm_ll`.
+
 ### Global search
 
 ```{r global-mif}
@@ -308,8 +386,8 @@ stew(file="global_search_measles.rda",{
       guess <- apply(param_box,1,function(x)runif(1,x[1],x[2]))
       mf <- mif2(measles_pomp,
                  start=c(guess),
-                 Np=2000,
-                 Nmif=300,
+                 Np=20,
+                 Nmif=30,
                  cooling.type="geometric",
                  cooling.fraction.50=0.5,
                  transform=TRUE,
@@ -327,6 +405,8 @@ stew(file="global_search_measles.rda",{
 
 m1
 ```
+
+
 
 
 
