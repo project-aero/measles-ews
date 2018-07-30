@@ -267,5 +267,5 @@ stew(file="global_search_measles.rda",{
   })
 },seed=290860873,kind="L'Ecuyer")
 
-m1
+
 
