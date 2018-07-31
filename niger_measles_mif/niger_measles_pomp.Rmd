@@ -232,10 +232,10 @@ params <- c(
   psi = 1,
   rho = 0.5,
   tau = 0.1,
-  sigma_dem = 0.004,
-  sigma_env = 0.005,
+  sigma_env = 0.0001,
+  sigma_dem = 0.0001,
   S_0 = 20000, 
-  I_0 = 20
+  I_0 = 100
 )
 
 # Generate pomp object
@@ -244,7 +244,7 @@ measles_pomp <- pomp(
   time = "biweek",
   covar = covar_data,
   tcovar = "biweek",
-  t0 = 0,
+  t0 = 1,
   rprocess = discrete.time.sim(measles_process, delta.t = 1),
   rmeasure = rmeas,
   dmeasure = dmeas,
@@ -311,14 +311,18 @@ probe.zeroes <- function(y){
 probe.max <- function(y){
   max(y["cases",], na.rm = TRUE)
 }
+probe.cumsum <- function(y){
+  cases <- y["cases",1:26]
+  max(cumsum(cases))
+}
 
 # probe(measles_pomp, probes = list(probe.zeroes), nsim = 500)
 
 plist <- list(
   probe.zeroes,
   probe.max,
-  probe.acf("cases",lags=1,transform=sqrt, type = "correlation")
-  # probe.nlar("cases",lags=c(1,1,1,2),powers=c(1,2,3,1),transform=sqrt)
+  probe.cumsum,
+  probe.acf("cases", lags = 1,transform = sqrt, type = "correlation")
 )
 
 
@@ -328,11 +332,12 @@ stew(
       measles_pomp,
       probes = plist,
       est = names(params),
-      nsim = 4000,
+      nsim = 500,
       transform = TRUE,
       start = params,
-      method = "Nelder-Mead",
-      seed = 10666L
+      method = "SANN",
+      seed = 124925L,
+      maxit = 10000
     )
   },
   seed = 290860832,
@@ -343,7 +348,7 @@ pm_ll <- logLik(pfilter(measles_pomp, Np = 1000, params = coef(pm)))
 
 simulate(
   measles_pomp, 
-  params = coef(pm),
+  params = coef(mf),
   nsim = 9,
   as.data.frame = TRUE,
   include.data = TRUE) %>%
@@ -361,21 +366,33 @@ The log-likelihood at these parameter values is `r pm_ll`.
 ### Global search
 
 ```{r global-mif}
-# Define parameter search space
-param_box <- rbind(
-  beta_mu = c(0.0000001, 0.0001),
-  b1 = c(-5, 5),
-  b2 = c(-5, 5),
-  b3 = c(-5, 5),
-  b4 = c(-5, 5),
-  b5 = c(-5, 5),
-  b6 = c(-5, 5),
-  rho = c(0.3, 0.7),
-  tau = c(0.00001, 0.2),
-  S_0 = c(10000, 50000),
-  I_0 = c(5, 100),
-  psi = c(0, 10)
-)
+# Define parameter search space based on probe.match results
+# param_box <- rbind(
+#   beta_mu = c(0.0000001, 0.0001),
+#   b1 = c(-5, 5),
+#   b2 = c(-5, 5),
+#   b3 = c(-5, 5),
+#   b4 = c(-5, 5),
+#   b5 = c(-5, 5),
+#   b6 = c(-5, 5),
+#   rho = c(0.3, 0.7),
+#   tau = c(0.00001, 0.2),
+#   S_0 = c(10000, 50000),
+#   I_0 = c(5, 100),
+#   psi = c(0, 10)
+# )
+
+probe_ests <- coef(pm)
+
+make_guess <- function(params, sd_perc = 0.1){
+  n <- length(params)
+  out <- numeric(n)
+  for(i in 1:n){
+    out[i] <- rnorm(1, params[i], abs(params[i])*sd_perc)
+  }
+  names(out) <- names(params)
+  return(out)
+}
 
 stew(file="global_search_measles.rda",{
   w1 <- getDoParWorkers()
@@ -383,13 +400,13 @@ stew(file="global_search_measles.rda",{
     m1 <- foreach(i=1:2,.packages='pomp',.combine=rbind,
                   .options.multicore=list(set.seed=TRUE)
     ) %dopar% {
-      guess <- apply(param_box,1,function(x)runif(1,x[1],x[2]))
+      guess <- make_guess(probe_ests, sd_perc = 0.2)
       mf <- mif2(measles_pomp,
                  start=c(guess),
-                 Np=20,
-                 Nmif=30,
-                 cooling.type="geometric",
-                 cooling.fraction.50=0.5,
+                 Np=2000,
+                 Nmif=1000,
+                 cooling.type="hyperbolic",
+                 cooling.fraction.50=1,
                  transform=TRUE,
                  rw.sd=rw.sd(
                    beta_mu=0.02, rho=0.02, tau=0.02,
