@@ -17,12 +17,12 @@ library(lubridate)  # time and date functions
 library(rjags)      # MCMC sampling algorithms for Bayesian models
 library(ggmcmc)     # quick conversions of MCMC output to data frames
 library(parallel)   # functions for parallel computing on multiple cores
-library(splines2)
+library(splines2)   # functions for generating basis functions
 
 
 # Read in data ------------------------------------------------------------
 
-file_name <- "../niger_measles/niger_regional_1995_2005.csv"
+file_name <- "niger_regional_1995_2005.csv"
 niger_measles_raw <- read_csv(file_name, col_types = cols())
 
 num_regions <- nrow(niger_measles_raw)
@@ -66,8 +66,8 @@ eta ~ dunif(0,50)
 
 # Process model
 for(t in 1:(ntimes-1)){
-lambda[t] = exp(-beta[t] * (I[t] + psi))
-Delta[t] ~ dbin(lambda[t], S[t])
+inv_lambda[t] = exp(-beta[t] * (I[t] + psi))
+Delta[t] ~ dbin(inv_lambda[t], S[t])
 I[t+1] = S[t] - Delta[t]
 S[t+1] = b[t] + Delta[t]
 }
@@ -82,7 +82,8 @@ for(t in 2:ntimes){
 epsilon[t] ~ dnorm(0, tau_proc)
 gamma[t] = gamma[t-1] + epsilon[t]
 }
-tau_proc ~ dgamma(0.001, 0.001)
+tau_proc <- pow(sigma_proc, -2)
+sigma_proc ~ dunif(0.00001, 10)
 
 for(t in 1:nseas){
 season[t] <- inprod(base[t,], alpha[])
@@ -90,9 +91,10 @@ season[t] <- inprod(base[t,], alpha[])
 
 # b-splines
 for(i in 1:J){
-alpha[i] ~ dnorm(0, taub)
+alpha[i] ~ dnorm(0, tau_bsplines)
 }
-taub ~ dgamma(0.1, 0.1)
+tau_bsplines <- pow(sigma_bsplines, -2)
+sigma_bsplines ~ dunif(0.00001, 10)
 
 rho ~ dbeta(3.6, 6.3)
 epsilon[1] ~ dnorm(0, tau_proc)
@@ -120,12 +122,12 @@ beta_season[s] = exp(gamma0) * (1+season[s])
 
 # Format data for model fitting -------------------------------------------
 
-population <- read_csv("../niger_measles/district_pops.csv") %>%
+population <- read_csv("district_pops.csv") %>%
   gather(key = year, value = population, -X1) %>%
   rename(district = X1) %>%
   filter(district == "Niamey I")
 
-birth_rates <- read_csv("../niger_measles/niger_crude_birth_rates.csv") %>%
+birth_rates <- read_csv("niger_crude_birth_rates.csv") %>%
   mutate(
     date = mdy(date),  # lubridate prefixes any 2digit year 00-68 with 20, not a problem for us though
     year = as.character(year(date)),
@@ -151,8 +153,7 @@ biweek_data <- measles_data %>%
   mutate(
     births = round(rep(births$births_per_week*2, each = 26)),
     population = round(rep(population$population, each = 26))
-  ) %>%
-  filter(year(date) < 2001)
+  )
 
 
 # Gather data
@@ -178,7 +179,7 @@ jags_data <- list(
   yr_id = yr_id,
   epiyears = 6,
   s = rep(1:nseas, 10),
-  base = periodic.bspline.basis(x = 1:26, nbasis = 6, degree = 2, period = 26)
+  base = periodic.bspline.basis(x = 1:26, nbasis = 6, degree = 3, period = 26)
 )
 
 # Create initial value function for parallel MCMC
@@ -187,18 +188,18 @@ generate_initial_values <- function(){
     Iobs = rpois(nobs, 100),  # observed cases state vector
     I = rpois(nobs, 100/0.5),  # latent infected class state vector
     S = rpois(nobs, 30000),  # latent susceptible class state vector
-    gamma = runif(6, log(1e-07), log(1e-04)),  # time-varying transmission rate vector
-    beta = runif(nobs, 1e-07, 1e-04),  # time-varying seasonal transmission rate vector
-    rho = rnorm(1, 0.16, 0.00001),  # reporting fraction, centered on ~0.166
-    escape_prob = runif((ntimes-1), 0.9, 0.99),  # time-varying escape-from-infection probability vector
-    theta = runif(1, 10, 14),  # phase of sin wave seasonality
-    r = runif(1, 0.001, 5),  # dispersion of negative binomial observation process
-    sigma_gamma = runif(1, 0.1, 0.6),  # std. dev. of noise on transmission rate
+    gamma = runif(nobs, -13, -9),  # time-varying transmission rate vector
+    beta = runif(nobs, exp(-13), exp(-9)),  # time-varying seasonal transmission rate vector
+    rho = rnorm(1, 0.5, 0.06),  # reporting fraction, centered on ~0.5
+    inv_lambda = runif((ntimes-1), 0.9, 0.99),  # time-varying escape-from-infection probability vector
+    eta = runif(1, 0.001, 5),  # dispersion of negative binomial observation process
+    psi = runif(1, 0, 10),  # influx of infection
+    sigma_proc = runif(1, 0.1, 1),  # std. dev. of noise on transmission rate
+    sigma_bsplines = runif(1, 0.0001, 2),  # std. dev. of bsplines for seasonality
     epsilon = runif(1, 0.4, 0.8),  # amplitude of sin wave seasonality
     S0 = rpois(1, 30000),  # initial condition for susceptible class
     I0 = rpois(1, initI),  # initial condition for infected class
     gamma0 = runif(1, -13, -9),  # initial condition for transmission rate
-    m = rpois(1, 10)
   )
 }
 
@@ -206,8 +207,8 @@ generate_initial_values <- function(){
 # Run the MCMC ------------------------------------------------------------
 
 # Set MCMC parameters
-n_adapt <- 50000  # iterations for adaptation phase
-n_update <- 150000  # iterations for burn-in to stationary distributions
+n_adapt <- 100000  # iterations for adaptation phase
+n_update <- 1000000  # iterations for burn-in to stationary distributions
 n_sample <- 100000  # iterations for sampling from posterior
 
 # Set up cluster
@@ -243,7 +244,7 @@ mcmc_results <- clusterEvalQ(
     vars_to_collect <- c(
       "Iobs", "I", "S", "Rnaught", "gamma", "beta", "rho", "lambda", 
       "psi", "upsilon", "theta", "eta", "r", "sigma_gamma", "S0", "I0", 
-      "gamma0", "kappa", "phi"
+      "gamma0", "phi"
     )
     
     mcmc_core <- coda.samples(
@@ -273,3 +274,5 @@ ggs(mcmc_all) %>%
     lower_50 = quantile(value, 0.25)
   ) %>%
   write_csv(path = "./mcmc_results.csv")
+
+saveRDS(object = mcmc_all, file = "mcmc_chains.RDS")
