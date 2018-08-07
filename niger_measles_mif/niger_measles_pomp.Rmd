@@ -121,7 +121,8 @@ measles_process <- Csnippet(
 ```{r measurement-model}
 rmeas <- Csnippet(
   "
-  cases = rnorm(rho*I, sqrt( pow(tau*I,2) + rho*I ) );
+  //cases = rnorm(rho*I, sqrt( pow(tau*I,2) + rho*I ) );
+  cases = rnbinom_mu(1/tau, rho*I);
   if (cases > 0.0) {
     cases = nearbyint(cases);
   } else {
@@ -135,15 +136,16 @@ rmeas <- Csnippet(
 ```{r likelihood-model}
 dmeas <- Csnippet(
   "
-  double tol = 1.0e-25;
-  double mean_cases = rho*I;
-  double sd_cases = sqrt(pow(tau*I, 2) + mean_cases);
-  if (cases > 0.0) {
-    lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) - pnorm(cases-0.5,mean_cases,sd_cases,1,0) + tol; 
-  } else{
-    lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) + tol;
-  }
-  if (give_log) lik = log(lik);
+  //double tol = 1.0e-25;
+  double mean_cases = nearbyint(rho*I);
+  //double sd_cases = sqrt(pow(tau*I, 2) + mean_cases);
+  //if (cases > 0.0) {
+   // lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) - pnorm(cases-0.5,mean_cases,sd_cases,1,0) + tol; 
+ // } else{
+  //  lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) + tol;
+ // }
+  lik = dnbinom_mu(cases, 1/tau, mean_cases, give_log);
+  //if (give_log) lik = exp(lik);
   "
 )
 ```
@@ -231,10 +233,10 @@ params <- c(
   b6 = 3,
   psi = 1,
   rho = 0.5,
-  tau = 0.1,
-  sigma_env = 0.0001,
-  sigma_dem = 0.0001,
-  S_0 = 20000, 
+  tau = 1,
+  sigma_env = 0.01,
+  sigma_dem = 0.01,
+  S_0 = 50000, 
   I_0 = 100
 )
 
@@ -332,11 +334,11 @@ stew(
       measles_pomp,
       probes = plist,
       est = names(params),
-      nsim = 500,
+      nsim = 50,
       transform = TRUE,
       start = params,
       method = "SANN",
-      seed = 124925L,
+      seed = 1249252L,
       maxit = 10000
     )
   },
@@ -348,7 +350,7 @@ pm_ll <- logLik(pfilter(measles_pomp, Np = 1000, params = coef(pm)))
 
 simulate(
   measles_pomp, 
-  params = coef(mf),
+  params = coef(pm),
   nsim = 9,
   as.data.frame = TRUE,
   include.data = TRUE) %>%
@@ -397,21 +399,21 @@ make_guess <- function(params, sd_perc = 0.1){
 stew(file="global_search_measles.rda",{
   w1 <- getDoParWorkers()
   t1 <- system.time({
-    m1 <- foreach(i=1:2,.packages='pomp',.combine=rbind,
+    m1 <- foreach(i=1:10,.packages='pomp',.combine=rbind,
                   .options.multicore=list(set.seed=TRUE)
     ) %dopar% {
       guess <- make_guess(probe_ests, sd_perc = 0.2)
       mf <- mif2(measles_pomp,
                  start=c(guess),
-                 Np=2000,
-                 Nmif=1000,
-                 cooling.type="hyperbolic",
-                 cooling.fraction.50=1,
+                 Np=1000,
+                 Nmif=20,
+                 cooling.type="geometric",
+                 cooling.fraction.50=0.5,
                  transform=TRUE,
                  rw.sd=rw.sd(
-                   beta_mu=0.02, rho=0.02, tau=0.02,
+                   beta_mu=0.02, rho=0.02, tau=0.01,
                    b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
-                   I_0=ivp(0.2), S_0=ivp(0.2), psi = 0.02
+                   I_0=ivp(0.1), S_0=ivp(1), psi = 0.02
                  )
                 )
       ll <- logmeanexp(replicate(10,logLik(pfilter(mf,Np=5000))),se=TRUE)
@@ -420,10 +422,141 @@ stew(file="global_search_measles.rda",{
   })
 },seed=290860873,kind="L'Ecuyer")
 
-m1
+bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
+  foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
+    guess <- make_guess(probe_ests, sd_perc = 0.2)
+    mif2(measles_pomp,
+                 start=c(guess),
+                 Np=4000,
+                 Nmif=200,
+                 cooling.type="geometric",
+                 cooling.fraction.50=1,
+                 transform=TRUE,
+                 rw.sd=rw.sd(
+                   beta_mu=0.02, rho=0.02, tau=0.02, sigma_dem = 0.02, sigma_env = 0.02,
+                   b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
+                   I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
+                 )
+                )
+  }
+}) -> mifs
+
+mifs %>%
+  conv.rec(c("loglik", "nfail", names(params))) %>%
+  reshape2::melt() %>%
+  ggplot(aes(x=iteration,y=value,color=as.factor(L1),group=L1))+
+  geom_line()+
+  guides(color=FALSE)+
+  labs(x="MIF2 Iteration",y="")+
+  facet_wrap(~variable,scales="free_y",ncol=2)+
+  theme_bw()
+
+best_params <- mifs %>%
+  filter(loglik == max(loglik)) %>%
+  dplyr::select(-loglik, -loglik.se) %>%
+  as.numeric()
+
+ll_ests <- mifs %>%
+  conv.rec(c("loglik", names(params))) %>%
+  reshape2::melt() %>%
+  filter(iteration == 199) %>%
+  spread(key = variable, value = value) %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-iteration, -L1, -loglik) %>%
+  unlist()
+
+simulate(
+  measles_pomp, 
+  params = ll_ests,
+  nsim = 19,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = cases, group = sim, color = (sim == "data"))) +
+    geom_line() +
+    scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+    guides(color = FALSE) +
+    facet_wrap(~sim, ncol = 2) +
+    scale_y_sqrt() +
+    theme(strip.text=element_blank())
+
 ```
 
 
+OK, that doesn't look too bad. Some of the spikes are a little large, but on the whole the dynamics look pretty good. Now time to estimate the states with empirical Bayes.
 
+### Empirical Bayes for state-space reconstruction
+```{r pmcmc}
+stew(
+  file = "pmcmc_results.rda",
+  {
+    outmcmc <- pmcmc(
+      measles_pomp, 
+      Nmcmc=10000,
+      Np=500,
+      start=ll_ests,
+      proposal=mvn.diag.rw(
+        rw.sd=c(
+          beta_mu=0.00001,
+          b1 = 1,
+          b2 = 1,
+          b3 = 1,
+          b4 = 1,
+          b5 = 1,
+          b6 = 1,
+          S_0 = 10000,
+          psi = 0.1,
+          sigma_env = 0.0001,
+          sigma_dem = 0.0001,
+          tau = 0.001,
+          I_0 = 0.1,
+          rho = 0.01
+        )
+      )
+    )
+  },
+  seed=29086087, kind="L'Ecuyer"
+)
+
+traces <- conv.rec(outmcmc)
+traces <- window(traces,thin=1,start=3000)
+plot(traces[,"rho"])
+hist(traces[,"beta_mu"], col = "grey", border = "white")
+mle_rho = mean(traces[,"rho"])
+
+test <- outmcmc %>% 
+  filter.traj() %>%
+  reshape2::melt() %>%
+  as_tibble() %>%
+  filter(rep > 1000) %>%
+  dplyr::group_by(variable, time) %>%
+  dplyr::summarise(
+    median_value = quantile(value, 0.5),
+    upper_value = quantile(value, 0.975),
+    lower_value = quantile(value, 0.025)
+  ) 
+
+ggplot(test, aes(x = time)) +
+  geom_ribbon(aes(ymin = lower_value, ymax = upper_value), alpha = 0.3) +
+  geom_line(aes(y = median_value)) +
+  facet_wrap(~variable, scales = "free", ncol = 1) +
+  scale_y_sqrt()
+
+pred_obs <- test %>%
+  filter(variable == "I") %>%
+  mutate(
+    median_value = median_value*mle_rho,
+    upper_value = upper_value*mle_rho,
+    lower_value = lower_value*mle_rho,
+    cases = biweek_data$cases,
+    date = biweek_data$date
+  )
+
+ggplot(pred_obs, aes(x = date)) +
+  geom_point(aes(y = cases), color = "grey35") +
+  geom_ribbon(aes(ymin = lower_value, ymax = upper_value), fill = "coral", alpha = 0.4) +
+  geom_line(aes(y = median_value), color = "coral") +
+  labs(x = "Date", y = "Reported cases")
+
+```
 
 
