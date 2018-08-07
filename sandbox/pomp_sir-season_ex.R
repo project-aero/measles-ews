@@ -160,12 +160,6 @@ bspline_basis <- periodic.bspline.basis(
 
 covar_data <- case_data %>%
   dplyr::select(week, births) %>%
-  bind_rows(
-    tibble(
-      week = 0,
-      births = 100
-    )
-  ) %>%
   arrange(week) %>%
   bind_cols(bspline_basis)
 
