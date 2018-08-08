@@ -101,19 +101,28 @@ Now we define the multiple parts of the `pomp` object for particle filtering.
 measles_process <- Csnippet(
   "
   double dN[2];
+  double beta;
+  // double omega;
+  double dw;
+  double inv_lambda;
+  double delta;
 
-  double beta_r = beta_mu * (1 + dot_product(K, &xi1, &b1));
-  double inv_lambda = exp(-beta_r * (I + psi));
-  double var_epsilon = pow(sigma_dem,2)/inv_lambda +  sigma_env*sigma_env;
-  inv_lambda *= (var_epsilon < 1.0e-6) ? 1 : rgamma(1/var_epsilon,var_epsilon);
+  beta = exp(dot_product(nbasis,&seas1,&logbeta1)+beta_trend*trend);
+  // omega = exp(dot_product(nbasis,&seas1,&logomega1));
+  dw = rnorm(0,sqrt(dt));	// white noise
+  inv_lambda = exp((-(beta*sd_beta*dw/dt)) * (I + omega));
   if(inv_lambda > 1){
     inv_lambda = 1;
   }
-  double delta = rbinom(nearbyint(S), inv_lambda);
+
+  delta = rbinom(nearbyint(S), inv_lambda);
   dN[0] = delta + births;
   dN[1] = S - delta;
-  S = nearbyint(dN[0]);
-  I = nearbyint(dN[1]);
+
+  S = nearbyint(dN[0]);  // susceptible state
+  I = nearbyint(dN[1]);  // infected state
+  W = dw;  // white noise state
+  beta_t = beta*sd_beta*dw/dt;  // transmission rate state 
   "
 )
 ```
@@ -122,8 +131,9 @@ measles_process <- Csnippet(
 ```{r measurement-model}
 rmeas <- Csnippet(
   "
-  //cases = rnorm(rho*I, sqrt( pow(tau*I,2) + rho*I ) );
-  cases = rnbinom_mu(1/tau, rho*I);
+  double v;
+  v = nearbyint(I*rho);
+  cases = rnbinom_mu(1/tau, v);
   if (cases > 0.0) {
     cases = nearbyint(cases);
   } else {
@@ -137,16 +147,9 @@ rmeas <- Csnippet(
 ```{r likelihood-model}
 dmeas <- Csnippet(
   "
-  //double tol = 1.0e-25;
-  double mean_cases = nearbyint(rho*I);
-  //double sd_cases = sqrt(pow(tau*I, 2) + mean_cases);
-  //if (cases > 0.0) {
-   // lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) - pnorm(cases-0.5,mean_cases,sd_cases,1,0) + tol; 
- // } else{
-  //  lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) + tol;
- // }
-  lik = dnbinom_mu(cases, 1/tau, mean_cases, give_log);
-  //if (give_log) lik = exp(lik);
+  double v;
+  v = nearbyint(rho*I);
+  lik = dnbinom_mu(cases, 1/tau, v, give_log);
   "
 )
 ```
@@ -160,33 +163,31 @@ init <- Csnippet(
   "
   I = nearbyint(I_0);
   S = nearbyint(S_0);
+  W = 0;
+  beta_t = 0;
   "
 )
 
 # Set up parameter transformations
 to_est <- Csnippet(
   "
-  Tbeta_mu = log(beta_mu);
+  Tomega = log(omega);
   Trho = logit(rho);
   Ttau = log(tau);
-  Tsigma_dem = log(sigma_dem);
-  Tsigma_env = log(sigma_env);
+  Tsd_beta = log(sd_beta);
   TS_0 = log(S_0);
   TI_0 = log(I_0);
-  Tpsi = log(psi);
   "
 )
 
 from_est <- Csnippet(
   "
-  Tbeta_mu = exp(beta_mu);
+  Tomega = exp(omega);
   Trho = expit(rho);
   Ttau = exp(tau);
-  Tsigma_dem = exp(sigma_dem);
-  Tsigma_env = exp(sigma_env);
+  Tsd_beta = exp(sd_beta);
   TS_0 = exp(S_0);
   TI_0 = exp(I_0);
-  Tpsi = exp(psi);
   "
 )
 ```
@@ -201,20 +202,33 @@ obs_data <- biweek_data %>%
   dplyr::select(biweek, cases) %>%
   mutate(cases = round(cases, 0))
 
+t0 <- 0
+tcovar <- c(t0, obs_data$biweek)
+
 # Generate basis functions for seasonality
 bspline_basis <- periodic.bspline.basis(
-  obs_data$biweek,
+  tcovar,
   nbasis = 6,
   degree = 3,
   period = 26,
-  names = "xi%d"
+  names = "seas%d"
 ) %>%
   as_tibble()
 
+# Smooth through observed births
+births_biweeks <- biweek_data %>%
+  dplyr::select(date, biweek, births) %>%
+  mutate(year = year(date)) %>%
+  group_by(year) %>%
+  filter(biweek == min(biweek))
+births <- predict(smooth.spline(x=biweek_data$biweek, y=biweek_data$births), x=tcovar)$y
+
 # Combine with births data for covariate table
-covar_data <- biweek_data %>%
-  dplyr::select(biweek, births) %>%
-  arrange(biweek) %>%
+covar_data <- tibble(
+  biweek = tcovar,
+  births = births,
+  trend=tcovar-mean(tcovar)
+) %>%
   bind_cols(bspline_basis)
 ```
 
@@ -225,21 +239,23 @@ We also set reasonable parameter values as place holders for making sure the mod
 ```{r pomp-container}
 # Set some realistic parameter values for testing via simulation
 params <- c(
-  beta_mu = 0.00001,
-  b1 = 3,
-  b2 = 0,
-  b3 = 1.5,
-  b4 = 6,
-  b5 = 5,
-  b6 = 3,
-  psi = 1,
-  rho = 0.5,
+  beta_trend = -0.001,
+  logbeta1 = -9, 
+  logbeta2 = -9, 
+  logbeta3 = -9.5, 
+  logbeta4 = -10, 
+  logbeta5 = -10, 
+  logbeta6 = -10,
+  omega = 10,
+  sd_beta = 10,
+  rho = 0.1,
   tau = 1,
-  sigma_env = 0.01,
-  sigma_dem = 0.01,
-  S_0 = 50000, 
-  I_0 = 100
+  S.0 = 100000, 
+  I.0 = 100
 )
+
+beta_params <- params[grep("logbeta", names(params))]
+plot(as.matrix(bspline_basis[1:26,]) %*% exp(beta_params))
 
 # Generate pomp object
 measles_pomp <- pomp(
@@ -252,12 +268,12 @@ measles_pomp <- pomp(
   rmeasure = rmeas,
   dmeasure = dmeas,
   initializer = init,
-  statenames = c("S", "I"),
+  statenames = c("S", "I", "W", "beta_t"),
   toEstimationScale = to_est,
   fromEstimationScale = from_est,
   paramnames = names(params),
   params = params,
-  globals = "int K = 6;"
+  globals = "int nbasis = 6;"
 )
 ```
 
@@ -324,22 +340,21 @@ probe.cumsum <- function(y){
 plist <- list(
   probe.zeroes,
   probe.max,
-  probe.cumsum,
   probe.acf("cases", lags = 1,transform = sqrt, type = "correlation")
 )
 
 
 stew(
-  file = "probe_match_results.rda", {
+  file = "probe_match_results-v2.rda", {
     pm <- probe.match(
       measles_pomp,
       probes = plist,
       est = names(params),
-      nsim = 50,
+      nsim = 100,
       transform = TRUE,
       start = params,
-      method = "SANN",
-      seed = 1249252L,
+      method = "sannbox",
+      seed = 1212352L,
       maxit = 10000
     )
   },
@@ -370,32 +385,66 @@ The log-likelihood at these parameter values is `r pm_ll`.
 
 ```{r global-mif}
 # Define parameter search space based on probe.match results
-# param_box <- rbind(
-#   beta_mu = c(0.0000001, 0.0001),
-#   b1 = c(-5, 5),
-#   b2 = c(-5, 5),
-#   b3 = c(-5, 5),
-#   b4 = c(-5, 5),
-#   b5 = c(-5, 5),
-#   b6 = c(-5, 5),
-#   rho = c(0.3, 0.7),
-#   tau = c(0.00001, 0.2),
-#   S_0 = c(10000, 50000),
-#   I_0 = c(5, 100),
-#   psi = c(0, 10)
-# )
+param_box <- tibble(
+  parameter = names(params),
+  mle1 = coef(pm),
+  box_min = c(-0.1, -15, -15, -15, -15, -15, -15, 0.001, 0.001, 0.05, 0.0001, 10000, 30),
+  box_max = c(0.1, -8, -8, -8, -8, -8, -8, 10, 5, 0.6, 100, 200000, 500)
+) 
 
-probe_ests <- coef(pm)
+measles_params <- names(params)[-grep("\\.0", names(params))]
+measles_ivps <- c("S.0", "I.0", "beta_t")
+                       
+measles_hypers <- list(
+  min = param_box$box_min,
+  max = param_box$box_max
+)
 
-make_guess <- function(params, sd_perc = 0.1){
-  n <- length(params)
-  out <- numeric(n)
-  for(i in 1:n){
-    out[i] <- rnorm(1, params[i], abs(params[i])*sd_perc)
-  }
-  names(out) <- names(params)
-  return(out)
+measles_rprior <- function(params, hyperparams, ...){
+  r <- runif(
+    n = length(hyperparams$min),
+    min = hyperparams$min,
+    max = hyperparams$max
+  )
 }
+
+measles_dprior <- function(params, hyperparams, ..., log = FALSE){
+  d <- sum(
+    dunif(
+      x = params,
+      min = hyperparams$min,
+      max = hyperparams$max,
+      log = TRUE
+    )
+  )
+  if(log) d else exp(d)
+}
+
+measles_pomp <- pomp(
+  measles_pomp,
+  rprior = measles_rprior,
+  dprior = measles_dprior,
+  hyperparams = measles_hypers
+)
+
+th_draw <- rprior(measles_pomp, param_box$mle1)[,1]
+names(th_draw) <- param_box$parameter
+mif2_solo <- mif2(measles_pomp, Nmif = 200, Np = 1000, start = th_draw, pars = measles_params, ivps = measles_ivps, 
+                  rw.sd = rw.sd(beta_trend = 0.1,
+                                logbeta1 = 0.1,
+                                logbeta2 = 0.1,
+                                logbeta3 = 0.1,
+                                logbeta4 = 0.1,
+                                logbeta5 = 0.1,
+                                logbeta6 = 0.1,
+                                omega = 0.1,
+                                sd_beta = 0.1,
+                                rho = 0.1,
+                                tau = 0.1,
+                                S.0 = ivp(0.2, lag = 27),
+                                I.0 = ivp(0.2, lag = 27)), 
+                  cooling.type = "geometric", cooling.fraction = sqrt(0.1), transform = TRUE)
+
 
 # stew(file="global_search_measles.rda",{
 #   w1 <- getDoParWorkers()
@@ -423,7 +472,7 @@ make_guess <- function(params, sd_perc = 0.1){
 #   })
 # },seed=290860873,kind="L'Ecuyer")
 
-bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
+bake(file="mif-v2.rds",seed=900242057,kind="L'Ecuyer",{
   foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
     guess <- make_guess(probe_ests, sd_perc = 0.2)
     mif2(measles_pomp,
@@ -431,13 +480,10 @@ bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
                  Np=4000,
                  Nmif=200,
                  cooling.type="geometric",
-                 cooling.fraction.50=1,
+                 cooling.fraction.50=sqrt(0.1),
                  transform=TRUE,
-                 rw.sd=rw.sd(
-                   beta_mu=0.02, rho=0.02, tau=0.02, sigma_dem = 0.02, sigma_env = 0.02,
-                   b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
-                   I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
-                 )
+               
+                 rw.sd=
                 )
   }
 }) -> mifs
@@ -463,7 +509,7 @@ ll_ests <- mifs %>%
 
 simulate(
   measles_pomp, 
-  params = ll_ests,
+  params = coef(mif2_solo),
   nsim = 9,
   as.data.frame = TRUE,
   include.data = TRUE) %>%
@@ -483,40 +529,39 @@ OK, that doesn't look too bad. Some of the spikes are a little large, but on the
 ### Empirical Bayes for state-space reconstruction
 ```{r pmcmc}
 stew(
-  file = "pmcmc_results.rda",
+  file = "pmcmc_results-v2.rda",
   {
     outmcmc <- pmcmc(
       measles_pomp, 
-      Nmcmc=500,
-      Np=50,
-      start=ll_ests,
+      Nmcmc=100,
+      Np=100,
+      start=coef(mif2_solo),
       proposal=mvn.rw.adaptive(
         rw.sd=c(
-          beta_mu=0.00001,
-          b1 = 1,
-          b2 = 1,
-          b3 = 1,
-          b4 = 1,
-          b5 = 1,
-          b6 = 1,
-          S_0 = 10000,
-          psi = 0.1,
-          sigma_env = 0.0001,
-          sigma_dem = 0.0001,
-          tau = 0.001,
-          I_0 = 0.1,
-          rho = 0.03
+          beta_trend = 0.1,
+          logbeta1 = 1,
+          logbeta2 = 0.1,
+          logbeta3 = 0.1,
+          logbeta4 = 0.1,
+          logbeta5 = 0.1,
+          logbeta6 = 0.1,
+          omega = 0.1,
+          sd_beta = 0.1,
+          tau = 0.1,
+          I.0 = 0.2,
+          S.0 = 0.2,
+          rho = 0.1
         )
       )
     )
   },
-  seed=29086087, kind="L'Ecuyer"
+  seed=290887, kind="L'Ecuyer"
 )
 
 traces <- conv.rec(outmcmc)
 traces <- window(traces,thin=1,start=1)
-plot(traces[,"S_0"])
-hist(traces[,"beta_mu"], col = "grey", border = "white")
+plot(traces[,"beta_trend"])
+hist(traces[,"beta_trend"], col = "grey", border = "white")
 mle_rho = mean(traces[,"rho"])
 
 test <- outmcmc %>% 
