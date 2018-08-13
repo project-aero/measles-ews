@@ -426,10 +426,11 @@ make_guess <- function(params, sd_perc = 0.1){
 bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
   foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
     guess <- make_guess(probe_ests, sd_perc = 0.2)
-    mif2(measles_pomp,
+# Try fixing the variability parameters
+   ttt <- mif2(measles_pomp,
                  start=c(guess),
-                 Np=4000,
-                 Nmif=200,
+                 Np=400,
+                 Nmif=100,
                  cooling.type="geometric",
                  cooling.fraction.50=1,
                  transform=TRUE,
@@ -464,7 +465,7 @@ ll_ests <- mifs %>%
 simulate(
   measles_pomp, 
   params = ll_ests,
-  nsim = 9,
+  nsim = 19,
   as.data.frame = TRUE,
   include.data = TRUE) %>%
   ggplot(aes(x = time, y = cases, group = sim, color = (sim == "data"))) +
