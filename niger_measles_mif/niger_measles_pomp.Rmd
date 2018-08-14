@@ -284,9 +284,6 @@ simulate(
     theme(strip.text=element_blank())
 ```
 
-Not bad.
-Magnitudes are bit a off, but these are just random guess parameters.
-Importantly, it appears the model is capable of reproducing the dynamics of the data.
 
 It is also important to make sure the underlying likelihood model is specified properly.
 We can test this by running one instance of the particle filter (`pomp::pfilter()`) at the current parameter values: `logLik(pfilter(measles_pomp, Np = 1000))` = `r round(logLik(pfilter(measles_pomp, Np = 1000)))`.
@@ -338,7 +335,7 @@ stew(
       measles_pomp,
       probes = plist,
       est = names(params),
-      nsim = 250,
+      nsim = 500,
       transform = TRUE,
       start = params,
       method = "Nelder-Mead",
@@ -454,7 +451,7 @@ mifs1 %>%
   facet_wrap(~variable,scales="free_y",ncol=2)+
   theme_bw()
 
-iter1_coef <- mifs %>%
+iter1_coef <- mifs1 %>%
   conv.rec(c("loglik", names(params))) %>%
   reshape2::melt() %>%
   filter(iteration == 49) %>%
@@ -465,13 +462,13 @@ iter1_coef <- mifs %>%
 
 bake(file="mif2.rds",seed=902057,kind="L'Ecuyer",{
   foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
-    guess <- make_guess(unlist(coef(mifs1)[i,]), sd_perc = 0.2)
+    guess <- make_guess(iter1_coef, sd_perc = 0.2)
     mif2(measles_pomp,
          start=c(guess),
          Np=1000,
          Nmif=50,
          cooling.type="geometric",
-         cooling.fraction.50=0.8,
+         cooling.fraction.50=0.5,
          transform=TRUE,
          rw.sd=rw.sd(
            beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
@@ -492,12 +489,20 @@ mifs2 %>%
   facet_wrap(~variable,scales="free_y",ncol=2)+
   theme_bw()
 
+iter2_coef <- mifs2 %>%
+  conv.rec(c("loglik", names(params))) %>%
+  reshape2::melt() %>%
+  filter(iteration == 49) %>%
+  spread(key = variable, value = value) %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-iteration, -L1, -loglik) %>%
+  unlist()
 
-
+ll_end <- logLik(pfilter(measles_pomp, params = iter2_coef, Np = 1000))
 
 simulate(
   measles_pomp, 
-  params = coef(mifs2)[1,],
+  params = iter2_coef,
   nsim = 9,
   as.data.frame = TRUE,
   include.data = TRUE) %>%
@@ -512,7 +517,7 @@ simulate(
 # Simulate from initial conditions
 model_sims <- simulate(
   measles_pomp, 
-  params = coef(ttt),
+  params = iter2_coef,
   nsim = 1000,
   as.data.frame = TRUE,
   include.data = TRUE) %>%
@@ -525,7 +530,7 @@ simulated_data <- model_sims %>%
   filter(sim != "data") %>%
   group_by(time) %>%
   summarise(
-    med_estimate = mean(cases),
+    med_estimate = median(cases),
     upper_estimate = quantile(cases, 0.95),
     lower_estimate = quantile(cases, 0.05)
   )
@@ -535,9 +540,12 @@ ggplot(simulated_data, aes(x = time)) +
   geom_line(aes(y = med_estimate), color = "blue") +
   geom_line(data = model_data, aes(x = time, y = cases))
 
-# ggplot(filter(model_sims, sim != "data")) +
-#   geom_line(aes(x = time, y = S, group= sim), alpha = 0.2)
+ggplot(filter(model_sims, sim != "data")) +
+  geom_line(aes(x = time, y = S, group= sim), alpha = 0.2)
 
+bs <- iter2_coef[c("b1","b2","b3","b4","b5","b6")]
+beta_season <- (as.matrix(bspline_basis[1:26,]) %*% bs) * iter2_coef["beta_mu"]
+plot(beta_season, ylab = expression(beta), xlab = "week")
 ```
 
 
