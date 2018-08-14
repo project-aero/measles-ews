@@ -338,11 +338,10 @@ stew(
       measles_pomp,
       probes = plist,
       est = names(params),
-      nsim = 200,
+      nsim = 250,
       transform = TRUE,
       start = params,
-      method = "SANN",
-      seed = 1249252L,
+      method = "Nelder-Mead",
       maxit = 10000
     )
   },
@@ -429,24 +428,23 @@ make_guess <- function(params, sd_perc = 0.1){
 bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
   foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
     guess <- make_guess(probe_ests, sd_perc = 0.2)
-# Try fixing the variability parameters
-   ttt <- mif2(measles_pomp,
-                 start=c(guess),
-                 Np=1000,
-                 Nmif=50,
-                 cooling.type="geometric",
-                 cooling.fraction.50=0.5,
-                 transform=TRUE,
-                 rw.sd=rw.sd(
-                   beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
-                   b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
-                   I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
-                 )
-                )
+    mif2(measles_pomp,
+         start=c(guess),
+         Np=1000,
+         Nmif=50,
+         cooling.type="geometric",
+         cooling.fraction.50=1,
+         transform=TRUE,
+         rw.sd=rw.sd(
+           beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
+           b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
+           I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
+         )
+        )
   }
-}) -> mifs
+}) -> mifs1
 
-mifs %>%
+mifs1 %>%
   conv.rec(c("loglik", "nfail", names(params))) %>%
   reshape2::melt() %>%
   ggplot(aes(x=iteration,y=value,color=as.factor(L1),group=L1))+
@@ -456,18 +454,50 @@ mifs %>%
   facet_wrap(~variable,scales="free_y",ncol=2)+
   theme_bw()
 
-ll_ests <- mifs %>%
+iter1_coef <- mifs %>%
   conv.rec(c("loglik", names(params))) %>%
   reshape2::melt() %>%
-  filter(iteration == 199) %>%
+  filter(iteration == 49) %>%
   spread(key = variable, value = value) %>%
   filter(loglik == max(loglik, na.rm = TRUE)) %>%
   dplyr::select(-iteration, -L1, -loglik) %>%
   unlist()
 
+bake(file="mif2.rds",seed=902057,kind="L'Ecuyer",{
+  foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
+    guess <- make_guess(unlist(coef(mifs1)[i,]), sd_perc = 0.2)
+    mif2(measles_pomp,
+         start=c(guess),
+         Np=1000,
+         Nmif=50,
+         cooling.type="geometric",
+         cooling.fraction.50=0.8,
+         transform=TRUE,
+         rw.sd=rw.sd(
+           beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
+           b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
+           I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
+         )
+        )
+  }
+}) -> mifs2
+
+mifs2 %>%
+  conv.rec(c("loglik", "nfail", names(params))) %>%
+  reshape2::melt() %>%
+  ggplot(aes(x=iteration,y=value,color=as.factor(L1),group=L1))+
+  geom_line()+
+  guides(color=FALSE)+
+  labs(x="MIF2 Iteration",y="")+
+  facet_wrap(~variable,scales="free_y",ncol=2)+
+  theme_bw()
+
+
+
+
 simulate(
   measles_pomp, 
-  params = coef(ttt),
+  params = coef(mifs2)[1,],
   nsim = 9,
   as.data.frame = TRUE,
   include.data = TRUE) %>%
@@ -476,8 +506,37 @@ simulate(
     scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
     guides(color = FALSE) +
     facet_wrap(~sim, ncol = 2) +
-    # scale_y_sqrt() +
+    scale_y_sqrt() +
     theme(strip.text=element_blank())
+
+# Simulate from initial conditions
+model_sims <- simulate(
+  measles_pomp, 
+  params = coef(ttt),
+  nsim = 1000,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  as_tibble()
+
+model_data <- model_sims %>%
+  filter(sim == "data")
+
+simulated_data <- model_sims %>%
+  filter(sim != "data") %>%
+  group_by(time) %>%
+  summarise(
+    med_estimate = mean(cases),
+    upper_estimate = quantile(cases, 0.95),
+    lower_estimate = quantile(cases, 0.05)
+  )
+
+ggplot(simulated_data, aes(x = time)) +
+  geom_ribbon(aes(ymin = lower_estimate, ymax = upper_estimate), alpha = 0.2, fill = "blue") +
+  geom_line(aes(y = med_estimate), color = "blue") +
+  geom_line(data = model_data, aes(x = time, y = cases))
+
+# ggplot(filter(model_sims, sim != "data")) +
+#   geom_line(aes(x = time, y = S, group= sim), alpha = 0.2)
 
 ```
 
