@@ -1,6 +1,7 @@
 # https://kingaa.github.io/pomp/vignettes/getting_started.html#specifying-a-discrete-time-process-model-and-skeleton
 
 library(tidyverse)
+library(magrittr)
 library(pomp)
 
 parus_dat <- read.csv(text="

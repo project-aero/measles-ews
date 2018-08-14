@@ -441,9 +441,9 @@ mif2_solo <- mif2(measles_pomp, Nmif = 200, Np = 1000, start = th_draw, pars = m
                                 sd_beta = 0.1,
                                 rho = 0.1,
                                 tau = 0.1,
-                                S.0 = ivp(0.2, lag = 27),
-                                I.0 = ivp(0.2, lag = 27)), 
-                  cooling.type = "geometric", cooling.fraction = sqrt(0.1), transform = TRUE)
+                                S.0 = ivp(0.2, lag = 12),
+                                I.0 = ivp(0.2, lag = 12)), 
+                  cooling.type = "geometric", cooling.fraction = 0.5, transform = TRUE)
 
 
 # stew(file="global_search_measles.rda",{

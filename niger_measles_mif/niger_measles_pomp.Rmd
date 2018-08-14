@@ -104,7 +104,7 @@ measles_process <- Csnippet(
 
   double beta_r = beta_mu * (1 + dot_product(K, &xi1, &b1));
   double inv_lambda = exp(-beta_r * (I + psi));
-  double var_epsilon = pow(sigma_dem,2)/inv_lambda +  sigma_env*sigma_env;
+  double var_epsilon = sigma_env;
   inv_lambda *= (var_epsilon < 1.0e-6) ? 1 : rgamma(1/var_epsilon,var_epsilon);
   if(inv_lambda > 1){
     inv_lambda = 1;
@@ -114,6 +114,7 @@ measles_process <- Csnippet(
   dN[1] = S - delta;
   S = nearbyint(dN[0]);
   I = nearbyint(dN[1]);
+  beta_t = beta_r;
   "
 )
 ```
@@ -122,7 +123,8 @@ measles_process <- Csnippet(
 ```{r measurement-model}
 rmeas <- Csnippet(
   "
-  //cases = rnorm(rho*I, sqrt( pow(tau*I,2) + rho*I ) );
+  // cases = rnorm(rho*I, sqrt( pow(tau*I,2) + rho*I ) );
+
   cases = rnbinom_mu(1/tau, rho*I);
   if (cases > 0.0) {
     cases = nearbyint(cases);
@@ -137,16 +139,17 @@ rmeas <- Csnippet(
 ```{r likelihood-model}
 dmeas <- Csnippet(
   "
-  //double tol = 1.0e-25;
-  double mean_cases = nearbyint(rho*I);
-  //double sd_cases = sqrt(pow(tau*I, 2) + mean_cases);
-  //if (cases > 0.0) {
-   // lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) - pnorm(cases-0.5,mean_cases,sd_cases,1,0) + tol; 
+ // double tol = 1.0e-25;
+ // double sd_cases = sqrt(pow(tau*I, 2) + mean_cases);
+ // if (cases > 0.0) {
+ //  lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) - pnorm(cases-0.5,mean_cases,sd_cases,1,0) + tol; 
  // } else{
-  //  lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) + tol;
+ //  lik = pnorm(cases+0.5,mean_cases,sd_cases,1,0) + tol;
  // }
+ // if (give_log) lik = exp(lik);
+
+  double mean_cases = nearbyint(rho*I);
   lik = dnbinom_mu(cases, 1/tau, mean_cases, give_log);
-  //if (give_log) lik = exp(lik);
   "
 )
 ```
@@ -160,6 +163,7 @@ init <- Csnippet(
   "
   I = nearbyint(I_0);
   S = nearbyint(S_0);
+  beta_t = 0;
   "
 )
 
@@ -169,7 +173,7 @@ to_est <- Csnippet(
   Tbeta_mu = log(beta_mu);
   Trho = logit(rho);
   Ttau = log(tau);
-  Tsigma_dem = log(sigma_dem);
+  // Tsigma_dem = log(sigma_dem);
   Tsigma_env = log(sigma_env);
   TS_0 = log(S_0);
   TI_0 = log(I_0);
@@ -182,7 +186,7 @@ from_est <- Csnippet(
   Tbeta_mu = exp(beta_mu);
   Trho = expit(rho);
   Ttau = exp(tau);
-  Tsigma_dem = exp(sigma_dem);
+  // Tsigma_dem = exp(sigma_dem);
   Tsigma_env = exp(sigma_env);
   TS_0 = exp(S_0);
   TI_0 = exp(I_0);
@@ -233,11 +237,10 @@ params <- c(
   b5 = 5,
   b6 = 3,
   psi = 1,
-  rho = 0.5,
+  rho = 0.1,
   tau = 1,
   sigma_env = 0.01,
-  sigma_dem = 0.01,
-  S_0 = 50000, 
+  S_0 = 100000, 
   I_0 = 100
 )
 
@@ -252,7 +255,7 @@ measles_pomp <- pomp(
   rmeasure = rmeas,
   dmeasure = dmeas,
   initializer = init,
-  statenames = c("S", "I"),
+  statenames = c("S", "I", "beta_t"),
   toEstimationScale = to_est,
   fromEstimationScale = from_est,
   paramnames = names(params),
@@ -335,7 +338,7 @@ stew(
       measles_pomp,
       probes = plist,
       est = names(params),
-      nsim = 50,
+      nsim = 200,
       transform = TRUE,
       start = params,
       method = "SANN",
@@ -429,13 +432,13 @@ bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
 # Try fixing the variability parameters
    ttt <- mif2(measles_pomp,
                  start=c(guess),
-                 Np=400,
-                 Nmif=100,
+                 Np=1000,
+                 Nmif=50,
                  cooling.type="geometric",
-                 cooling.fraction.50=1,
+                 cooling.fraction.50=0.5,
                  transform=TRUE,
                  rw.sd=rw.sd(
-                   beta_mu=0.02, rho=0.02, tau=0.02, sigma_dem = 0.02, sigma_env = 0.02,
+                   beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
                    b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
                    I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
                  )
@@ -464,8 +467,8 @@ ll_ests <- mifs %>%
 
 simulate(
   measles_pomp, 
-  params = ll_ests,
-  nsim = 19,
+  params = coef(ttt),
+  nsim = 9,
   as.data.frame = TRUE,
   include.data = TRUE) %>%
   ggplot(aes(x = time, y = cases, group = sim, color = (sim == "data"))) +
@@ -473,7 +476,7 @@ simulate(
     scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
     guides(color = FALSE) +
     facet_wrap(~sim, ncol = 2) +
-    scale_y_sqrt() +
+    # scale_y_sqrt() +
     theme(strip.text=element_blank())
 
 ```
@@ -483,30 +486,42 @@ OK, that doesn't look too bad. Some of the spikes are a little large, but on the
 
 ### Empirical Bayes for state-space reconstruction
 ```{r pmcmc}
+hyperparams <- list(min = ll_ests/10, max = ll_estes * 10)
+
+measles_dprior <- function (params, ..., log) {
+ f <- sum(dunif(params, min = hyperparams$min, max = hyperparams$max, log = TRUE))
+ if (log) f else exp(f)
+}
+
+measles_pomp <- measles_pomp %>%
+  pomp(dprior=Csnippet("
+    lik = dunif(beta_mu,0,0.0001,1)+dunif(b1,-5,5,1)+dunif(b2,-5,5,1)+dunif(b3,-5,5,1)+dunif(b4,-5,5,1)+dunif(b5,-5,5,1)+dunif(b6,-5,5,1)+dunif(psi,0,10,1)+dunif(rho,0.01,0.7,1)+dunif(tau,0,100,1)+dunif(sigma_env,0,1,1)+dunif(S_0,10000,100000,1)+dunif(I_0,50,500,1);
+    lik = (give_log) ? lik : exp(lik);
+  "),paramnames=names(ll_ests))
+
 stew(
   file = "pmcmc_results.rda",
   {
     outmcmc <- pmcmc(
       measles_pomp, 
-      Nmcmc=500,
-      Np=50,
+      Nmcmc=2000, 
+      Np=1000,
       start=ll_ests,
       proposal=mvn.rw.adaptive(
         rw.sd=c(
-          beta_mu=0.00001,
+          beta_mu=0.01,
           b1 = 1,
           b2 = 1,
           b3 = 1,
           b4 = 1,
           b5 = 1,
           b6 = 1,
-          S_0 = 10000,
+          S_0 = 100,
           psi = 0.1,
-          sigma_env = 0.0001,
-          sigma_dem = 0.0001,
-          tau = 0.001,
+          sigma_env = 0.01,
+          tau = 0.01,
           I_0 = 0.1,
-          rho = 0.03
+          rho = 0.01
         )
       )
     )
@@ -524,6 +539,7 @@ test <- outmcmc %>%
   filter.traj() %>%
   reshape2::melt() %>%
   as_tibble() %>%
+  filter(variable != "beta_t") %>%
   # filter(rep > 1000) %>%
   dplyr::group_by(variable, time) %>%
   dplyr::summarise(
