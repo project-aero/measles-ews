@@ -103,9 +103,11 @@ measles_process <- Csnippet(
   double dN[2];
 
   double beta_r = beta_mu * (1 + dot_product(K, &xi1, &b1));
-  double inv_lambda = exp(-beta_r * (I + psi));
+  // double beta_r = dot_product(K, &xi1, &b1);
   double var_epsilon = sigma_env;
-  inv_lambda *= (var_epsilon < 1.0e-6) ? 1 : rgamma(1/var_epsilon,var_epsilon);
+  beta_r *= (var_epsilon < 1.0e-6) ? 1 : rgamma(1/var_epsilon,var_epsilon);
+  double inv_lambda = exp(-beta_r * (I + psi));
+  //inv_lambda *= (var_epsilon < 1.0e-6) ? 1 : rgamma(1/var_epsilon,var_epsilon);
   if(inv_lambda > 1){
     inv_lambda = 1;
   }
@@ -425,7 +427,7 @@ make_guess <- function(params, sd_perc = 0.1){
 bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
   foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
     guess <- make_guess(probe_ests, sd_perc = 0.2)
-    mif2(measles_pomp,
+    ttt <- mif2(measles_pomp,
          start=c(guess),
          Np=1000,
          Nmif=50,
