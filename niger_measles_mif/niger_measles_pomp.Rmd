@@ -398,109 +398,154 @@ make_guess <- function(params, sd_perc = 0.1){
   return(out)
 }
 
-# stew(file="global_search_measles.rda",{
-#   w1 <- getDoParWorkers()
-#   t1 <- system.time({
-#     m1 <- foreach(i=1:10,.packages='pomp',.combine=rbind,
-#                   .options.multicore=list(set.seed=TRUE)
-#     ) %dopar% {
-#       guess <- make_guess(probe_ests, sd_perc = 0.2)
-#       mf <- mif2(measles_pomp,
-#                  start=c(guess),
-#                  Np=1000,
-#                  Nmif=20,
-#                  cooling.type="geometric",
-#                  cooling.fraction.50=0.5,
-#                  transform=TRUE,
-#                  rw.sd=rw.sd(
-#                    beta_mu=0.02, rho=0.02, tau=0.01,
-#                    b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
-#                    I_0=ivp(0.1), S_0=ivp(1), psi = 0.02
-#                  )
-#                 )
-#       ll <- logmeanexp(replicate(10,logLik(pfilter(mf,Np=5000))),se=TRUE)
-#       data.frame(as.list(coef(mf)),loglik=ll[1],loglik.se=ll[2])
-#     }
-#   })
-# },seed=290860873,kind="L'Ecuyer")
+stew(file="mif1.rda",{
+  w1 <- getDoParWorkers()
+  t1 <- system.time({
+    m1 <- foreach(i=1:20,.packages='pomp',.combine=rbind,
+                  .options.multicore=list(set.seed=TRUE)
+    ) %dopar% {
+      guess <- make_guess(probe_ests, sd_perc = 0.2)
+      mf <- mif2(measles_pomp,
+                 start=c(guess),
+                 Np=1000,
+                 Nmif=50,
+                 cooling.type="geometric",
+                 cooling.fraction.50=1,
+                 transform=TRUE,
+                 rw.sd=rw.sd(
+                   beta_mu=0.02, rho=0.02, tau=0.01, sigma_env = 0.02,
+                   b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
+                   I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
+                 )
+                )
+      ll <- logmeanexp(replicate(10,logLik(pfilter(mf,Np=5000))),se=TRUE)
+      data.frame(as.list(coef(mf)),loglik=ll[1],loglik.se=ll[2])
+    }
+  })
+},seed=290860873,kind="L'Ecuyer")
 
-bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
-  foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
-    guess <- make_guess(probe_ests, sd_perc = 0.2)
-    ttt <- mif2(measles_pomp,
-         start=c(guess),
-         Np=1000,
-         Nmif=50,
-         cooling.type="geometric",
-         cooling.fraction.50=1,
-         transform=TRUE,
-         rw.sd=rw.sd(
-           beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
-           b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
-           I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
-         )
-        )
-  }
-}) -> mifs1
+m1_ests <- m1 %>%
+  as_tibble() %>%
+  arrange(-loglik) %>%
+  mutate(
+    rownum = 1:n()
+  ) %>%
+  filter(rownum <= 10) %>%
+  select(-loglik, -loglik.se, -rownum)
 
-mifs1 %>%
-  conv.rec(c("loglik", "nfail", names(params))) %>%
-  reshape2::melt() %>%
-  ggplot(aes(x=iteration,y=value,color=as.factor(L1),group=L1))+
-  geom_line()+
-  guides(color=FALSE)+
-  labs(x="MIF2 Iteration",y="")+
-  facet_wrap(~variable,scales="free_y",ncol=2)+
-  theme_bw()
 
-iter1_coef <- mifs1 %>%
-  conv.rec(c("loglik", names(params))) %>%
-  reshape2::melt() %>%
-  filter(iteration == 49) %>%
-  spread(key = variable, value = value) %>%
-  filter(loglik == max(loglik, na.rm = TRUE)) %>%
-  dplyr::select(-iteration, -L1, -loglik) %>%
+
+stew(file="mif2.rda",{
+  w2 <- getDoParWorkers()
+  t2 <- system.time({
+    m2 <- foreach(i=1:10,.packages='pomp',.combine=rbind,
+                  .options.multicore=list(set.seed=TRUE)
+    ) %dopar% {
+      guess <- make_guess(unlist(m1_ests[i,]), sd_perc = 0.2)
+      mf <- mif2(measles_pomp,
+                 start=c(guess),
+                 Np=1000,
+                 Nmif=50,
+                 cooling.type="geometric",
+                 cooling.fraction.50=0.5,
+                 transform=TRUE,
+                 rw.sd=rw.sd(
+                   beta_mu=0.02, rho=0.02, tau=0.01, sigma_env = 0.02,
+                   b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
+                   I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
+                 )
+                )
+      ll <- logmeanexp(replicate(10,logLik(pfilter(mf,Np=5000))),se=TRUE)
+      data.frame(as.list(coef(mf)),loglik=ll[1],loglik.se=ll[2])
+    }
+  })
+},seed=2908873,kind="L'Ecuyer")
+
+# bake(file="mif1.rds",seed=900242057,kind="L'Ecuyer",{
+#   foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
+#     guess <- make_guess(probe_ests, sd_perc = 0.2)
+#     mf <- mif2(measles_pomp,
+#          start=c(guess),
+#          Np=1000,
+#          Nmif=50,
+#          cooling.type="geometric",
+#          cooling.fraction.50=1,
+#          transform=TRUE,
+#          rw.sd=rw.sd(
+#            beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
+#            b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
+#            I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
+#          )
+#         )
+#     ll <- logmeanexp(replicate(10,logLik(pfilter(mf,Np=5000))),se=TRUE)
+#     data.frame(as.list(coef(mf)),loglik=ll[1],loglik.se=ll[2])
+#   }
+# }) -> mifs1
+
+# mifs1 %>%
+#   conv.rec(c("loglik", "nfail", names(params))) %>%
+#   reshape2::melt() %>%
+#   ggplot(aes(x=iteration,y=value,color=as.factor(L1),group=L1))+
+#   geom_line()+
+#   guides(color=FALSE)+
+#   labs(x="MIF2 Iteration",y="")+
+#   facet_wrap(~variable,scales="free_y",ncol=2)+
+#   theme_bw()
+# 
+# iter1_coef <- mifs1 %>%
+#   conv.rec(c("loglik", names(params))) %>%
+#   reshape2::melt() %>%
+#   filter(iteration == 49) %>%
+#   spread(key = variable, value = value) %>%
+#   filter(loglik == max(loglik, na.rm = TRUE)) %>%
+#   dplyr::select(-iteration, -L1, -loglik) %>%
+#   unlist()
+# 
+# bake(file="mif2.rds",seed=902057,kind="L'Ecuyer",{
+#   foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
+#     guess <- make_guess(iter1_coef, sd_perc = 0.2)
+#     mif2(measles_pomp,
+#          start=c(guess),
+#          Np=1000,
+#          Nmif=50,
+#          cooling.type="geometric",
+#          cooling.fraction.50=0.5,
+#          transform=TRUE,
+#          rw.sd=rw.sd(
+#            beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
+#            b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
+#            I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
+#          )
+#         )
+#   }
+# }) -> mifs2
+# 
+# mifs2 %>%
+#   conv.rec(c("loglik", "nfail", names(params))) %>%
+#   reshape2::melt() %>%
+#   ggplot(aes(x=iteration,y=value,color=as.factor(L1),group=L1))+
+#   geom_line()+
+#   guides(color=FALSE)+
+#   labs(x="MIF2 Iteration",y="")+
+#   facet_wrap(~variable,scales="free_y",ncol=2)+
+#   theme_bw()
+# 
+# iter2_coef <- mifs2 %>%
+#   conv.rec(c("loglik", names(params))) %>%
+#   reshape2::melt() %>%
+#   filter(iteration == 49) %>%
+#   spread(key = variable, value = value) %>%
+#   filter(loglik == max(loglik, na.rm = TRUE)) %>%
+#   dplyr::select(-iteration, -L1, -loglik) %>%
+#   unlist()
+
+iter2_coef <- m2 %>%
+  as_tibble() %>%
+  filter(loglik == max(loglik)) %>%
+  select(-loglik, -loglik.se) %>%
   unlist()
 
-bake(file="mif2.rds",seed=902057,kind="L'Ecuyer",{
-  foreach (i=1:20,.packages='pomp',.combine=c,.options.multicore=list(set.seed=TRUE)) %dopar% {
-    guess <- make_guess(iter1_coef, sd_perc = 0.2)
-    mif2(measles_pomp,
-         start=c(guess),
-         Np=1000,
-         Nmif=50,
-         cooling.type="geometric",
-         cooling.fraction.50=0.5,
-         transform=TRUE,
-         rw.sd=rw.sd(
-           beta_mu=0.02, rho=0.02, tau=0.02, sigma_env = 0.02,
-           b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02, b6 = 0.02,
-           I_0=ivp(0.1), S_0=ivp(0.1), psi = 0.02
-         )
-        )
-  }
-}) -> mifs2
-
-mifs2 %>%
-  conv.rec(c("loglik", "nfail", names(params))) %>%
-  reshape2::melt() %>%
-  ggplot(aes(x=iteration,y=value,color=as.factor(L1),group=L1))+
-  geom_line()+
-  guides(color=FALSE)+
-  labs(x="MIF2 Iteration",y="")+
-  facet_wrap(~variable,scales="free_y",ncol=2)+
-  theme_bw()
-
-iter2_coef <- mifs2 %>%
-  conv.rec(c("loglik", names(params))) %>%
-  reshape2::melt() %>%
-  filter(iteration == 49) %>%
-  spread(key = variable, value = value) %>%
-  filter(loglik == max(loglik, na.rm = TRUE)) %>%
-  dplyr::select(-iteration, -L1, -loglik) %>%
-  unlist()
-
-ll_end <- logLik(pfilter(measles_pomp, params = iter2_coef, Np = 1000))
+(ll_end <- logmeanexp(replicate(50, logLik(pfilter(measles_pomp, params = iter2_coef, Np=5000))),se=TRUE))
 
 simulate(
   measles_pomp, 
@@ -516,95 +561,105 @@ simulate(
     scale_y_sqrt() +
     theme(strip.text=element_blank())
 
-# Simulate from initial conditions
-model_sims <- simulate(
-  measles_pomp, 
-  params = iter2_coef,
-  nsim = 1000,
-  as.data.frame = TRUE,
-  include.data = TRUE) %>%
-  as_tibble()
-
-model_data <- model_sims %>%
-  filter(sim == "data")
-
-simulated_data <- model_sims %>%
-  filter(sim != "data") %>%
-  group_by(time) %>%
-  summarise(
-    med_estimate = median(cases),
-    upper_estimate = quantile(cases, 0.95),
-    lower_estimate = quantile(cases, 0.05)
-  )
-
-ggplot(simulated_data, aes(x = time)) +
-  geom_ribbon(aes(ymin = lower_estimate, ymax = upper_estimate), alpha = 0.2, fill = "blue") +
-  geom_line(aes(y = med_estimate), color = "blue") +
-  geom_line(data = model_data, aes(x = time, y = cases))
-
-ggplot(filter(model_sims, sim != "data")) +
-  geom_line(aes(x = time, y = S, group= sim), alpha = 0.2)
+# # Simulate from initial conditions
+# model_sims <- simulate(
+#   measles_pomp, 
+#   params = iter2_coef,
+#   nsim = 1000,
+#   as.data.frame = TRUE,
+#   include.data = TRUE) %>%
+#   as_tibble()
+# 
+# model_data <- model_sims %>%
+#   filter(sim == "data")
+# 
+# simulated_data <- model_sims %>%
+#   filter(sim != "data") %>%
+#   group_by(time) %>%
+#   summarise(
+#     med_estimate = median(cases),
+#     upper_estimate = quantile(cases, 0.95),
+#     lower_estimate = quantile(cases, 0.05)
+#   )
+# 
+# ggplot(simulated_data, aes(x = time)) +
+#   geom_ribbon(aes(ymin = lower_estimate, ymax = upper_estimate), alpha = 0.2, fill = "blue") +
+#   geom_line(aes(y = med_estimate), color = "blue") +
+#   geom_line(data = model_data, aes(x = time, y = cases))
+# 
+# ggplot(filter(model_sims, sim != "data")) +
+#   geom_line(aes(x = time, y = S, group= sim), alpha = 0.2)
 
 bs <- iter2_coef[c("b1","b2","b3","b4","b5","b6")]
 beta_season <- (as.matrix(bspline_basis[1:26,]) %*% bs) * iter2_coef["beta_mu"]
-plot(beta_season, ylab = expression(beta), xlab = "week")
+betas <- tibble(
+  beta_value = as.numeric(beta_season),
+  biweek = 1:26
+)
+
+ggplot(betas, aes(x = biweek, y = beta_value)) +
+  geom_line(color = "blue") +
+  geom_point(color = "white", size = 4) +
+  geom_point(color = "blue", size = 2) +
+  ylab(expression(beta)) +
+  xlab("Biweek") +
+  ggtitle("Estimate seasonality in transmission")
 ```
 
 
-OK, that doesn't look too bad. Some of the spikes are a little large, but on the whole the dynamics look pretty good. Now time to estimate the states with empirical Bayes.
+Now time to estimate the states with empirical Bayes.
 
 ### Empirical Bayes for state-space reconstruction
 ```{r pmcmc}
-hyperparams <- list(min = ll_ests/10, max = ll_estes * 10)
+hyperparams <- list(min = iter2_coef/10, max = iter2_coef * 10)
 
 measles_dprior <- function (params, ..., log) {
  f <- sum(dunif(params, min = hyperparams$min, max = hyperparams$max, log = TRUE))
  if (log) f else exp(f)
 }
 
-measles_pomp <- measles_pomp %>%
-  pomp(dprior=Csnippet("
-    lik = dunif(beta_mu,0,0.0001,1)+dunif(b1,-5,5,1)+dunif(b2,-5,5,1)+dunif(b3,-5,5,1)+dunif(b4,-5,5,1)+dunif(b5,-5,5,1)+dunif(b6,-5,5,1)+dunif(psi,0,10,1)+dunif(rho,0.01,0.7,1)+dunif(tau,0,100,1)+dunif(sigma_env,0,1,1)+dunif(S_0,10000,100000,1)+dunif(I_0,50,500,1);
-    lik = (give_log) ? lik : exp(lik);
-  "),paramnames=names(ll_ests))
+
 
 stew(
   file = "pmcmc_results.rda",
   {
-    outmcmc <- pmcmc(
-      measles_pomp, 
+    chain <- pmcmc(
+      pomp(measles_pomp, dprior = measles_dprior), 
       Nmcmc=2000, 
-      Np=1000,
-      start=ll_ests,
-      proposal=mvn.rw.adaptive(
-        rw.sd=c(
-          beta_mu=0.01,
+      Np=100,
+      start= iter2_coef,
+      max.fail=Inf,
+      proposal = mvn.diag.rw(
+        rw.sd = c(
+          beta_mu=0.00001,
           b1 = 1,
           b2 = 1,
           b3 = 1,
           b4 = 1,
           b5 = 1,
           b6 = 1,
-          S_0 = 100,
+          S_0 = 1000,
           psi = 0.1,
-          sigma_env = 0.01,
-          tau = 0.01,
-          I_0 = 0.1,
-          rho = 0.01
+          sigma_env = 0.1,
+          tau = 0.001,
+          I_0 =10,
+          rho =0.01
         )
       )
     )
+    
+  mcmcout <- chain %>% pmcmc(Nmcmc=10000,proposal=mvn.rw(covmat(chain))) 
   },
-  seed=29086087, kind="L'Ecuyer"
+  seed=29012387, kind="L'Ecuyer"
 )
 
-traces <- conv.rec(outmcmc)
+traces <- conv.rec(mcmcout)
 traces <- window(traces,thin=1,start=1)
 plot(traces[,"S_0"])
 hist(traces[,"beta_mu"], col = "grey", border = "white")
 mle_rho = mean(traces[,"rho"])
 
-test <- outmcmc %>% 
+test <- mcmcout %>% 
   filter.traj() %>%
   reshape2::melt() %>%
   as_tibble() %>%
@@ -637,6 +692,30 @@ ggplot(pred_obs, aes(x = date)) +
   geom_ribbon(aes(ymin = lower_value, ymax = upper_value), fill = "coral", alpha = 0.4) +
   geom_line(aes(y = median_value), color = "coral") +
   labs(x = "Date", y = "Reported cases")
+
+reff_time <- mcmcout %>% 
+  filter.traj() %>%
+  reshape2::melt() %>%
+  as_tibble() %>%
+  filter(variable == "beta_t") %>%
+  mutate(
+    date = rep(biweek_data$date, each = length(unique(rep))),
+    population = rep(biweek_data$population, each = length(unique(rep)))
+  ) %>%
+  dplyr::group_by(variable, date) %>%
+  dplyr::summarise(
+    median_value = median(value*population),
+    upper_value = quantile(value*population, 0.975),
+    lower_value = quantile(value*population, 0.025)
+  )
+
+ggplot(reff_time, aes(x = date, y = median_value)) +
+  geom_ribbon(aes(ymin = lower_value, ymax = upper_value), alpha = 0.2) +
+  geom_line(size = 0.3) +
+  geom_hline(aes(yintercept = 1), color = "red", linetype = 2) +
+  xlab("Date") +
+  ylab(expression(R[e]))
+
 
 ```
 
