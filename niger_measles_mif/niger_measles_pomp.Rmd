@@ -420,7 +420,7 @@ This is OK at the moment because we are not using these parameters for inference
 
 ## Maximization by Iterated particle Filtering
 We now move to actually fitting the measles SIR model, using Maximization by Iterated particle Filter (MIF).
-MIF varies parameters throughout the filtering process and selectively propogates parameter sets (``particles'') that have the highest likelihood given the data and model.
+MIF varies parameters throughout the filtering process and selectively propogates parameter sets ("particles"") that have the highest likelihood given the data and model.
 We use the `pomp::mif2()` function to perform a grid search over parameter space that lets us hone in on the maximum likelihood estimates (MLE) for each parameter.
 We start with a global search, and the proceed to a localized search around the MLEs from the global search.
 
@@ -436,14 +436,14 @@ We use the parameter estimates from this step as starting points for the MIF.
  
 ```{r probe}
 probe.zeroes <- function(y){
-  xy <- y["cases",]
+  xy <- y["cases", ]
   as.numeric(length(which(xy == 0)))
 }
 probe.max <- function(y){
-  max(y["cases",], na.rm = TRUE)
+  max(y["cases", ], na.rm = TRUE)
 }
 probe.cumsum <- function(y){
-  cases <- y["cases",1:26]
+  cases <- y["cases", ]
   max(cumsum(cases))
 }
 
@@ -470,7 +470,7 @@ stew(
       maxit = 10000
     )
   },
-  seed = 290860832,
+  seed = 290808325,
   kind = "L'Ecuyer"
 )
 
