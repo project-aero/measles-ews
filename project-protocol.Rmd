@@ -1,0 +1,205 @@
+---
+title: 'PROTOCOL FOR:'
+author: "Andrew Tredennick (atredenn@gmail.com)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document: default
+  html_document: default
+subtitle: Linking early warning signals to the temporal epidemiology of measles in
+  Nigerian cities
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(ggthemes)
+library(pomp)
+library(lubridate)
+library(mvtnorm)
+
+theme_set(theme_minimal())
+mycols <- ggthemes::ptol_pal()(2)
+```
+
+## Authors
++ Andrew Tredennick
++ Eamon O'Dea
++ Pejman Rohani
++ John Drake
+
+
+## Background
+Theory shows that epidemic transitions can be anticipated by trends in the statistical properties of disease time series (AERO papers).
+The existence of statistical trends in the data that precede critical transitions, so-called 'early warning signals' (EWS), imply that we may be able to anticipate disease emergence and outbreaks.
+The end goal is a model-free detection system, where statistical properties of disease surveilence data can trigger warnings of impending outbreaks without the need to fit mechanistic models of disease transmission (Han and Drake 2017).
+
+However, there is currently a gap between the theoretical work, which has relied on knowing the underlying disease dynamics, and the eventual goal of applying EWS in real-world situations where the underlying disease dynamics may be unknown.
+To bridge this gap we will fit a mechanistic model to incidence data of measles in Niger to estimate the temporal epidemiology of the disease, yielding the very same parameters that are known in data-free modeling studies.
+We are particularly interested in the correlation between EWS and the time-varying repreoductive ratio, known as the effective reprodutive ratio $\left(R_E\right)$.
+
+## Study design
+### I. Fit a mechanistic SIR model to measles incidence data from 4 cities in Niger
+
+The goal is fit a model to estimate:
+
+ + The latent SI states
+ + Time-varying rate of transmision
+ + Effective reproductive ratio $\left(R_E\right)$
+    
+ The model is a continuous time SIR model, specified as a set of stochastic differential equations (SDEs).
+ We will fit the model to data via iterated filtering to maximize the likelihood, as implemented in the R package `pomp`.
+ Model fitting will proceed in three steps:
+ 
+ 1. Generate initial parameter quesses by maximizing a synthetic likelihood defined by (1) the number of zero-case weeks in the time series, (2) the maximum number of cases observed in a week, (3) the cumulative number of cases, and (4) the lag-1 autocorrelation. This is implemented via probe matching in `pomp`:
+
+```{r probe-ex, echo = TRUE, eval = FALSE}
+probe_zeroes <- function(y){
+  # number of zeros in the data
+  xy <- y["cases", ]
+  as.numeric(length(which(xy == 0)))
+}
+
+probe_max <- function(y){
+  # max incidence in the data
+  max(y["cases", ], na.rm = TRUE)
+}
+
+probe_cumsum <- function(y){
+  # total number of cases in the data
+  cases <- y["cases", ]
+  max(cumsum(cases))
+}
+
+plist <- list(
+  probe_zeroes,
+  probe_max,
+  probe_cumsum,
+  probe.acf("cases", lags = 1,transform = sqrt, type = "correlation")
+)
+
+pm <- probe.match(
+  measles_pomp,
+  probes = plist,
+  est = param_names,
+  nsim = 500,
+  transform = TRUE,
+  start = coef(measles_pomp),
+  method = "Nelder-Mead",
+  maxit = 10000
+)
+```
+
+2. Conduct a global parameter search using a Latin hypercube search space of 50000 parameter sets, with upper and lower values for each parameter specified as the best parameters from probe matching (`pm_params`) mulitplied by a factor of $\pm5$. The parameter sets within the Latin hypercube will serve as starting conditions for iterated filtering using the function `pomp::mif2()`.
+
+3. Conduct a local parameter search using the the 5000 parameter sets from the global search with the highest likelihoods. We will consider the parameter set with the highest likelihood at this stage to be the MLEs ($\hat{\theta}$).
+
+4. To complete our inference from the model, we will perform particle MCMC using $\hat{\theta}$ as the initial conditions. The MCMC analysis allows us to estimate the uncertainty around all parameters and to generate estimates of the latent states and the $R_E$ for the observed data. That is, we will end up with a time series of $R_E$ that corresponds to the observation time series.
+
+### II. Calculate a suite of EWS (from the R package `spaero`) from the same data as used in I
+This will be done with the function `spaero::get_stats`.
+
+### III. Calculate the correlation between EWS and $\left(R_E\right)$ and the significance of the correlation
+This will be done with the functions `cor` and `cor.test`.
+
+## Data sources
++ Niger measles data from project AERO
++ Permissions?
+
+```{r data-example}
+file_name <- "../niger_measles/niger_regional_1995_2005.csv"
+niger_measles_raw <- read_csv(file_name, col_types = cols())
+
+num_regions <- nrow(niger_measles_raw)
+num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because first column are regions
+weeks_per_year <- num_weeks/11
+weeks <- rep(1:52, times = 11)
+
+# Create a vector of years for all num_weeks
+years <- rep(1995:2005, each = weeks_per_year)
+
+# Function for calculating start of week based on week number and year
+calculate_start_of_week = function(week, year) {
+  date <- ymd(paste(year, 1, 1, sep="-"))
+  week(date) = week
+  return(date)
+}
+
+# Clean up the data frame
+measles_data <- niger_measles_raw %>%
+  gather(key = week, value = cases, -X1) %>%
+  mutate(
+    week_num = rep(1:num_weeks, each = num_regions),
+    year = rep(years, each  = num_regions),
+    week = rep(weeks, each = num_regions),
+    date = calculate_start_of_week(week, year)
+  ) %>%
+  dplyr::rename(region = X1) %>%
+  filter(grepl("City", region))
+
+ggplot(measles_data, aes(x = date, y = cases, color = region)) +
+  geom_path() +
+  facet_wrap(~region, scales = "free_y") +
+  scale_color_manual(values = ptol_pal()(4)) +
+  ggtitle("Time series of data from 4 cities in Niger")
+```
+
+
+## Analysis
+1. Plot time-indexed $R_E$ and each EWS as scatterplots to visualize their correlations ($\rho$). This might look something like:
+
+```{r plot-ex}
+ncities <- 4
+news <- 6
+npoints <- 200
+out <- tibble()
+for(i in 1:ncities){
+  for(j in 1:news){
+    slope <- runif(1, 0.1, 2)
+    sdd <- runif(1, 1, 4)
+    x <- rnorm(200, 0, 1)
+    y <- rnorm(200, x*slope, sdd)
+    tmp <- tibble(
+      city = i,
+      ews = paste("EWS:",j),
+      x = x,
+      y = y
+    )
+    
+    out <- bind_rows(out, tmp)
+  }
+}
+
+ggplot(out, aes(x, y, fill = as.factor(city))) +
+  geom_point(shape = 21) +
+  facet_grid(as.factor(city)~as.factor(ews)) +
+  scale_fill_manual(values = ptol_pal()(4)) +
+  theme(legend.position = "top",
+        axis.text=element_blank()) +
+  labs(x = expression(R[E]), y = "EWS") +
+  ggtitle("Random data showing example plot for the paper")
+
+```
+
+2. For each region, calculate temporal correlations between each EWS and $R_E$, resulting in a table (or heatmap figure) like this:
+
+| Region | EWS | $\boldsymbol{\rho}$ | *P*-value |
+| ------ | --- | ------ | --------- |
+| Agadez | Variance | 0.8 | 0.001 |
+| Agadez | Mean | 0.4 | 0.09 |
+| $\vdots$ | $\vdots$ | $\vdots$ | $\vdots$ |
+| Zinder | Kurtosis | 0.7 | 0.006 |
+
+## Checklist
+
++ Create cleaned dataset of just the four focal cities from Niger
++ Write R code to define the `pomp` model object (SDE)
++ Simulate time series from the `pomp` object with parameters that give us irregular dynamics like the observed data
++ Do test analysis of steps II-III using the simulated data
++ Perform iterated filter parameter search for MLEs
+    - Get set up on UGA cluster
++ Calculate EWS on the observed data
+    - Work with Eamon on bandwidth, etc.
++ Caclulate correlations with real data and empirically-derived $R_E$
++ Write the paper!
+
