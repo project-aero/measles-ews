@@ -3,8 +3,8 @@ title: 'PROTOCOL FOR:'
 author: "Andrew Tredennick (atredenn@gmail.com)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 subtitle: Linking early warning signals to the temporal epidemiology of measles in
   Nigerian cities
 ---
@@ -192,7 +192,7 @@ ggplot(out, aes(x, y, fill = as.factor(city))) +
 
 ## Checklist
 
-+ Create cleaned dataset of just the four focal cities from Niger
++ ~~Create cleaned dataset of just the four focal cities from Niger~~
 + Write R code to define the `pomp` model object (SDE)
 + Simulate time series from the `pomp` object with parameters that give us irregular dynamics like the observed data
 + Do test analysis of steps II-III using the simulated data

@@ -127,19 +127,19 @@ covar_data <- biweek_data %>%
 
 # Set some realistic parameter values for testing via simulation
 params <- c(
-  beta_mu = 0.00001,
+  beta_mu = 0.0000006,
   b1 = 3,
   b2 = 0,
   b3 = 1.5,
   b4 = 6,
   b5 = 5,
   b6 = 3,
-  psi = 1,
+  psi = 0.1,
   rho = 0.5,
-  tau = 1,
+  tau = 0.0000001,
   sigma_env = 0.01,
-  S_0 = 30000, 
-  I_0 = 100
+  S_0 = 50000, 
+  I_0 = 200
 )
 
 # Generate pomp object
@@ -149,7 +149,7 @@ measles_pomp <- pomp(
   covar = covar_data,
   tcovar = "biweek",
   t0 = 1,
-  rprocess = discrete.time.sim(measles_process, delta.t = 1),
+  rprocess = euler.sim(step.fun = measles_process, delta.t = 1/26),
   rmeasure = rmeas,
   dmeasure = dmeas,
   initializer = init,
@@ -160,5 +160,19 @@ measles_pomp <- pomp(
   params = params,
   globals = "int K = 6;"
 )
+
+simulate(
+  measles_pomp, 
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = cases, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
 
 saveRDS(measles_pomp, file = "measles-pomp.RDS")
