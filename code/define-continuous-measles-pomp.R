@@ -63,14 +63,14 @@ measles_process <- Csnippet(
   // Define the variables
   int nrate = 6;        // number of rates
   double rate[nrate];		// transition rates
-  double trans[nrate];	  // transition numbers
+  double trans[nrate];	// transition numbers
   double lambda;        // force of infection
-  double beta;          // static transmission rate, since deterministic
+  double beta;          // transmission rate
   double dW;            // white noise
 
   // Calculate force of infection
   beta = beta_mu * (1 + dot_product(K, &xi1, &b1));
-  lambda = (iota + beta*I) / pop;
+  lambda = (iota + beta*I);
 
   // Gamma noise, mean=dt, variance=(beta_sd^2 dt)
   dW = rgammawn(beta_sd, dt);
@@ -106,13 +106,7 @@ measles_dmeasure <- Csnippet(
   double mean, sd;
   double f;
   mean = cases*rho;
-  sd = sqrt(cases*rho*(1-rho));
-
-  if (reports > 0) {
-    f = pnorm(reports+0.5,mean,sd,1,0)-pnorm(reports-0.5,mean,sd,1,0);
-  } else {
-    f = pnorm(reports+0.5,mean,sd,1,0);
-  }
+  f = dnbinom_mu(reports, 1/tau, mean, give_log);
 
   lik = (give_log) ? log(f) : f;
   "
@@ -123,12 +117,12 @@ measles_dmeasure <- Csnippet(
 
 measles_rmeasure <- Csnippet(
   "
-  double mean, sd;
-  double rep;
-  mean = cases*rho;
-  sd = sqrt(cases*rho*(1-rho));
-  rep = nearbyint(rnorm(mean,sd));
-  reports = (rep > 0) ? rep : 0;
+  reports = rnbinom_mu(1/tau, rho*cases);
+  if (reports > 0.0) {
+    reports = nearbyint(reports);
+  } else {
+    reports = 0.0;
+  }
   "
 )
 
@@ -137,21 +131,29 @@ measles_rmeasure <- Csnippet(
 
 from_estimation <- Csnippet(
   "
+  Tbeta_mu = exp(beta_mu);
   Tgamma = exp(gamma);
+  Ttau = exp(tau);
   Tiota = exp(iota);
   Tbeta_sd = exp(beta_sd);
   Trho = expit(rho);
-  from_log_barycentric(&TS_0,&S_0,3);
+  TS_0 = exp(S_0);
+  TI_0 = exp(I_0);
+  TR_0 = exp(R_0);
   "
 )
 
 to_estimation <- Csnippet(
   "
+  Tbeta_mu = log(beta_mu);
   Tgamma = log(gamma);
+  Ttau = log(tau);
   Tiota = log(iota);
   Tbeta_sd = log(beta_sd);
   Trho = logit(rho);
-  to_log_barycentric(&TS_0,&S_0,3);
+  TS_0 = log(S_0);
+  TI_0 = log(I_0);
+  TR_0 = log(R_0);
   "
 )
 
@@ -169,18 +171,21 @@ initial_values <- Csnippet(
 # Make data tables --------------------------------------------------------
 
 do_city <- "Niamey (City)"
-measles_data <- readRDS("../data/clean-data/weekly-measles-and-demog-niger-cities-clean.RDS")
+do_file <- "../data/clean-data/weekly-measles-and-demog-niger-cities-clean.RDS"
+measles_data <- readRDS(do_file) %>%
+  dplyr::filter(region == do_city)
 
 obs_data <- measles_data %>%
-  dplyr::filter(region == do_city) %>%
   dplyr::select(obs_week, cases) %>%
   dplyr::rename(
     time = obs_week,
     reports = cases
   )
 
+#### REMOVE SUSPICIOUS DATA POINT AND REPLACE WITH MEAN OF NEIGHBORS ####
+obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
+
 covar_data <- measles_data %>%
-  dplyr::filter(region == do_city) %>%
   dplyr::select(obs_week, population_smooth, births_per_week_smooth) %>%
   dplyr::rename(
     time = obs_week,
@@ -204,20 +209,21 @@ covar_data <- bind_cols(covar_data, bspline_basis)
 # Combine everything into a pomp object -----------------------------------
 
 params <- c(
-  beta_mu = 25,
-  gamma = 1,
-  beta_sd = 1e-1,
-  b1 = 3,
-  b2 = 0,
-  b3 = 1.5,
-  b4 = 6,
-  b5 = 5,
-  b6 = 3,
-  iota = 1,
-  rho = 0.5,
-  S_0 = 20000, 
+  beta_mu = 1.1,
+  gamma = 0.6,
+  beta_sd = 3e-1,
+  tau = 1e-1,
+  b1 = 5,
+  b2 = 3,
+  b3 = 6,
+  b4 = 5,
+  b5 = 2,
+  b6 = 0,
+  iota = 2,
+  rho = 0.3,
+  S_0 = 80000, 
   I_0 = 100,
-  R_0 = 600000
+  R_0 = covar_data$pop[1] - 80000 - 100
 )
 
 measles_pomp <- pomp(
@@ -225,7 +231,7 @@ measles_pomp <- pomp(
   times = "time",
   covar = covar_data,
   tcovar = "time",
-  t0 = 0,
+  t0 = 1,
   rprocess = euler.sim(step.fun = measles_process, delta.t = 1/52/20),
   skeleton = vectorfield(measles_skeleton),
   rmeasure = measles_rmeasure,
@@ -237,9 +243,10 @@ measles_pomp <- pomp(
   paramnames = names(params),
   params = params,
   globals = "int K = 6;",
-  zeronames = "cases"
+  zeronames = c("cases", "W")
 )
 
+saveRDS(object = measles_pomp, file = "measles-pomp-object.RDS")
 
 
 # Extra plotting code for testing -----------------------------------------
@@ -258,5 +265,7 @@ measles_pomp <- pomp(
 #   guides(color = FALSE) +
 #   facet_wrap(~sim, ncol = 2) +
 #   scale_y_sqrt() +
-#   theme(strip.text=element_blank())
-
+#   theme(strip.text=element_blank()) +
+#   geom_hline(aes(yintercept = 0))
+# 
+# logLik(pfilter(measles_pomp, Np = 100))

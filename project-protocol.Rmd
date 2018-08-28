@@ -51,50 +51,16 @@ The goal is fit a model to estimate:
  We will fit the model to data via iterated filtering to maximize the likelihood, as implemented in the R package `pomp`.
  Model fitting will proceed in three steps:
  
- 1. Generate initial parameter quesses by maximizing a synthetic likelihood defined by (1) the number of zero-case weeks in the time series, (2) the maximum number of cases observed in a week, (3) the cumulative number of cases, and (4) the lag-1 autocorrelation. This is implemented via probe matching in `pomp`:
+ 1. ~~Generate initial parameter quesses by maximizing a synthetic likelihood defined by (1) the number of zero-case weeks in the time series, (2) the maximum number of cases observed in a week, (3) the cumulative number of cases, and (4) the lag-1 autocorrelation. This is implemented via probe matching in `pomp`:~~
+ 
+1. Generate initial parameter sets from a large Latin hypercube search space of 50000 parameter sets. Run 10 replicate particle filters at each of these parameter sets, with 2000 particles each. Retain the 5000 parameter sets with the highest likelihood.
 
-```{r probe-ex, echo = TRUE, eval = FALSE}
-probe_zeroes <- function(y){
-  # number of zeros in the data
-  xy <- y["cases", ]
-  as.numeric(length(which(xy == 0)))
-}
+2. Conduct a global parameter search using 5000 parameter sets from above. The parameter sets within the Latin hypercube will serve as starting conditions for iterated filtering using the function `pomp::mif2()`.
 
-probe_max <- function(y){
-  # max incidence in the data
-  max(y["cases", ], na.rm = TRUE)
-}
-
-probe_cumsum <- function(y){
-  # total number of cases in the data
-  cases <- y["cases", ]
-  max(cumsum(cases))
-}
-
-plist <- list(
-  probe_zeroes,
-  probe_max,
-  probe_cumsum,
-  probe.acf("cases", lags = 1,transform = sqrt, type = "correlation")
-)
-
-pm <- probe.match(
-  measles_pomp,
-  probes = plist,
-  est = param_names,
-  nsim = 500,
-  transform = TRUE,
-  start = coef(measles_pomp),
-  method = "Nelder-Mead",
-  maxit = 10000
-)
-```
-
-2. Conduct a global parameter search using a Latin hypercube search space of 50000 parameter sets, with upper and lower values for each parameter specified as the best parameters from probe matching (`pm_params`) mulitplied by a factor of $\pm5$. The parameter sets within the Latin hypercube will serve as starting conditions for iterated filtering using the function `pomp::mif2()`.
-
-3. Conduct a local parameter search using the the 5000 parameter sets from the global search with the highest likelihoods. We will consider the parameter set with the highest likelihood at this stage to be the MLEs ($\hat{\theta}$).
+3. Conduct a local parameter search using the the 500 parameter sets from the global search with the highest likelihoods. We will consider the parameter set with the highest likelihood at this stage to be the MLEs ($\hat{\theta}$).
 
 4. To complete our inference from the model, we will perform particle MCMC using $\hat{\theta}$ as the initial conditions. The MCMC analysis allows us to estimate the uncertainty around all parameters and to generate estimates of the latent states and the $R_E$ for the observed data. That is, we will end up with a time series of $R_E$ that corresponds to the observation time series.
+    - Can we get this from `pfilter(save.states)`?
 
 ### II. Calculate a suite of EWS (from the R package `spaero`) from the same data as used in I
 This will be done with the function `spaero::get_stats`.
