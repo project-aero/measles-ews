@@ -50,7 +50,7 @@ measles_skeleton <- Csnippet(
   DS = term[0]-term[1]-term[2];
   DI = term[1]-term[3]-term[4];
   DR = term[3]-term[5];
-  Dcases = term[3];  // accumulate the new S->I transitions
+  Dcases = term[1];  // accumulate the new S->I transitions
   DW = 0;            // no noise, so no noise accumulation
   "
 )
@@ -93,7 +93,7 @@ measles_process <- Csnippet(
   S += trans[0]-trans[1]-trans[2];
   I += trans[1]-trans[3]-trans[4];
   R += trans[3]-trans[5];
-  cases = trans[3];  // cases are cumulative infections
+  cases += trans[1];  // cases are cumulative infections
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   "
 )
@@ -206,16 +206,16 @@ covar_data <- bind_cols(covar_data, bspline_basis)
 params <- c(
   beta_mu = 25,
   gamma = 1,
-  beta_sd = 1e-3,
+  beta_sd = 1e-1,
   b1 = 3,
   b2 = 0,
   b3 = 1.5,
   b4 = 6,
   b5 = 5,
   b6 = 3,
-  iota = 0,
+  iota = 1,
   rho = 0.5,
-  S_0 = 2000, 
+  S_0 = 20000, 
   I_0 = 100,
   R_0 = 600000
 )
@@ -236,22 +236,27 @@ measles_pomp <- pomp(
   fromEstimationScale = from_estimation,
   paramnames = names(params),
   params = params,
-  globals = "int K = 6;"
+  globals = "int K = 6;",
+  zeronames = "cases"
 )
 
-traj <- trajectory(measles_pomp, times=seq(1,52*11,by=1))
-plot(traj[2,1,], type = "l")
 
-simulate(
-  measles_pomp,
-  nsim = 9,
-  as.data.frame = TRUE,
-  include.data = TRUE) %>%
-  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
-  geom_line() +
-  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
-  guides(color = FALSE) +
-  facet_wrap(~sim, ncol = 2) +
-  scale_y_sqrt() +
-  theme(strip.text=element_blank())
+
+# Extra plotting code for testing -----------------------------------------
+
+# traj <- trajectory(measles_pomp, times=seq(1,52*11,by=1))
+# plot(traj[2,1,], type = "l")
+# 
+# simulate(
+#   measles_pomp,
+#   nsim = 9,
+#   as.data.frame = TRUE,
+#   include.data = TRUE) %>%
+#   ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+#   geom_line() +
+#   scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+#   guides(color = FALSE) +
+#   facet_wrap(~sim, ncol = 2) +
+#   scale_y_sqrt() +
+#   theme(strip.text=element_blank())
 
