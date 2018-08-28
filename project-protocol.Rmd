@@ -1,12 +1,12 @@
 ---
 title: 'PROTOCOL FOR:'
+subtitle: Linking early warning signals to the temporal epidemiology of measles in
+  Nigerian cities
 author: "Andrew Tredennick (atredenn@gmail.com)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document: default
   pdf_document: default
-subtitle: Linking early warning signals to the temporal epidemiology of measles in
-  Nigerian cities
 ---
 
 ```{r setup, include=FALSE}
@@ -19,7 +19,6 @@ library(lubridate)
 library(mvtnorm)
 
 theme_set(theme_minimal())
-mycols <- ggthemes::ptol_pal()(2)
 ```
 
 ## Authors
@@ -32,24 +31,46 @@ mycols <- ggthemes::ptol_pal()(2)
 ## Background
 Theory shows that epidemic transitions can be anticipated by trends in the statistical properties of disease time series (AERO papers).
 The existence of statistical trends in the data that precede critical transitions, so-called 'early warning signals' (EWS), imply that we may be able to anticipate disease emergence and outbreaks.
-The end goal is a model-free detection system, where statistical properties of disease surveilence data can trigger warnings of impending outbreaks without the need to fit mechanistic models of disease transmission (Han and Drake 2017).
+The end goal is a model-independent detection system, where statistical properties of disease surveilence data can trigger warnings of impending outbreaks without the need to fit mechanistic models of disease transmission (Han and Drake 2017).
 
 However, there is currently a gap between the theoretical work, which has relied on knowing the underlying disease dynamics, and the eventual goal of applying EWS in real-world situations where the underlying disease dynamics may be unknown.
+[What is the gap?] *Without knowing whether EWS actually track or anticipate undelrying dynamics of real disease time series, we don't know if we are getting the right answer for the wrong reason.*
+[How will this study fill the gap?]
 To bridge this gap we will fit a mechanistic model to incidence data of measles in Niger to estimate the temporal epidemiology of the disease, yielding the very same parameters that are known in data-free modeling studies.
 We are particularly interested in the correlation between EWS and the time-varying repreoductive ratio, known as the effective reprodutive ratio $\left(R_E\right)$.
+
+## Research questions
+1. Do model-independent early warning signals *track* or *anticipate* the effective reproductive ratio?
+2. Do some early warning signals outperform others in terms of their ability to track or anticipate the effective reproductive ratio?
+3. Does the degree to which early warning signals track or anticipate the effective reproductive ratio depend on the magnitude or dynamics of the effective reproductive ratio itself? For example, the temporal correlation between an EWS and $R_E$ might be weak when $R_E < 1$, where the dynamics are sub-critial and the observed time series is mainly driven by environmental or demographic stochasticity.
 
 ## Study design
 ### I. Fit a mechanistic SIR model to measles incidence data from 4 cities in Niger
 
 The goal is fit a model to estimate:
 
- + The latent SI states
+ + The latent S, I, and R states
  + Time-varying rate of transmision
- + Effective reproductive ratio $\left(R_E\right)$
+ + Effective reproductive ratio $\left(R_E\right)$ (also time-varying)
     
- The model is a continuous time SIR model, specified as a set of stochastic differential equations (SDEs).
- We will fit the model to data via iterated filtering to maximize the likelihood, as implemented in the R package `pomp`.
- Model fitting will proceed in three steps:
+The model is a continuous time SIR model, specified as a set of stochastic differential equations (SDEs):
+
+\begin{align}
+\frac{\text{d}S}{\text{d}t} &= b_t - \lambda_t \\
+\frac{\text{d}I}{\text{d}t} &= \lambda_t - \gamma \\
+\frac{\text{d}R}{\text{d}t} &= \gamma,
+\end{align}
+
+\noindent{}where $b_t$ is the number of births that occur in the interval $\text{d}t$, $\gamma$ is the time-invariant recovery rate, and $\lambda_t$ is the time-varying force of infection.
+We model $\lambda_t$ as a function of a seasonal tranmission rate subject to additional environmental variability through time:
+
+\begin{align}
+\lambda_t &= \frac{\beta_t I_t + \psi}{N_t} \\
+\beta_t &= \text{exp}\left(\beta + \sum^6_{i=1} q_i \xi_{i_{t}} \right) + \varepsilon_t
+\end{align}
+
+We will fit the model to data via iterated filtering to maximize the likelihood, as implemented in the R package `pomp`.
+Model fitting will proceed in three steps:
  
  1. ~~Generate initial parameter quesses by maximizing a synthetic likelihood defined by (1) the number of zero-case weeks in the time series, (2) the maximum number of cases observed in a week, (3) the cumulative number of cases, and (4) the lag-1 autocorrelation. This is implemented via probe matching in `pomp`:~~
  
