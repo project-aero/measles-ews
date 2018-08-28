@@ -193,7 +193,7 @@ ggplot(out, aes(x, y, fill = as.factor(city))) +
 ## Checklist
 
 + ~~Create cleaned dataset of just the four focal cities from Niger~~
-+ Write R code to define the `pomp` model object (SDE)
++ ~~Write R code to define the `pomp` model object (SDE)~~
 + Simulate time series from the `pomp` object with parameters that give us irregular dynamics like the observed data
 + Do test analysis of steps II-III using the simulated data
 + Perform iterated filter parameter search for MLEs
