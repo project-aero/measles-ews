@@ -1,0 +1,295 @@
+---
+title: 'PROTOCOL FOR:'
+subtitle: Linking early warning signals to the temporal epidemiology of measles in
+  Nigerian cities
+author: "Andrew Tredennick (atredenn@gmail.com)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(ggthemes)
+library(pomp)
+library(lubridate)
+
+theme_set(theme_minimal())
+```
+
+## Authors
++ Andrew Tredennick
++ Eamon O'Dea
++ Pejman Rohani
++ John Drake
+
+
+## Background
+Theory shows that epidemic transitions can be anticipated by trends in the statistical properties of disease time series (AERO papers).
+The existence of statistical trends in the data that precede critical transitions, so-called 'early warning signals' (EWS), imply that we may be able to anticipate disease emergence and outbreaks.
+The end goal is a model-independent detection system, where statistical properties of disease surveilence data can trigger warnings of impending outbreaks without the need to fit mechanistic models of disease transmission (Han and Drake 2017).
+
+However, there is currently a gap between the theoretical work, which has relied on knowing the underlying disease dynamics, and the eventual goal of applying EWS in real-world situations where the underlying disease dynamics may be unknown.
+Something about theory working on the scale of parameters and empirical tests on states, need better theory-data confrontation.
+Without knowing whether EWS actually track and/or anticipate undelrying dynamics of real disease time series,  we might be getting the wrong answer for the right reasons, or we might be getting the right answer for the wrong reason.
+[How will this study fill the gap?]
+To bridge this gap we will fit a mechanistic model to incidence data of measles in Niger to estimate the temporal epidemiology of the disease, yielding the very same parameters that are known in data-free modeling studies.
+We are particularly interested in the correlation between EWS and the time-varying repreoductive ratio, known as the effective reprodutive ratio $\left(\mathcal{R}_E\right)$.
+
+## Research questions
+1. Do model-independent early warning signals *track* and/or *anticipate* the effective reproductive ratio?
+2. Do some early warning signals outperform others in terms of their ability to track or anticipate the effective reproductive ratio?
+3. Does the degree to which early warning signals track or anticipate the effective reproductive ratio depend on the magnitude or dynamics of the effective reproductive ratio itself? For example, the temporal correlation between an EWS and $\mathcal{R}_E$ might be weak when $\mathcal{R}_E < 1$, where the dynamics are sub-critial and the observed time series is mainly driven by environmental or demographic stochasticity.
+
+## Study design
+### I. Fit a mechanistic SIR model to measles incidence data from 4 cities in Niger
+
+The goal is fit a model to estimate:
+
+ + The latent *S*, *I*, and *R* latent states
+ + Time-varying rate of transmision, $\beta_t$
+ + Time-varying effective reproductive ratio, $\mathcal{R}_{E(t)}$
+ 
+
+#### The mechanistic SIR model
+    
+The model is a continuous time SIR model, specified as a set of stochastic differential equations (SDEs):
+
+\begin{align}
+\frac{\text{d}S}{\text{d}t} &= b_t - \lambda_t S_t \\
+\frac{\text{d}I}{\text{d}t} &= \lambda_t S_t - \gamma I_t \\
+\frac{\text{d}R}{\text{d}t} &= \gamma I_t,
+\end{align}
+
+\noindent{}where $b_t$ is the number of births that occur in the interval $\text{d}t$, $\gamma$ is the time-invariant recovery rate, and $\lambda_t$ is the time-varying force of infection.
+We model $\lambda_t$ as a function of a seasonal tranmission rate subject to additional environmental variability through time:
+
+\begin{align}
+\lambda_t &= \frac{\beta_t I_t + \psi}{N_t}, \\
+\beta_t &= \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t, 
+\end{align}
+
+\noindent{}where $\beta_t$ is the rate of transmission at time *t*, $\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
+The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as a gamma-distributed random variable with mean 1 and variance $\sigma^2$.
+In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_{E(t)} = \beta_t / \gamma$.
+
+We assume observed case reports ($\textbf{y}$) are drawn from a negative binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
+
+\begin{align}
+y_t \sim \text{NegBin} \left( \rho I_t, \tau  \right).
+\end{align}
+
+
+#### Model fitting
+
+We will fit the model to data via iterated filtering to maximize the likelihood, as implemented in the R package `pomp`.
+We seek to estimate 14 parameters for each city (Table 1).
+
+| Parameter | Description |
+| --------- | ----------- |
+| $\beta$ | Mean rate of transmission |
+| $\gamma$ | Constant rate of recovery |
+| $\rho$ | Constant reporting fraction |
+| $q_i$ for $i \in \{1,2,3,4,5,6\}$ | B-spline coefficients for seasonality |
+| $\psi$ | External infections |
+| $\sigma^2$ | Variance of gamma-distributed process noise |
+| $S_0$ | Initial conditions for susceptible class |
+| $I_0$ | Initial conditions for infected class |
+| $R_0$ | Initial conditions for recovered class |
+
+Table: List of model parameters to be estimated.
+
+Model fitting will proceed in three steps, independently for each city:
+ 
+1. Generate initial parameter sets from a large Latin hypercube search space of 50000 parameter sets. Run 10 replicate particle filters at each of these parameter sets, with 2000 particles each. Retain the 5000 parameter sets with the highest likelihood.
+
+2. Conduct a global parameter search using 5000 parameter sets from above. The parameter sets within the Latin hypercube will serve as starting conditions for iterated filtering using the function `pomp::mif2()`.
+
+3. Conduct a local parameter search using the the 1000 parameter sets from the global search with the highest likelihoods. We will consider the parameter set with the highest likelihood at this stage to be the MLEs ($\hat{\theta}$).
+
+4. To complete our inference from the model, we will perform particle MCMC using $\hat{\theta}$ as the initial conditions. The MCMC analysis allows us to estimate the uncertainty around all parameters and to generate estimates of the latent states and the $\mathcal{R}_E$ for the observed data. That is, we will end up with a time series of $\mathcal{R}_E$ that corresponds to the observation time series.
+    - Can we just get this from `pfilter(save.states)`?
+
+### II. Calculate a suite of EWS from the observed data
+We will consider 10 candidate EWS (Table 2).
+The EWS will be calculated using the function `spaero::get_stats()` in R for each of the case report time series shown in Figure 1 (below).
+We will use a "backward looking" bandwidth of 35 weeks.
+"Backward looking" means that the rolling window over which the EWS are calculated covers the 35 weeks prior to the focal time point *t*, rather than the window being centered on *t*.
+
+| EWS | Estimator | Theoretical Correlation with $\mathcal{R}_E(t)$ |
+| ------------- | --------------------- | ------------------------ |
+| Mean | $$\mu_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{X_s}{2b-1}$$ | Positive |
+| Variance | $$\sigma_t^2 = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^2}{2b-1}$$ | Positive |
+| Coefficient of variation | $$CV_t = \frac{\sigma_t}{\mu_t}$$ | Null |
+| Index of dispersion | $$ID_t = \frac{\sigma_t^2}{\mu_t}$$ | Positive |
+| Skewness | $$S_t = \frac{1}{\sigma^3_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^3}{2b-1}$$ | Positive |
+| Kurtosis | $$K_t = \frac{1}{\sigma^4_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^4}{2b-1}$$ | Positive |
+| Autocovariance | $$\text{ACov}_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)\left(X_{s-\delta} - \mu_{s-\delta}\right)}{2b-1}$$ | Positive |
+| Autocorrelation | $$\text{AC}_t = \frac{\text{ACov}_t}{\sigma_t \sigma_{t-\delta}}$$ | Positive |
+| Decay time | $$\overline{\tau}_t = -\delta / \text{ln}\left[\text{AC}_t(\delta)\right]$$ | Positive |
+| First differenced variance | $$\Delta\sigma_t^2 = \sigma_t^2 - \sigma_{t-\delta}^2$$ | Positive |
+
+Table: List of candidate early warning signals and their estimating equations. Note that *b* denotes the bandwidth. See Brett et al. (2018) for details.
+
+
+### III. Calculate the correlation between EWS lags and $\left(\mathcal{R}_E\right)$
+Answering our [Research questions] requires calculating the correlation between each EWS and $\mathcal{R}_E$ through time, as well as calculating the correlation between lagged EWS and $\mathcal{R}_E$.
+We are interested in the correlation between lagged EWS and $\mathcal{R}_E$ because these correlations tell us whether a particular EWS can anticipate a change in $\mathcal{R}_E$.
+For example, for an EWS to be useful, it should not only track $\mathcal{R}_E$ such that $\text{cor}\left[\text{EWS}(t), \mathcal{R}_E(t)\right] > 0$, it should also anticipate changes in $\mathcal{R}_E$ such that, at some lags *k*, $\text{cor}\left[\text{EWS}(t-k), \mathcal{R}_E(t)\right] > 0$.
+
+Thus, we will calculate the temporal correlation of $[\text{EWS}(t-k), \mathcal{R}_E(t)]$ for $k \in \{0,1,2,\dots,10\}$, where *k* is measured in weeks.
+The correlation will certainly decay to approximately 0 by 10 weeks, but looking over that range allows us to quantify the decay rate.
+As shown in Table 2, we expect all EWS to positively covary with $\mathcal{R}_E$ over time, a prediction we can test by calculating the correlations and their significance using the function `cor.test()`.
+
+A caveat to the discussion about lagged EWS is that there often exists a lag between when the dynamical system goes critical and when an outbreak or epidemic occurs, so-called bifucation delay (Dibble et al. 2016).
+Therefore, EWS that at least correlate well when lag $k=0$ might still prove useful.
+
+## Data sources
+We will use weekly measles case report data from four Nigerian cities, collected over an 11 year period (1995-2005) (Figure 1).
+These data are ideal for stress testing EWS because each city has different population sizes, has different dynamics in terms of size of outbreaks and length of inter-epidemic periods, and each time series has different amounts of "noise" (though, the difference in variability is probably just reflective of population size differences).
+The data come from [*somewhere/someone*], and used here with permission from [*somewhere/someone*].
+
+```{r data-example, fig.height=3, fig.width=10}
+file_name <- "../../data/raw-data/niger_regional_1995_2005.csv"
+niger_measles_raw <- read_csv(file_name, col_types = cols())
+
+num_regions <- nrow(niger_measles_raw)
+num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because first column are regions
+weeks_per_year <- num_weeks/11
+weeks <- rep(1:52, times = 11)
+
+# Create a vector of years for all num_weeks
+years <- rep(1995:2005, each = weeks_per_year)
+
+# Function for calculating start of week based on week number and year
+calculate_start_of_week = function(week, year) {
+  date <- ymd(paste(year, 1, 1, sep="-"))
+  week(date) = week
+  return(date)
+}
+
+# Clean up the data frame
+measles_data <- niger_measles_raw %>%
+  gather(key = week, value = cases, -X1) %>%
+  mutate(
+    week_num = rep(1:num_weeks, each = num_regions),
+    year = rep(years, each  = num_regions),
+    week = rep(weeks, each = num_regions),
+    date = calculate_start_of_week(week, year)
+  ) %>%
+  dplyr::rename(region = X1) %>%
+  filter(grepl("City", region))
+
+ggplot(measles_data, aes(x = date, y = cases, color = region)) +
+  geom_path() +
+  facet_wrap(~region, scales = "free_y", nrow = 1) +
+  scale_color_manual(values = ptol_pal()(4)) +
+  guides(color = FALSE) +
+  ggtitle("Time series of data from 4 cities in Niger")
+```
+
+
+## Analysis and expected results
+The main figure will show the correlation between each EWS and $\mathcal{R}_E$ across the specified *k* lags.
+The figure (Figure 2) shows points for the correlations and a fitted trend line for each EWS.
+This figure answers question one (see [Research questions]): do EWS track and/or anticipate $\mathcal{R}_E$?
+If, in general, correlations are positive, as expected by theory, then the answer is "yes."
+If, in general, correlations are weak, null, or negative, then the answer is "no."
+The rate at which different EWS decay with lag, extracted from the fitted trend lines, tells us which EWS is best at anticipating $\mathcal{R}_E$.
+The decay rate may end up being a qualitative analysis, depending on the shape of the relationship between lag and correlation.
+We can also indicate which correlations are significant, either in this figure or in a supplementary table.
+
+```{r plot-ex, fig.height=3, fig.width=10}
+ncities <- 4
+cities <- c("Agadez", "Maradi", "Niamey", "Zinder")
+news <- 10 
+ews <- c("Mean", "Variance", "CV", "ID", "Skew", "Kurt", "Acov", "AC", "Tau", "FDV")
+lags <- 11
+mean_rhos <- (seq(sqrt(0.000001),sqrt(0.9),length.out = lags))^2
+out <- tibble()
+for(i in 1:ncities){
+  for(j in 1:news){
+    tmp_corrs <- rnorm(lags, mean_rhos, mean_rhos*0.2)
+    tmp_corrs[tmp_corrs > 1] <- 1
+    tmp_corrs[tmp_corrs < 0] <- 0
+    outtmp <- tibble(
+      city = cities[i],
+      ews = ews[j],
+      lag = 0:(lags-1),
+      correlations = rev(tmp_corrs)
+    )
+    out <- rbind(out, outtmp)
+  }
+}
+
+ggplot(out, aes(lag, correlations)) +
+  geom_point(aes(color = as.factor(ews))) +
+  stat_smooth(aes(color = as.factor(ews)), se = FALSE, size = 0.5) +
+  facet_wrap(~as.factor(city), nrow = 1) +
+  scale_color_manual(values = ptol_pal()(10), name = NULL) +
+  scale_x_continuous(breaks = 0:10) +
+  theme(legend.position = "top") +
+  labs(x = "Time lag (weeks)", y = expression(paste("Kendell's ", tau)))
+
+```
+
+An alternative visualization is shown below.
+
+```{r alt-fig, fig.height=3, fig.width=10}
+library(viridis)
+
+ggplot(out, aes(x = lag, y = ews, fill = correlations)) +
+  geom_tile() +
+  facet_wrap(~as.factor(city), nrow = 1) +
+  scale_fill_viridis(name = expression(paste("Kendell's ", tau)), limits = c(0,1)) +
+  scale_x_continuous(breaks = 0:10) +
+  labs(x = "Time lag (weeks)", y = "Early warning signal")
+```
+
+The second question, "Do some EWS outperform others?", will be answered by simply ranking each EWS correlation at each lag (also visible in Figure 1).
+
+The third question, "Does the degree to which early warning signals track or anticipate the effective reproductive ratio depend on the magnitude or dynamics of the effective reproductive ratio itself?", will be answered by conducting a *post hoc* statistical analysis.
+First, the $\mathcal{R}_E(t)$ time series will be broken up into clusters according to whether $\mathcal{R}_E(t) > 1$ or not.
+Then, we will run the correlation analysis, across all lags, seperately for each cluster (e.g., a single time series might have 10 sections where R < 1, and 10 sections where R > 1, yielding a sample size of 20 time series).
+Lastly, we will conduct an ANOVA to determine if the threshold value of $\mathcal{R}_E$ determines the correlation between EWS$_t$ and $\mathcal{R}_E(t)$.
+One expectation is that the correlation will be low/weak when $\mathcal{R}_E \lessapprox 1$ but high/strong when $\mathcal{R}_E \gtrapprox 1$.
+An example figure is shown below, in which whether $\mathcal{R}_E(t)$ is above/below the threshold of 1 does impact its correlation with each EWS.
+
+```{r anova-fig, fig.height=4, fig.width=10}
+ntimes <- 20
+plotit <- tibble(
+  city = rep(unique(measles_data$region), each = ntimes*length(ews)),
+  ewss = rep(ews, times = ntimes*4),
+  rnaught = rep( rep(c("> 1", "< 1"), each = 10), times = 4*length(ews))
+) %>%
+  group_by(city, ewss) %>%
+  mutate(
+    correlations = ifelse(rnaught == "> 1", rnorm(ntimes*length(ews), 0.8, 0.1), rnorm(ntimes*length(ews), 0.2, 0.1))
+  )
+
+ggplot(plotit, aes(x = rnaught, y = correlations)) +
+  geom_boxplot(aes(fill = ewss)) +
+  facet_wrap(~city, nrow = 1, scales = "free_y") +
+  scale_fill_manual(values = ptol_pal()(10), name = NULL) +
+  scale_y_continuous(limits = c(-0.1, 1)) +
+  theme(legend.position = "top") +
+  labs(x = expression(R[E]), y = expression(paste("Kendell's ", tau)))
+```
+
+## Checklist
+
++ ~~Create cleaned dataset of just the four focal cities from Niger~~
++ ~~Write R code to define the `pomp` model object (SDE)~~
++ Simulate time series from the `pomp` object with parameters that give us irregular dynamics like the observed data
++ Do test analysis of steps II-III using the simulated data
++ Perform iterated filter parameter search for MLEs
+    - Get set up on UGA cluster
++ Calculate EWS on the observed data
+    - Work with Eamon on bandwidth, etc.
++ Caclulate correlations with real data and empirically-derived $\mathcal{R}_E$
++ Write the paper!
+
