@@ -290,6 +290,6 @@ ggplot(plotit, aes(x = rnaught, y = correlations)) +
     - Get set up on UGA cluster
 + Calculate EWS on the observed data
     - Work with Eamon on bandwidth, etc.
-+ Caclulate correlations with real data and empirically-derived $\mathcal{R}_E$
++ Caclulate correlations with real data and empirically-derived $\mathcal{R}_E$ and lags
 + Write the paper!
 
