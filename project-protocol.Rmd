@@ -56,9 +56,9 @@ The goal is fit a model to estimate:
 The model is a continuous time SIR model, specified as a set of stochastic differential equations (SDEs):
 
 \begin{align}
-\frac{\text{d}S}{\text{d}t} &= b_t - \lambda_t \\
-\frac{\text{d}I}{\text{d}t} &= \lambda_t - \gamma \\
-\frac{\text{d}R}{\text{d}t} &= \gamma,
+\frac{\text{d}S}{\text{d}t} &= b_t - \lambda_t S_t \\
+\frac{\text{d}I}{\text{d}t} &= \lambda_t S_t - \gamma I_t \\
+\frac{\text{d}R}{\text{d}t} &= \gamma I_t,
 \end{align}
 
 \noindent{}where $b_t$ is the number of births that occur in the interval $\text{d}t$, $\gamma$ is the time-invariant recovery rate, and $\lambda_t$ is the time-varying force of infection.
@@ -66,7 +66,7 @@ We model $\lambda_t$ as a function of a seasonal tranmission rate subject to add
 
 \begin{align}
 \lambda_t &= \frac{\beta_t I_t + \psi}{N_t} \\
-\beta_t &= \text{exp}\left(\beta + \sum^6_{i=1} q_i \xi_{i_{t}} \right) + \varepsilon_t
+\text{log}\left(\beta_t \right) &= \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t 
 \end{align}
 
 We will fit the model to data via iterated filtering to maximize the likelihood, as implemented in the R package `pomp`.
