@@ -70,9 +70,9 @@ guesses <- sobolDesign(
 
 # Plot and save the parameter space ---------------------------------------
 
-pdf("../results/lhs_global.pdf", width = 10, height = 10)
-plot(guesses, pch = ".", las = 1)
-dev.off()
+# pdf("../results/lhs_global.pdf", width = 10, height = 10)
+# plot(guesses, pch = ".", las = 1)
+# dev.off()
 
 
 # Perform initial MIF search ----------------------------------------------
@@ -81,7 +81,7 @@ dev.off()
 if(file.exists("global-search.RDS") == FALSE){
   
   foreach(
-    guess = iter(guesses,"row"),
+    guess = iter(guesses[1:10,],"row"),
     .combine = rbind,
     .packages = c("pomp","magrittr"),
     .errorhandling = "remove",
@@ -92,13 +92,14 @@ if(file.exists("global-search.RDS") == FALSE){
     measles_pomp %>% 
       mif2(
         start = unlist(guess),
-        Nmif = 50,
-        Np = 1000,
+        Nmif = 25,
+        Np = 2000,
         transform = TRUE,
         cooling.fraction.50 = 1,
         cooling.type = "geometric",
         rw.sd = rw.sd(
           beta_mu = 0.02, 
+          gamma = 0.02,
           rho = 0.02, 
           tau = 0.02, 
           beta_sd = 0.02,
@@ -111,10 +112,9 @@ if(file.exists("global-search.RDS") == FALSE){
           I_0 = ivp(0.1, 52), 
           S_0 = ivp(0.1, 52),
           R_0 = ivp(0.1, 52),
-          psi = 0.02
+          iota = 0.02
         )
-      ) %>%
-      mif2() -> mf
+      ) -> mf
     
     ll <- logmeanexp(replicate(10,logLik(pfilter(mf))), se=TRUE)
     tibble(
