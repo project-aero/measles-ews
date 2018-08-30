@@ -39,11 +39,20 @@ for(do_city in unique(measles_data$region)){
   )$stats
   
   city_stats_tb <- as_tibble(city_stats) %>%
-    mutate(time = 1:n()) %>%
-    gather(key = ews, value = value, -time) %>%
+    mutate(
+      time_iter = 1:n(),
+      date = city_data$date
+    ) %>%
+    gather(key = ews, value = value, -time_iter, -date) %>%
     mutate(city = do_city)
   
   all_stats <- bind_rows(all_stats, city_stats_tb)
 }
 
 
+# Save the results --------------------------------------------------------
+
+saveRDS(
+  object = all_stats, 
+  file = "../results/ews-niger-cities.RDS"
+)
