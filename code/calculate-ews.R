@@ -21,6 +21,7 @@ measles_data <- readRDS(file_name) %>%
 
 # Calculate early warning signals -----------------------------------------
 
+window_bandwidth <- 52*2  # window of 2 years
 all_stats <- {}
 for(do_city in unique(measles_data$region)){
   city_data <- measles_data %>%
@@ -30,10 +31,10 @@ for(do_city in unique(measles_data$region)){
     x = city_data$cases,
     center_trend = "local_constant", 
     center_kernel = "uniform", 
-    center_bandwidth = 35, 
+    center_bandwidth = window_bandwidth, 
     stat_trend = "local_constant", 
     stat_kernel = "uniform", 
-    stat_bandwidth = 35, 
+    stat_bandwidth = window_bandwidth, 
     lag = 1, 
     backward_only = TRUE
   )$stats
