@@ -77,55 +77,89 @@ guesses <- sobolDesign(
 
 # Perform initial MIF search ----------------------------------------------
 
-
-if(file.exists("global-search.RDS") == FALSE){
-  
-  foreach(
-    guess = iter(guesses[1:10,],"row"),
-    .combine = rbind,
-    .packages = c("pomp","magrittr"),
-    .errorhandling = "remove",
-    .export = "measles_pomp",
-    .inorder = FALSE
-  ) 
-  %dopar% {
-    measles_pomp %>% 
-      mif2(
-        start = unlist(guess),
-        Nmif = 25,
-        Np = 2000,
-        transform = TRUE,
-        cooling.fraction.50 = 1,
-        cooling.type = "geometric",
-        rw.sd = rw.sd(
-          beta_mu = 0.02, 
-          gamma = 0.02,
-          rho = 0.02, 
-          tau = 0.02, 
-          beta_sd = 0.02,
-          b1 = 0.02, 
-          b2 = 0.02, 
-          b3 = 0.02, 
-          b4 = 0.02, 
-          b5 = 0.02, 
-          b6 = 0.02,
-          I_0 = ivp(0.1, 52), 
-          S_0 = ivp(0.1, 52),
-          R_0 = ivp(0.1, 52),
-          iota = 0.02
-        )
-      ) -> mf
-    
-    ll <- logmeanexp(replicate(10,logLik(pfilter(mf))), se=TRUE)
-    tibble(
-      loglik = ll[1],
-      loglik_se = ll[2], 
-      as.list(coef(mf))
+tic <- Sys.time()
+measles_pomp %>% 
+  mif2(
+    start = unlist(guesses[1,]),
+    Nmif = 25,
+    Np = 2000,
+    transform = TRUE,
+    cooling.fraction.50 = 1,
+    cooling.type = "geometric",
+    rw.sd = rw.sd(
+      beta_mu = 0.02, 
+      gamma = 0.02,
+      rho = 0.02, 
+      tau = 0.02, 
+      beta_sd = 0.02,
+      b1 = 0.02, 
+      b2 = 0.02, 
+      b3 = 0.02, 
+      b4 = 0.02, 
+      b5 = 0.02, 
+      b6 = 0.02,
+      I_0 = ivp(0.1, 52), 
+      S_0 = ivp(0.1, 52),
+      R_0 = ivp(0.1, 52),
+      iota = 0.02
     )
-  } -> global_mles
-  
-  saveRDS(object = global_mles, file = "global-search.RDS")
-  
-} else{
-  global_mles <- readRDS("global-search.RDS")
-}
+  ) -> mf
+
+toc <- Sys.time()
+timeit <- toc-tic
+
+saveRDS(mf, "testmf.RDS")
+saveRDS(timeit, "proctime.RDS")
+
+# 
+# if(file.exists("global-search.RDS") == FALSE){
+#   
+#   foreach(
+#     guess = iter(guesses[1:10,],"row"),
+#     .combine = rbind,
+#     .packages = c("pomp","magrittr"),
+#     .errorhandling = "remove",
+#     .export = "measles_pomp",
+#     .inorder = FALSE
+#   ) 
+#   %dopar% {
+#     measles_pomp %>% 
+#       mif2(
+#         start = unlist(guess),
+#         Nmif = 25,
+#         Np = 2000,
+#         transform = TRUE,
+#         cooling.fraction.50 = 1,
+#         cooling.type = "geometric",
+#         rw.sd = rw.sd(
+#           beta_mu = 0.02, 
+#           gamma = 0.02,
+#           rho = 0.02, 
+#           tau = 0.02, 
+#           beta_sd = 0.02,
+#           b1 = 0.02, 
+#           b2 = 0.02, 
+#           b3 = 0.02, 
+#           b4 = 0.02, 
+#           b5 = 0.02, 
+#           b6 = 0.02,
+#           I_0 = ivp(0.1, 52), 
+#           S_0 = ivp(0.1, 52),
+#           R_0 = ivp(0.1, 52),
+#           iota = 0.02
+#         )
+#       ) -> mf
+#     
+#     ll <- logmeanexp(replicate(10,logLik(pfilter(mf))), se=TRUE)
+#     tibble(
+#       loglik = ll[1],
+#       loglik_se = ll[2], 
+#       as.list(coef(mf))
+#     )
+#   } -> global_mles
+#   
+#   saveRDS(object = global_mles, file = "global-search.RDS")
+#   
+# } else{
+#   global_mles <- readRDS("global-search.RDS")
+# }
