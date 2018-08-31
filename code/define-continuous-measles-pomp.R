@@ -8,6 +8,8 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
+##  https://github.com/theresasophia/pomp-astic/blob/master/mle_stst%2B_study.R
+
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
@@ -95,6 +97,7 @@ measles_process <- Csnippet(
   R += trans[3]-trans[5];
   cases += trans[1];  // cases are cumulative infections
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
+  Re += (beta*dW/dt)/gamma/pop;
   "
 )
 
@@ -103,7 +106,7 @@ measles_process <- Csnippet(
 
 measles_dmeasure <- Csnippet(
   "
-  double mean, sd;
+  double mean;
   double f;
   mean = cases*rho;
   f = dnbinom_mu(reports, 1/tau, mean, give_log);
@@ -164,6 +167,7 @@ initial_values <- Csnippet(
   R = nearbyint(R_0);
   cases = 0;
   W = 0;
+  Re = 0;
   "
 )
 
@@ -232,18 +236,18 @@ measles_pomp <- pomp(
   covar = covar_data,
   tcovar = "time",
   t0 = 1,
-  rprocess = euler.sim(step.fun = measles_process, delta.t = 1/52/20),
+  rprocess = euler.sim(step.fun = measles_process, delta.t = 1/10),
   skeleton = vectorfield(measles_skeleton),
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,
-  statenames = c("S", "I", "R", "cases", "W"),
+  statenames = c("S", "I", "R", "cases", "W", "Re"),
   toEstimationScale = to_estimation,
   fromEstimationScale = from_estimation,
   paramnames = names(params),
   params = params,
   globals = "int K = 6;",
-  zeronames = c("cases", "W")
+  zeronames = c("cases", "W", "Re")
 )
 
 saveRDS(object = measles_pomp, file = "measles-pomp-object.RDS")
@@ -254,18 +258,18 @@ saveRDS(object = measles_pomp, file = "measles-pomp-object.RDS")
 # traj <- trajectory(measles_pomp, times=seq(1,52*11,by=1))
 # plot(traj[2,1,], type = "l")
 # 
-# simulate(
-#   measles_pomp,
-#   nsim = 9,
-#   as.data.frame = TRUE,
-#   include.data = TRUE) %>%
-#   ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
-#   geom_line() +
-#   scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
-#   guides(color = FALSE) +
-#   facet_wrap(~sim, ncol = 2) +
-#   scale_y_sqrt() +
-#   theme(strip.text=element_blank()) +
-#   geom_hline(aes(yintercept = 0))
+simulate(
+  measles_pomp,
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank()) +
+  geom_hline(aes(yintercept = 0))
 # 
 # logLik(pfilter(measles_pomp, Np = 100))
