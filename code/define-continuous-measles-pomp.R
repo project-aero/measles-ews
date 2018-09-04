@@ -30,7 +30,7 @@ measles_skeleton <- Csnippet(
   
   // Calculate force of infection
   beta = beta_mu * (1 + dot_product(K, &xi1, &b1));
-  lambda = (iota + beta*I) / pop;
+  lambda = (iota+I)*beta/pop;
 
   // Compute the transition rates
   rate[0] = births;	 // birth into susceptible class
@@ -69,17 +69,20 @@ measles_process <- Csnippet(
   double lambda;        // force of infection
   double beta;          // transmission rate
   double dW;            // white noise
+  double seas;
 
   // Calculate force of infection
-  beta = beta_mu * (1 + dot_product(K, &xi1, &b1));
-  lambda = (iota + beta*I);
+  //beta = beta_mu * (1 + dot_product(K, &xi1, &b1));
+  seas = (1 + exp(dot_product(K, &xi1, &b1)));
+  beta = beta_mu*seas; //*(1.0-exp(-(gamma)*dt))/dt;
+  lambda = beta*(I+iota)/pop;
 
   // Gamma noise, mean=dt, variance=(beta_sd^2 dt)
   dW = rgammawn(beta_sd, dt);
 
   // Compute the transition rates
   rate[0] = births;		                    // birth into susceptible class
-  rate[1] = (iota + beta*I*dW/dt) / pop;  // force of infection
+  rate[1] = lambda*dW/dt;                 // force of infection
   rate[2] = 0;			                      // death from susceptible class
   rate[3] = gamma;	                      // recovery
   rate[4] = 0;			                      // death from infectious class
@@ -97,7 +100,6 @@ measles_process <- Csnippet(
   R += trans[3]-trans[5];
   cases += trans[1];  // cases are cumulative infections
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
-  Re += (beta*dW/dt)/gamma/pop;
   "
 )
 
@@ -213,8 +215,8 @@ covar_data <- bind_cols(covar_data, bspline_basis)
 # Combine everything into a pomp object -----------------------------------
 
 params <- c(
-  beta_mu = 1.1,
-  gamma = 0.6,
+  beta_mu = 2,
+  gamma = 1,
   beta_sd = 3e-1,
   tau = 1e-1,
   b1 = 5,
@@ -255,21 +257,18 @@ saveRDS(object = measles_pomp, file = "measles-pomp-object.RDS")
 
 # Extra plotting code for testing -----------------------------------------
 
-# traj <- trajectory(measles_pomp, times=seq(1,52*11,by=1))
-# plot(traj[2,1,], type = "l")
+# simulate(
+#   measles_pomp,
+#   nsim = 9,
+#   as.data.frame = TRUE,
+#   include.data = TRUE) %>%
+#   ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+#   geom_line() +
+#   scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+#   guides(color = FALSE) +
+#   facet_wrap(~sim, ncol = 2) +
+#   scale_y_sqrt() +
+#   theme(strip.text=element_blank()) +
+#   geom_hline(aes(yintercept = 0))
 # 
-simulate(
-  measles_pomp,
-  nsim = 9,
-  as.data.frame = TRUE,
-  include.data = TRUE) %>%
-  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
-  geom_line() +
-  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
-  guides(color = FALSE) +
-  facet_wrap(~sim, ncol = 2) +
-  scale_y_sqrt() +
-  theme(strip.text=element_blank()) +
-  geom_hline(aes(yintercept = 0))
-# 
-# logLik(pfilter(measles_pomp, Np = 100))
+# logLik(pfilter(measles_pomp, Np = 1000))
