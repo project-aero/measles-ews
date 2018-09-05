@@ -64,9 +64,9 @@ The goal is fit a model to estimate:
 The model is a continuous time SIR model, specified as a set of stochastic differential equations (SDEs):
 
 \begin{align}
-\frac{\text{d}S}{\text{d}t} &= b_t - \lambda_t S_t \\
-\frac{\text{d}I}{\text{d}t} &= \lambda_t S_t - \gamma I_t \\
-\frac{\text{d}R}{\text{d}t} &= \gamma I_t,
+dS &= b_t dt - \lambda_t S_t dt + dW_t \\
+dI &= \lambda_t S_t dt - \gamma I_t dt + dW_t \\
+dR &= \gamma I_t dt + dW_t,
 \end{align}
 
 \noindent{}where $b_t$ is the number of births that occur in the interval $\text{d}t$, $\gamma$ is the time-invariant recovery rate, and $\lambda_t$ is the time-varying force of infection.
@@ -87,6 +87,12 @@ We assume observed case reports ($\textbf{y}$) are drawn from a negative binomia
 \begin{align}
 y_t \sim \text{NegBin} \left( \rho I_t, \tau  \right).
 \end{align}
+
+| Transition | ($\Delta S$, $\Delta I$, $\Delta R$) | Propensity |
+| ---------- | ------------------ | --------------- |
+| birth | (1, 0, 0) | $N_t \mu$ |
+| transmission | (-1, 1, 0) | $S(I+\psi) \beta_t / N_t$ |
+| recovery | (0, -1, 1) | $I\gamma$ |
 
 
 #### Model fitting

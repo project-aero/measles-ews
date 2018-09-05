@@ -63,43 +63,44 @@ measles_skeleton <- Csnippet(
 measles_process <- Csnippet(
   "
   // Define the variables
-  int nrate = 6;        // number of rates
+  int nrate = 2;        // number of rates
   double rate[nrate];		// transition rates
   double trans[nrate];	// transition numbers
   double lambda;        // force of infection
   double beta;          // transmission rate
   double dW;            // white noise
   double seas;
+  double dN0S, dNSI, dNIR;
 
   // Calculate force of infection
-  //beta = beta_mu * (1 + dot_product(K, &xi1, &b1));
   seas = (1 + exp(dot_product(K, &xi1, &b1)));
-  beta = beta_mu*seas; //*(1.0-exp(-(gamma)*dt))/dt;
+  beta = beta_mu*seas;
   lambda = beta*(I+iota)/pop;
 
   // Gamma noise, mean=dt, variance=(beta_sd^2 dt)
   dW = rgammawn(beta_sd, dt);
 
   // Compute the transition rates
-  rate[0] = births;		                    // birth into susceptible class
-  rate[1] = lambda*dW/dt;                 // force of infection
-  rate[2] = 0;			                      // death from susceptible class
-  rate[3] = gamma;	                      // recovery
-  rate[4] = 0;			                      // death from infectious class
-  rate[5] = 0; 		                        // death from recovered class
+  rate[0] = lambda*dW/dt;                 // force of infection
+  rate[1] = gamma;	                      // recovery
 
   // Compute the state transitions
-  trans[0] = rpois(rate[0]*dt);	 // births are Poisson
-  reulermultinom(2,S,&rate[1],dt,&trans[1]);
-  reulermultinom(2,I,&rate[3],dt,&trans[3]);
-  reulermultinom(1,R,&rate[5],dt,&trans[5]);
+  reulermultinom(1, S, &rate[0], dt, &trans[0]);
+  reulermultinom(1, I, &rate[1], dt, &trans[1]);
+
+  // Transitions
+  dN0S = rpois(births * dt);
+  dNSI = trans[0];
+  dNIR = trans[1];
 
   // Balance the equations
-  S += trans[0]-trans[1]-trans[2];
-  I += trans[1]-trans[3]-trans[4];
-  R += trans[3]-trans[5];
-  cases += trans[1];  // cases are cumulative infections
+  S += dN0S - dNSI;
+  I +=        dNSI - dNIR;
+  R +=               dNIR;
+
+  cases += dNIR;  // cases are cumulative infections (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
+  RE = (beta * dW/dt) / gamma;
   "
 )
 
@@ -111,7 +112,8 @@ measles_dmeasure <- Csnippet(
   double mean;
   double f;
   mean = cases*rho;
-  f = dnbinom_mu(reports, 1/tau, mean, give_log);
+  //f = dnbinom_mu(reports, 1/tau, mean, give_log);
+  f = dpois(reports, mean, give_log);
 
   lik = (give_log) ? log(f) : f;
   "
@@ -122,7 +124,8 @@ measles_dmeasure <- Csnippet(
 
 measles_rmeasure <- Csnippet(
   "
-  reports = rnbinom_mu(1/tau, rho*cases);
+  //reports = rnbinom_mu(1/tau, rho*cases);
+  reports = rpois(rho*cases);
   if (reports > 0.0) {
     reports = nearbyint(reports);
   } else {
@@ -138,7 +141,6 @@ from_estimation <- Csnippet(
   "
   Tbeta_mu = exp(beta_mu);
   Tgamma = exp(gamma);
-  Ttau = exp(tau);
   Tiota = exp(iota);
   Tbeta_sd = exp(beta_sd);
   Trho = expit(rho);
@@ -152,7 +154,6 @@ to_estimation <- Csnippet(
   "
   Tbeta_mu = log(beta_mu);
   Tgamma = log(gamma);
-  Ttau = log(tau);
   Tiota = log(iota);
   Tbeta_sd = log(beta_sd);
   Trho = logit(rho);
@@ -169,7 +170,7 @@ initial_values <- Csnippet(
   R = nearbyint(R_0);
   cases = 0;
   W = 0;
-  Re = 0;
+  RE = 0;
   "
 )
 
@@ -215,21 +216,20 @@ covar_data <- bind_cols(covar_data, bspline_basis)
 # Combine everything into a pomp object -----------------------------------
 
 params <- c(
-  beta_mu = 2,
-  gamma = 1,
-  beta_sd = 3e-1,
-  tau = 1e-1,
-  b1 = 5,
+  beta_mu = 25,
+  gamma = 16,
+  beta_sd = 0.001,
+  b1 = 3,
   b2 = 3,
   b3 = 6,
   b4 = 5,
   b5 = 2,
   b6 = 0,
   iota = 2,
-  rho = 0.3,
-  S_0 = 80000, 
+  rho = 0.5,
+  S_0 = 20000, 
   I_0 = 100,
-  R_0 = covar_data$pop[1] - 80000 - 100
+  R_0 = covar_data$pop[1] - 20000 - 100
 )
 
 measles_pomp <- pomp(
@@ -238,18 +238,18 @@ measles_pomp <- pomp(
   covar = covar_data,
   tcovar = "time",
   t0 = 1,
-  rprocess = euler.sim(step.fun = measles_process, delta.t = 1/10),
+  rprocess = euler.sim(step.fun = measles_process, delta.t = 1/52),
   skeleton = vectorfield(measles_skeleton),
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,
-  statenames = c("S", "I", "R", "cases", "W", "Re"),
+  statenames = c("S", "I", "R", "cases", "W", "RE"),
   toEstimationScale = to_estimation,
   fromEstimationScale = from_estimation,
   paramnames = names(params),
   params = params,
   globals = "int K = 6;",
-  zeronames = c("cases", "W", "Re")
+  zeronames = c("cases", "W")
 )
 
 saveRDS(object = measles_pomp, file = "measles-pomp-object.RDS")
