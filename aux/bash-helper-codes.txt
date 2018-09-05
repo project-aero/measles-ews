@@ -1,0 +1,5 @@
+scp -r ~/Desktop/rlibs/ tredenni@login.olympus.psc.edu:
+
+R CMD INSTALL -l ./myRlib/ ./rlibs/pomp_1.18.tar.gz
+
+library("pomp", lib.loc = "~/myRlib")
