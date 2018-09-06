@@ -5,9 +5,9 @@ subtitle: Linking early warning signals to the temporal epidemiology of measles 
 author: "Andrew Tredennick (atredenn@gmail.com)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
+  html_document: default
   pdf_document:
     fig_caption: yes
-  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -61,7 +61,7 @@ The goal is fit a model to estimate:
 
 #### The mechanistic SIR model
     
-The model is a continuous time SIR model, specified as a set of stochastic differential equations (SDEs):
+The model is a continuous time SIR model with limited demography, specified as a set of stochastic differential equations (SDEs):
 
 \begin{align}
 dS &= \mu_t N_t dt - \lambda_t S_t dt + dW_t \\
@@ -70,6 +70,8 @@ dR &= \gamma I_t dt + dW_t,
 \end{align}
 
 \noindent{}where $\mu_t$ is birth rate at time *t*, $\gamma$ is the time-invariant recovery rate, and $\lambda_t$ is the time-varying force of infection.
+We do not include a death process in the model because we expect death rates from the susceptible and infectious classes to be minimal relative to births and we are not interested in robust estimates of the recovered class.
+Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
 Transitions in the model are shown in Table 1.
 We model $\lambda_t$ as a function of a seasonal tranmission rate subject to additional environmental variability through time:
 
@@ -159,8 +161,11 @@ Table: List of candidate early warning signals and their estimating equations. N
 ### III. Calculate the correlation between EWS lags and $\left(\mathcal{R}_E\right)$
 Answering our [Research questions] requires calculating the correlation between each EWS and $\mathcal{R}_E$ through time.
 We are interested in the correlation between EWS and $\mathcal{R}_E$ because these correlations tell us whether a particular EWS can anticipate a change in $\mathcal{R}_E$.
-We will calculate the temporal correlation of $[\text{EWS}(t), \mathcal{R}_E(t)]$ for all EWS with Kendall's $\tau$ using the R function `cor(..., method = "kendall")`.
-As shown in Table 2, we expect all EWS to positively covary with $\mathcal{R}_E$ over time, a prediction we can test by calculating the correlations and their significance using the function `cor.test(..., method = "kendall")`.
+We will calculate the temporal correlation of $[\text{EWS}(t), \mathcal{R}_E(t)]$ for all EWS with Spearman's $\rho$ using the R function `cor(..., method = "spearman")`.
+Pearson's correlation coefficient is not suitable for testing nonlinear associations and Kendall's $\tau$ does not take into account the distance between discordant pairs, so we will use Spearman's rank correlation.[^1] 
+As shown in Table 2, we expect all EWS to positively covary with $\mathcal{R}_E$ over time, a prediction we can test by calculating the correlations and their significance using the function `cor.test(..., method = "spearman")`.
+
+[^1]: Note that Spearman's $\rho$ does not handle ties very well, so we may have to fall back on Kendall's $\tau$ is there are many ties and we do not want to rely on approximate p-values.
 
 There often exists a lag between when the dynamical system goes critical and when an outbreak or epidemic occurs, so-called bifucation delay (Dibble et al. 2016).
 Therefore, EWS that correlate well with underlying dynamics (i.e., $\mathcal{R}_E(t)$) should be useful for anticipating outbreaks.
