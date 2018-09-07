@@ -9,23 +9,20 @@
 # Load libraries ----------------------------------------------------------
 
 # On PC
-# library(tibble)
-# library(magrittr)
-# library(pomp)
-# library(foreach)
-# library(doParallel)
-# library(dplyr)
+library(tibble)
+library(magrittr)
+library(pomp)
+library(foreach)
+library(doParallel)
+library(dplyr)
 
 # On HPC
-library("tibble", lib.loc="~/myRlib/")
-library("magrittr", lib.loc="~/myRlib/")
-library("pomp", lib.loc="~/myRlib/")
-library("foreach", lib.loc="~/myRlib/")
-library("doParallel", lib.loc="~/myRlib/")
-library("dplyr", lib.loc="~/myRlib/")
-
-
-
+# library("tibble", lib.loc="~/myRlib/")
+# library("magrittr", lib.loc="~/myRlib/")
+# library("pomp", lib.loc="~/myRlib/")
+# library("foreach", lib.loc="~/myRlib/")
+# library("doParallel", lib.loc="~/myRlib/")
+# library("dplyr", lib.loc="~/myRlib/")
 
 
 # Load pomp object --------------------------------------------------------
@@ -36,7 +33,7 @@ start_population <- as.numeric(measles_pomp@covar[1,1])
 
 # Define Latin hypercube parameter space ----------------------------------
 
-grid_size <- 5000
+grid_size <- 2000
 
 param_uppers <- tibble(
   beta_mu = 50,
@@ -80,7 +77,7 @@ guesses <- sobolDesign(
   lower = param_lowers,
   upper = param_uppers,
   nseq = grid_size
-) 
+)
 
 
 # Plot and save the parameter space ---------------------------------------
@@ -92,17 +89,17 @@ guesses <- sobolDesign(
 
 # Perform initial parameter search with pfilter ---------------------------
 
-particles <- 20
-cores <- 4
-cl <- makeCluster(cores)
-registerDoParallel(cl)
-
-clusterCall(cl, function(x) .libPaths(x), .libPaths("~/myRlib"))
-
 if(file.exists("initial-search-lls.RDS") == FALSE){
+  
+  particles <- 2000
+  cores <- 20
+  cl <- makeCluster(cores)
+  registerDoParallel(cl)
+  
+  clusterCall(cl, function(x) .libPaths(x), .libPaths("~/myRlib"))
 
   foreach(
-    guess = iter(guesses[1:4,],"row"),
+    guess = iter(guesses,"row"),
     .combine = rbind,
     .packages = c("pomp","magrittr","dplyr"),
     .errorhandling = "remove",
