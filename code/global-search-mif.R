@@ -80,13 +80,6 @@ guesses <- sobolDesign(
 )
 
 
-# Plot and save the parameter space ---------------------------------------
-
-# pdf("../results/lhs_global.pdf", width = 10, height = 10)
-# plot(guesses, pch = ".", las = 1)
-# dev.off()
-
-
 # Perform initial parameter search with pfilter ---------------------------
 
 if(file.exists("initial-search-lls.RDS") == FALSE){
