@@ -45,5 +45,11 @@ for(i in 1:p$nrow) {
   }
 }
 
-p
+ggsave(
+  filename = "../figures/initial-lls-pairsplot.pdf", 
+  plot = p, 
+  width = 18, 
+  height = 11, 
+  units = "in"
+)
 
