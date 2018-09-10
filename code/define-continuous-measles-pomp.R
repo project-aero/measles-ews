@@ -107,7 +107,6 @@ from_estimation <- Csnippet(
   Trho = expit(rho);
   TS_0 = exp(S_0);
   TI_0 = exp(I_0);
-  TR_0 = exp(R_0);
   "
 )
 
@@ -120,7 +119,6 @@ to_estimation <- Csnippet(
   Trho = logit(rho);
   TS_0 = log(S_0);
   TI_0 = log(I_0);
-  TR_0 = log(R_0);
   "
 )
 
@@ -191,8 +189,7 @@ params <- c(
   iota = 2,
   rho = 0.5,
   S_0 = 20000, 
-  I_0 = 100,
-  R_0 = covar_data$pop[1] - 20000 - 100
+  I_0 = 100
 )
 
 measles_pomp <- pomp(
@@ -210,7 +207,8 @@ measles_pomp <- pomp(
   fromEstimationScale = from_estimation,
   paramnames = names(params),
   params = params,
-  globals = "int K = 6;",
+  globals = "int K = 6;
+             double R_0 = 700000;",
   zeronames = c("cases", "W")
 )
 
