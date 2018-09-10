@@ -6,23 +6,31 @@
 #  Andrew Tredennick
 
 
+args <- commandArgs(trailingOnly = F)
+myargument <- args[length(args)]
+myargument <- sub("-","",myargument)
+do_grid <- as.numeric(myargument)
+
+
 # Load libraries ----------------------------------------------------------
 
 # On PC
-library(tibble)
-library(magrittr)
-library(pomp)
-library(foreach)
-library(doParallel)
-library(dplyr)
+# library(tibble)
+# library(magrittr)
+# library(pomp)
+# library(foreach)
+# library(doParallel)
+# library(dplyr)
+# library(lhs)
 
 # On HPC
-# library("tibble", lib.loc="~/myRlib/")
-# library("magrittr", lib.loc="~/myRlib/")
-# library("pomp", lib.loc="~/myRlib/")
-# library("foreach", lib.loc="~/myRlib/")
-# library("doParallel", lib.loc="~/myRlib/")
-# library("dplyr", lib.loc="~/myRlib/")
+library("tibble", lib.loc="~/myRlib/")
+library("magrittr", lib.loc="~/myRlib/")
+library("pomp", lib.loc="~/myRlib/")
+library("foreach", lib.loc="~/myRlib/")
+library("doParallel", lib.loc="~/myRlib/")
+library("dplyr", lib.loc="~/myRlib/")
+library("lhs", lib.loc="~/myRlib/")
 
 
 # Load pomp object --------------------------------------------------------
@@ -33,8 +41,10 @@ start_population <- as.numeric(measles_pomp@covar[1,1])
 
 # Define Latin hypercube parameter space ----------------------------------
 
-grid_size <- 2000
+# Number of random parameters to generate
+grid_size <- 1000
 
+# Upper bounds for random parameters
 param_uppers <- tibble(
   beta_mu = 50,
   gamma = 50,
@@ -48,12 +58,12 @@ param_uppers <- tibble(
   iota = 10,
   rho = 0.8,
   S_0 = 100000,
-  I_0 = 500,
-  R_0 = start_population - 100000 - 500
+  I_0 = 500
 ) %>%
   as.numeric()
 names(param_uppers) <- names(coef(measles_pomp))
 
+# Lower bounds for random parameters
 param_lowers <- tibble(
   beta_mu = 0.001,
   gamma = 0.001,
@@ -67,52 +77,123 @@ param_lowers <- tibble(
   iota = 0.001,
   rho = 0.1,
   S_0 = 1000,
-  I_0 = 10,
-  R_0 = start_population - 1000 - 10
+  I_0 = 10
 ) %>%
   as.numeric()
 names(param_lowers) <- names(coef(measles_pomp))
 
-guesses <- sobolDesign(
-  lower = param_lowers,
-  upper = param_uppers,
-  nseq = grid_size
-)
+# Construct random latin hypercube sample
+set.seed(123471246)  # get same LHS every time
+lhs_grid <- randomLHS(n = grid_size, k = length(coef(measles_pomp)))
+
+for(i in 1:ncol(lhs_grid)){
+  lhs_grid[ , i] <- qunif(lhs_grid[ , i], param_lowers[i], param_uppers[i])
+}
+
+colnames(lhs_grid) <- names(coef(measles_pomp))
+
+
+# Perform initial MIF -----------------------------------------------------
+
+particles <- 2000
+mif_iters <- 50
+
+mf <- measles_pomp %>% 
+  mif2(
+    start = unlist(lhs_grid[do_grid,]),
+    Nmif = mif_iters,
+    Np = particles,
+    transform = TRUE,
+    cooling.fraction.50 = 1,
+    cooling.type = "geometric",
+    rw.sd = rw.sd(
+      beta_mu = 0.02,
+      gamma = 0.02,
+      rho = 0.02,
+      beta_sd = 0.02,
+      iota = 0.02,
+      b1 = 0.02,
+      b2 = 0.02,
+      b3 = 0.02,
+      b4 = 0.02,
+      b5 = 0.02,
+      b6 = 0.02,
+      I_0 = ivp(0.1),
+      S_0 = ivp(0.1)
+    )
+  ) 
+
+ll <- logmeanexp(replicate(2,logLik(pfilter(mf))), se=TRUE)
+coef_ests <- data.frame(t(coef(mf)))
+
+outdf <- data.frame(
+  do_grid = do_grid,
+  loglik = as.numeric(ll[1]),
+  loglik_se = as.numeric(ll[2])
+) %>%
+  bind_cols(coef_ests)
+
+
+# Write results to file ---------------------------------------------------
+
+ll_file <- "initial-mif-lls.csv"
+if(file.exists(ll_file) == FALSE){
+  file.create(ll_file)
+  write.table(outdf, ll_file, sep = ",", col.names = T, append = T, row.names = FALSE)
+} else{
+  write.table(outdf, ll_file, sep = ",", col.names = F, append = T, row.names = FALSE)
+}
+
+outmif <- data.frame(
+  do_grid = rep(do_grid, mif_iters+1),
+  iteration = seq(0:mif_iters)
+) %>%
+  bind_cols(as.data.frame(conv.rec(mf)))
+
+trace_file <- "initial-mif-traces.csv"
+if(file.exists(trace_file) == FALSE){
+  file.create(trace_file)
+  write.table(outmif, trace_file, sep = ",", col.names = T, append = T, row.names = FALSE)
+} else{
+  write.table(outmif, trace_file, sep = ",", col.names = F, append = T, row.names = FALSE)
+}
+
+saveRDS(object = mf, file = paste0("./mif-objects/mifobject-", do_grid, ".RDS"))
 
 
 # Perform initial parameter search with pfilter ---------------------------
 
-if(file.exists("initial-search-lls.RDS") == FALSE){
-  
-  particles <- 2000
-  cores <- 20
-  cl <- makeCluster(cores)
-  registerDoParallel(cl)
-  
-  clusterCall(cl, function(x) .libPaths(x), .libPaths("~/myRlib"))
-
-  foreach(
-    guess = iter(guesses,"row"),
-    .combine = rbind,
-    .packages = c("pomp","magrittr","dplyr"),
-    .errorhandling = "remove",
-    .export = "measles_pomp",
-    .inorder = FALSE
-  ) %dopar% {
-    ll <- logmeanexp(replicate(10, logLik(pfilter(measles_pomp, Np = particles, params = guess))), se=TRUE)
-    data.frame(
-      loglik = ll[1],
-      loglik_se = ll[2]
-    ) %>%
-      bind_cols(guess)
-     
-  } -> initial_lls
-
-  saveRDS(object = initial_lls, file = "initial-search-lls.RDS")
-
-} else{
-  warning("Output file already exists.")
-}
+# if(file.exists("initial-search-lls.RDS") == FALSE){
+#   
+#   particles <- 2000
+#   cores <- 20
+#   cl <- makeCluster(cores)
+#   registerDoParallel(cl)
+#   
+#   clusterCall(cl, function(x) .libPaths(x), .libPaths("~/myRlib"))
+# 
+#   foreach(
+#     guess = iter(guesses,"row"),
+#     .combine = rbind,
+#     .packages = c("pomp","magrittr","dplyr"),
+#     .errorhandling = "remove",
+#     .export = "measles_pomp",
+#     .inorder = FALSE
+#   ) %dopar% {
+#     ll <- logmeanexp(replicate(10, logLik(pfilter(measles_pomp, Np = particles, params = guess))), se=TRUE)
+#     data.frame(
+#       loglik = ll[1],
+#       loglik_se = ll[2]
+#     ) %>%
+#       bind_cols(guess)
+#      
+#   } -> initial_lls
+# 
+#   saveRDS(object = initial_lls, file = "initial-search-lls.RDS")
+# 
+# } else{
+#   warning("Output file already exists.")
+# }
 
 
 
