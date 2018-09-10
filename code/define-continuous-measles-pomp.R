@@ -10,52 +10,12 @@
 
 ##  https://github.com/theresasophia/pomp-astic/blob/master/mle_stst%2B_study.R
 
+
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
 library(lubridate)
 library(pomp)
-
-
-# Define deterministic skeleton -------------------------------------------
-
-measles_skeleton <- Csnippet(
-  "
-  // Define the variables
-  int nrate = 6;        // number of rates
-  double rate[nrate];		// transition rates
-  double term[nrate];		// terms in the equations
-  double lambda;        // force of infection
-  double beta;          // static transmission rate, since deterministic
-  
-  // Calculate force of infection
-  beta = beta_mu * (1 + dot_product(K, &xi1, &b1));
-  lambda = (iota+I)*beta/pop;
-
-  // Compute the transition rates
-  rate[0] = births;	 // birth into susceptible class
-  rate[1] = lambda;  // force of infection
-  rate[2] = 0;       // death from susceptible class
-  rate[3] = gamma;   // recovery
-  rate[4] = 0;       // death from infectious class
-  rate[5] = 0;       // death from recovered class
-
-  // Compute the state transitions
-  term[0] = rate[0];
-  term[1] = rate[1]*S;
-  term[2] = rate[2]*S;
-  term[3] = rate[3]*I;
-  term[4] = rate[4]*I;
-  term[5] = rate[5]*R;
-
-  // Balance the equations
-  DS = term[0]-term[1]-term[2];
-  DI = term[1]-term[3]-term[4];
-  DR = term[3]-term[5];
-  Dcases = term[1];  // accumulate the new S->I transitions
-  DW = 0;            // no noise, so no noise accumulation
-  "
-)
 
 
 # Define stochastic process (SDEs) ----------------------------------------
@@ -69,13 +29,13 @@ measles_process <- Csnippet(
   double lambda;        // force of infection
   double beta;          // transmission rate
   double dW;            // white noise
-  double seas;
-  double dN0S, dNSI, dNIR;
+  double seas;          // seasonality term
+  double dN0S, dN0I, dNSI, dNIR;  // transitions
 
   // Calculate force of infection
   seas = (1 + exp(dot_product(K, &xi1, &b1)));
   beta = beta_mu*seas;
-  lambda = beta*(I+iota)/pop;
+  lambda = beta*I/pop;
 
   // Gamma noise, mean=dt, variance=(beta_sd^2 dt)
   dW = rgammawn(beta_sd, dt);
@@ -90,15 +50,16 @@ measles_process <- Csnippet(
 
   // Transitions
   dN0S = rpois(births * dt);
+  dN0I = rpois(iota * dt);
   dNSI = trans[0];
   dNIR = trans[1];
 
   // Balance the equations
   S += dN0S - dNSI;
-  I +=        dNSI - dNIR;
+  I += dN0I + dNSI - dNIR;
   R +=               dNIR;
 
-  cases += dNIR;  // cases are cumulative infections (I->R)
+  cases += dNSI;  // cases are cumulative infections (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta * dW/dt) / gamma;
   "
@@ -112,8 +73,8 @@ measles_dmeasure <- Csnippet(
   double mean;
   double f;
   mean = cases*rho;
-  //f = dnbinom_mu(reports, 1/tau, mean, give_log);
-  f = dpois(reports, mean, give_log);
+  // f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
+  f = dpois(reports, mean, give_log);  // poisson likelihood
 
   lik = (give_log) ? log(f) : f;
   "
@@ -124,8 +85,8 @@ measles_dmeasure <- Csnippet(
 
 measles_rmeasure <- Csnippet(
   "
-  //reports = rnbinom_mu(1/tau, rho*cases);
-  reports = rpois(rho*cases);
+  // reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
+  reports = rpois(rho*cases);  // poisson measurement process
   if (reports > 0.0) {
     reports = nearbyint(reports);
   } else {
@@ -189,8 +150,10 @@ obs_data <- measles_data %>%
     reports = cases
   )
 
-#### REMOVE SUSPICIOUS DATA POINT AND REPLACE WITH MEAN OF NEIGHBORS ####
-obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
+if(do_city == "Niamey (City)"){
+  # REMOVE SUSPICIOUS DATA POINT AND REPLACE WITH MEAN OF NEIGHBORS #
+  obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
+}
 
 covar_data <- measles_data %>%
   dplyr::select(obs_week, population_smooth, births_per_week_smooth) %>%
@@ -238,8 +201,7 @@ measles_pomp <- pomp(
   covar = covar_data,
   tcovar = "time",
   t0 = 1,
-  rprocess = euler.sim(step.fun = measles_process, delta.t = 1/52),
-  skeleton = vectorfield(measles_skeleton),
+  rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,

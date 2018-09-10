@@ -64,19 +64,20 @@ The goal is fit a model to estimate:
 The model is a continuous time SIR model with limited demography, specified as a set of stochastic differential equations (SDEs):
 
 \begin{align}
-dS &= \mu_t N_t dt - \lambda_t S_t dt + dW_t \\
-dI &= \lambda_t S_t dt - \gamma I_t dt + dW_t \\
+dS &= \mu_t N_t dt - \lambda_t S_t dt + dU_t \\
+dI &= \psi_t dt + \lambda_t S_t dt - \gamma I_t dt + dV_t \\
 dR &= \gamma I_t dt + dW_t,
 \end{align}
 
-\noindent{}where $\mu_t$ is birth rate at time *t*, $\gamma$ is the time-invariant recovery rate, and $\lambda_t$ is the time-varying force of infection.
+\noindent{}where $\mu_t$ is birth rate at time *t*, $\gamma$ is the time-invariant recovery rate, $\psi_t$ is rate of imported infections, and $\lambda_t$ is the time-varying force of infection.
 We do not include a death process in the model because we expect death rates from the susceptible and infectious classes to be minimal relative to births and we are not interested in robust estimates of the recovered class.
 Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
+We model stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
 Transitions in the model are shown in Table 1.
 We model $\lambda_t$ as a function of a seasonal tranmission rate subject to additional environmental variability through time:
 
 \begin{align}
-\lambda_t &= \frac{\beta_t (I_t + \psi)}{N_t}, \\
+\lambda_t &= \frac{\beta_t I_t}{N_t}, \\
 \beta_t &= \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t, 
 \end{align}
 
@@ -85,17 +86,18 @@ The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as a gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ (Bretó and Ionides 2011).
 In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_{E(t)} = \beta_t / \gamma$.
 
-We assume observed case reports ($\textbf{y}$) are drawn from a negative binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
+We assume observed case reports ($\textbf{y}$) are drawn from a Poisson distribution subject to a constant reporting fraction ($\rho$),
 
 \begin{align}
-y_t \sim \text{NegBin} \left( \rho I_t, \tau  \right).
+y_t \sim \text{Poisson} \left( \rho I_t \right).
 \end{align}
 
 | Transition | ($\Delta S$, $\Delta I$, $\Delta R$) | Propensity |
 | --------------- | ------------ | -------------------------------------------- |
 | birth | $(1, 0, 0)$ | $N_t \mu$ |
-| transmission (deterministic) | $(-1, 1, 0)$ | $S(I+\psi) \beta_t / N_t$ |
-| transmission (stochastic) | $(-k, k, 0$) | $\frac{S}{k}\sum^k_{j=0} \left(\begin{matrix}k\\j\end{matrix} \right) (-1)^{k-j+1} \tau_{\text{f}}^{-1} \text{ln}(1 + (\beta_t(I+\psi)/N_t)) \tau_{\text{f}} (S-j)$ |
+| imported infections | $(0, 1, 0)$ | $\psi_t$ |
+| transmission (deterministic) | $(-1, 1, 0)$ | $SI \beta_t / N_t$ |
+| transmission (stochastic) | $(-k, k, 0$) | $\frac{S}{k}\sum^k_{j=0} \left(\begin{matrix}k\\j\end{matrix} \right) (-1)^{k-j+1} \tau_{\text{f}}^{-1} \text{ln}(1 + (\beta_tI/N_t)) \tau_{\text{f}} (S-j)$ |
 | recovery | $(0, -1, 1)$ | $I\gamma$ |
 
 Table: Transitions in the SIR model. We show the determinstic transmission rate for clarity, but our model uses the stochastic tranmission rate.
@@ -122,19 +124,17 @@ Table: List of model parameters to be estimated.
 
 Model fitting will proceed in three steps, independently for each city:
  
-1. Generate initial parameter sets from a large Latin hypercube search space of 5000 parameter sets. Run 10 replicate particle filters at each of these parameter sets, with 2000 particles each. Retain the 500 parameter sets with the highest likelihood.
+~~Generate initial parameter sets from a large Latin hypercube search space of 5000 parameter sets. Run 10 replicate particle filters at each of these parameter sets, with 2000 particles each. Retain the 500 parameter sets with the highest likelihood.~~
 
-2. Conduct a global parameter search using the retained 500 parameter sets from above (the 500 with the highest likelihood). This parameter set will serve as starting conditions for 500 instances of iterated filtering using the function:
-```{r pomp-ex, eval = FALSE, echo = TRUE}
-pomp::mif2(Np = 2000, Nmif = 50, cooling.fraction.50 = 1, cooling.type = "geometric")
-```
-and initial parameter conditions allowed to take random walks with a standard deviation of 0.02.
-For states (i.e., $S_0, I_0, R_0$), we will set the initial conditions random walk standard deviation to 0.1 and the random walk will stop after 1 year (52 weeks) of the simulated dynamics.
+1. Conduct a semi-global parameter search using MIF, starting from 1000 parameter sets from a Latin hypercube. After convergence, assessed every 50 MIF iterations, we will retain the 500 estimates with the highest likelihood for the next MIF step. At this stage, we will use the following `pomp` parameters, `pomp::mif2(Np = 2000, Nmif = 50, cooling.fraction.50 = 1, cooling.type = "geometric")`, and initial parameter conditions allowed to take random walks with a standard deviation of 0.02. For states (i.e., $S_0, I_0, R_0$), we will set the initial conditions random walk standard deviation to 0.1 and the random walk will stop after 1 year (52 weeks) of the simulated dynamics.
 
-3. Conduct a local parameter search using the the 50 parameter sets from the global search with the highest likelihoods. MIF parameters will be the same as above, except the cooling factor will be `cooling.fraction.50 = 0.9`. We will consider the parameter set with the highest likelihood at this stage to be the MLEs ($\hat{\theta}$).
+2. Conduct a local parameter search using the retained final 500 parameter sets from above (the 500 with the highest likelihood). This parameter set will serve as starting conditions for 500 instances of iterated filtering using the following `pomp` parameters, `pomp::mif2(Np = 2000, Nmif = 50, cooling.fraction.50 = 0.95, cooling.type = "geometric")`, and initial parameter conditions allowed to take random walks with a standard deviation of 0.02. For states (i.e., $S_0, I_0, R_0$), we will set the initial conditions random walk standard deviation to 0.1 and the random walk will stop after 1 year (52 weeks) of the simulated dynamics. We will consider the parameter set with the highest likelihood at this stage to be the MLEs ($\hat{\theta}$).
 
-4. To complete our inference from the model, we will perform particle MCMC using $\hat{\theta}$ as the initial conditions. The MCMC analysis allows us to estimate the uncertainty around all parameters and to generate estimates of the latent states and the $\mathcal{R}_E$ for the observed data. That is, we will end up with a time series of $\mathcal{R}_E$, including uncertainty, that corresponds to the observation time series.
+3. To complete our inference from the model, we will perform particle MCMC using $\hat{\theta}$ as the initial conditions. The MCMC analysis allows us to estimate the uncertainty around all parameters and to generate estimates of the latent states and the $\mathcal{R}_E$ for the observed data. That is, we will end up with a time series of $\mathcal{R}_E$, including uncertainty, that corresponds to the observation time series.
     - Can we just get this from `pfilter(save.states)`?
+
+~~Conduct a local parameter search using the the 50 parameter sets from the global search with the highest likelihoods. MIF parameters will be the same as above, except the cooling factor will be `cooling.fraction.50 = 0.9`. We will consider the parameter set with the highest likelihood at this stage to be the MLEs ($\hat{\theta}$).~~
+
 
 ### II. Calculate a suite of EWS from the observed data
 We will consider 10 candidate EWS (Table 3).
@@ -238,7 +238,8 @@ g1 <- ggplot(plot_tbl, aes(x = time, y = value)) +
   geom_line() +
   facet_wrap(~variable, ncol = 1, scales = "free_y") +
   geom_hline(aes(yintercept = 1, color = variable)) +
-  scale_color_manual(values = c(ptol_pal()(2)[2], NA))
+  scale_color_manual(values = c(ptol_pal()(2)[2], NA)) +
+  guides(color = FALSE)
 
 scatter_data <- plot_tbl %>%
   spread(key = variable, value = value)
@@ -344,4 +345,10 @@ ggplot(plotit, aes(x = rnaught, y = correlations)) +
     - Work with Eamon on bandwidth, etc.
 + Caclulate correlations with real data and empirically-derived $\mathcal{R}_E$ and lags
 + Write the paper!
+
+## Changelog
++ **09-10-2018**
+  - We are going to forego the proposed initial search via particle filtering because doing so over a large enough parameter space to be meaningful is too computationally expensive. Instead, after conferring with Pej, the new plan is to start with MIF from 1,000 starting parameter sets from a Latin Hypercube design. Then we'll gradually take subsets of those.
+  - Imported infections are now stochastic: `psi[t] ~ rpois(psi)`.
+  - Likihood is now poisson. Initial fitting kept showing very little overdispersion, so we're going to use Poisson to speed up computation.
 
