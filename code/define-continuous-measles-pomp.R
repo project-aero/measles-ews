@@ -101,7 +101,6 @@ measles_rmeasure <- Csnippet(
 from_estimation <- Csnippet(
   "
   Tbeta_mu = exp(beta_mu);
-  Tgamma = exp(gamma);
   Tiota = exp(iota);
   Tbeta_sd = exp(beta_sd);
   Trho = expit(rho);
@@ -113,7 +112,6 @@ from_estimation <- Csnippet(
 to_estimation <- Csnippet(
   "
   Tbeta_mu = log(beta_mu);
-  Tgamma = log(gamma);
   Tiota = log(iota);
   Tbeta_sd = log(beta_sd);
   Trho = logit(rho);
@@ -170,7 +168,7 @@ bspline_basis <- periodic.bspline.basis(
   names = "xi%d"
 ) %>%
   as_tibble()
-
+matplot(bspline_basis, type = "l")
 covar_data <- bind_cols(covar_data, bspline_basis)
 
 
@@ -178,7 +176,6 @@ covar_data <- bind_cols(covar_data, bspline_basis)
 
 params <- c(
   beta_mu = 25,
-  gamma = 16,
   beta_sd = 0.001,
   b1 = 3,
   b2 = 3,
@@ -208,7 +205,8 @@ measles_pomp <- pomp(
   paramnames = names(params),
   params = params,
   globals = "int K = 6;
-             double R_0 = 700000;",
+             double R_0 = 700000;
+             double gamma = 0.5;",
   zeronames = c("cases", "W")
 )
 

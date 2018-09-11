@@ -50,7 +50,10 @@ measles_data <- niger_measles_raw %>%
   dplyr::rename(region = X1) %>%
   filter(grepl("City", region)) %>%
   dplyr::select(region, date, year, week_of_year, obs_week, cases) %>%
-  arrange(region, date)
+  arrange(region, date) %>%
+  mutate(
+    time = decimal_date(date)
+  )
 
 
 # Read in demographic data and format ------------------------------------
