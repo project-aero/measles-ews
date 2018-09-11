@@ -1,0 +1,94 @@
+---
+title: "MIF Results — Round 1"
+author: "Andrew Tredennick"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+## Overview
+
+This is a report on the first round of results from fitting the stochastic SIR model to data from Niamey using iterated filtering (MIF), as implemented in `pomp::mif2()`.
+I started the analysis by making a Latin hypercube sample of parameter values (1000 parameter sets) that served as initial conditions for iterated filtering.
+I ran `pomp::mif2()` for all 1000 initial conditions for 50 MIF itertations with 2000 particles and the cooling factor set to 1 (i.e., no cooling).
+At the final iteration, I ran 10 replicate instances of `pomp::pfilter()` to estimate the log likelihood of the parameters for each of the 1000 MIF estimates and the Monte carlo error.
+There were some errors in running all 1000 MIFs in parallel on Olympus (still looking into this), but I got back 742 MIF estimates.
+
+## Results
+
+#### Traceplots of the iterated filtering paths for the parameter sets with the 200 highest log likelihoods
+```{r traces, echo = FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(pomp)
+
+mif_traces <- read_csv("../../results/initial-mif-traces.csv")
+mif_finals <- read_csv("../../results/initial-mif-lls.csv")
+
+best_grids <- mif_finals %>%
+  arrange(-loglik)
+
+best_grids <- best_grids[1:200, ] %>%
+  pull(do_grid)
+
+mif_traces_long <- mif_traces %>%
+  gather(key = parameter, value = value, -do_grid, -iteration) %>%
+  filter(do_grid %in% best_grids)
+
+ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
+  geom_line(alpha = 0.1) +
+  facet_wrap(~parameter, scales = "free_y")
+
+```
+
+
+#### Parameter estimates with the highest log likelihood
+Note that the model was fit with a time-step of 1 day (`delta.t = 1/365`).
+```{r mles, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik)) %>%
+  dplyr::select(-do_grid)
+
+knitr::kable(mles, digits = 2)
+```
+
+#### Model simulations at the (current) MLEs
+```{r sims, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
+measles_pomp <- readRDS("../../code/measles-pomp-object.RDS")
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = FALSE) %>%
+  ggplot(aes(x = time, y = S, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+```
+
+## Thoughts
+
+I'm actually quite pleased with the simulated dynamics!
+I'm not quite as pleased with the estimates of the number of susceptibles.
+The model *really* wants those to be much higher than I would expect.

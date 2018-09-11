@@ -1,6 +1,6 @@
 # plot-global-search.R
 #  Script to plot the results from the initial global parameter search using
-#  particle filter. The 500 parameter sets with the highest likelihood are
+#  MIF. The 500 parameter sets with the highest likelihood are
 #  saved for subsequent analysis.
 #
 # Author:
@@ -10,46 +10,64 @@
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
-library(GGally)
-library(ggthemes)
+library(pomp)
 
 
 # Load data ---------------------------------------------------------------
 
-global_lls <- readRDS("initial-search-lls.RDS") %>%
-  as_tibble() %>%
-  arrange(-loglik) %>%
-  mutate(
-    highest = c(
-      rep(TRUE, 500),
-      rep(FALSE, n()-500)
-    )
-  )
+mif_traces <- read_csv("../results/initial-mif-traces.csv")
+mif_finals <- read_csv("../results/initial-mif-lls.csv")
 
 
-# Plot all pairs ----------------------------------------------------------
+# Plot MIF traces ---------------------------------------------------------
 
-p <- ggpairs(
-  global_lls, 
-  columns = c(1,3:5,12:16),
-  mapping = ggplot2::aes(color = highest),
-  upper = "blank",
-  diag = "blank",
-  lower = list(continuous = wrap("points", alpha = 0.5, size=0.5))
-) 
+best_grids <- mif_finals %>%
+  arrange(-loglik)
 
-for(i in 1:p$nrow) {
-  for(j in 1:p$ncol){
-    p[i,j] <- p[i,j] + 
-      scale_color_manual(values = ptol_pal()(2)) 
-  }
-}
+best_grids <- best_grids[1:200, ] %>%
+  pull(do_grid)
 
-ggsave(
-  filename = "../figures/initial-lls-pairsplot.pdf", 
-  plot = p, 
-  width = 18, 
-  height = 11, 
-  units = "in"
-)
+mif_traces_long <- mif_traces %>%
+  gather(key = parameter, value = value, -do_grid, -iteration) %>%
+  filter(do_grid %in% best_grids)
 
+ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
+  geom_line(alpha = 0.1) +
+  facet_wrap(~parameter, scales = "free_y")
+
+
+# Simulate model at MLEs --------------------------------------------------
+
+mles <- mif_finals %>%
+  filter(loglik == max(loglik)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
+measles_pomp <- readRDS("measles-pomp-object.RDS")
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = S, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
