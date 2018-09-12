@@ -33,6 +33,52 @@ library("dplyr", lib.loc="~/myRlib/")
 library("lhs", lib.loc="~/myRlib/")
 
 
+# Set up output files -----------------------------------------------------
+
+# mles <- data.frame(
+#   do_grid = NA,
+#   loglik = NA,
+#   loglik_se = NA,
+#   beta_mu = NA,
+#   beta_sd = NA,
+#   b1 = NA,
+#   b2 = NA,
+#   b3 = NA,
+#   b4 = NA,
+#   b5 = NA,
+#   b6 = NA,
+#   iota = NA,
+#   rho = NA,
+#   S_0 = NA,
+#   I_0 = NA
+# )
+# 
+# ll_file <- "initial-mif-lls.csv"
+# write.table(mles, ll_file, sep = ",", col.names = T, append = T, row.names = FALSE)
+# 
+# mf_traces <- data.frame(
+#   do_grid = NA,
+#   iteration = NA,
+#   loglik = NA, 
+#   nfail = NA,
+#   beta_mu = NA,
+#   beta_sd = NA,
+#   b1 = NA,
+#   b2 = NA,
+#   b3 = NA,
+#   b4 = NA,
+#   b5 = NA,
+#   b6 = NA,
+#   iota = NA,
+#   rho = NA,
+#   S_0 = NA,
+#   I_0 = NA
+# )
+# 
+# trace_file <- "initial-mif-traces.csv"
+# write.table(mf_traces, trace_file, sep = ",", col.names = T, append = T, row.names = FALSE)
+
+
 # Load pomp object --------------------------------------------------------
 
 measles_pomp <- readRDS("measles-pomp-object.RDS")
@@ -46,15 +92,14 @@ grid_size <- 1000
 
 # Upper bounds for random parameters
 param_uppers <- tibble(
-  beta_mu = 50,
-  gamma = 50,
-  beta_sd = 2,
+  beta_mu = 1000,
+  beta_sd = 5,
   b1 = 10,
   b2 = 10,
   b3 = 10,
-  b4 = 1,
+  b4 = 10,
   b5 = 10,
-  b6 = 1,
+  b6 = 10,
   iota = 10,
   rho = 0.8,
   S_0 = 100000,
@@ -65,8 +110,7 @@ names(param_uppers) <- names(coef(measles_pomp))
 
 # Lower bounds for random parameters
 param_lowers <- tibble(
-  beta_mu = 0.001,
-  gamma = 0.001,
+  beta_mu = 26,
   beta_sd = 0.00001,
   b1 = -10,
   b2 = -10,
@@ -108,7 +152,6 @@ mf <- measles_pomp %>%
     cooling.type = "geometric",
     rw.sd = rw.sd(
       beta_mu = 0.02,
-      gamma = 0.02,
       rho = 0.02,
       beta_sd = 0.02,
       iota = 0.02,
@@ -137,12 +180,7 @@ outdf <- data.frame(
 # Write results to file ---------------------------------------------------
 
 ll_file <- "initial-mif-lls.csv"
-if(file.exists(ll_file) == FALSE){
-  file.create(ll_file)
-  write.table(outdf, ll_file, sep = ",", col.names = T, append = T, row.names = FALSE)
-} else{
-  write.table(outdf, ll_file, sep = ",", col.names = F, append = T, row.names = FALSE)
-}
+write.table(outdf, ll_file, sep = ",", col.names = F, append = T, row.names = FALSE)
 
 outmif <- data.frame(
   do_grid = rep(do_grid, mif_iters+1),
@@ -151,14 +189,12 @@ outmif <- data.frame(
   bind_cols(as.data.frame(conv.rec(mf)))
 
 trace_file <- "initial-mif-traces.csv"
-if(file.exists(trace_file) == FALSE){
-  file.create(trace_file)
-  write.table(outmif, trace_file, sep = ",", col.names = T, append = T, row.names = FALSE)
-} else{
-  write.table(outmif, trace_file, sep = ",", col.names = F, append = T, row.names = FALSE)
-}
+write.table(outmif, trace_file, sep = ",", col.names = F, append = T, row.names = FALSE)
 
 saveRDS(object = mf, file = paste0("./mif-objects/mifobject-", do_grid, ".RDS"))
+
+
+
 
 
 # Perform initial parameter search with pfilter ---------------------------
