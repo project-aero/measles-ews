@@ -58,17 +58,38 @@ measles_data <- niger_measles_raw %>%
 
 # Read in demographic data and format ------------------------------------
 
+# Define the time variable for 365 day years
+time_tbl <- tibble(
+  date = seq(min(measles_data$date), max(measles_data$date), by = "day"),
+  time = decimal_date(date),
+  year = year(date)
+) %>%
+  dplyr::select(-date)
+
+# Births
 birth_file <- "../data/raw-data/niger_crude_birth_rates.csv"
 birth_data <- read_csv(birth_file, col_types = cols()) %>%
   mutate(
     date = mdy(date),  # lubridate prefixes any 2digit year 00-68 with 20, not a problem for us though
     year = as.character(year(date)),
-    rate_per_person = births_per_thousand/1000
+    rate_per_person_per_year = births_per_thousand/1000
   ) %>%
-  dplyr::select(year, rate_per_person) %>%
+  dplyr::select(year, rate_per_person_per_year) %>%
   mutate(year = as.numeric(year)) %>%
-  filter(year > 1990 & year < 2010)
+  filter(year > 1990 & year < 2010) %>%
+  mutate(time = year+0.000)
 
+birth_spline <- predict(
+  smooth.spline(x = birth_data$time, y = birth_data$rate_per_person_per_year), 
+  x = time_tbl$time)$y
+
+birth_rates <- time_tbl %>%
+  mutate(
+    birth_per_person_per_year = birth_spline
+  )
+
+
+# Population
 pop_file <- "../data/raw-data/district_pops.csv"
 city_strings <- str_sub(unique(measles_data$region), start = 1, end = 6)
 pop_data <- suppressWarnings(
@@ -78,51 +99,30 @@ pop_data <- suppressWarnings(
   rename(region = X1) %>%
   mutate(
     region = ifelse(region == "Niamey I", "Niamey", region),
-    year = as.numeric(year)
+    year = as.numeric(year),
+    time = year + 0.000
   ) %>%
   filter(region %in% city_strings)
 
-demog_data <- pop_data %>%
-  left_join(birth_data, by = "year") %>%
-  mutate(
-    per_capita_birth_rate = rate_per_person,
-    births_per_year = population*per_capita_birth_rate,
-    births_per_week = births_per_year/52
-  ) %>%
-  dplyr::select(-rate_per_person) %>%
-  arrange(region, year) %>%
-  group_by(region) %>%
-  mutate(
-    obs_week = rep(seq(from = 1, to = max(measles_data$obs_week), by = 52))
-  )
+population_sizes <- tibble()
+all_times <- unique(time_tbl$time)
 
-
-# Fit splines to smooth annual data to weekly -----------------------------
-
-smoothed_demog <- tibble()
-all_weeks <- unique(measles_data$obs_week)
-
-for(do_city in unique(demog_data$region)){
-  tmp <- demog_data %>%
+for(do_city in unique(pop_data$region)){
+  tmp <- pop_data %>%
     filter(region == do_city)
   
-  b <- predict(
-    smooth.spline(x = tmp$obs_week, y = tmp$births_per_week), 
-    x = all_weeks)$y
-  
   N <- predict(
-    smooth.spline(x = tmp$obs_week, y = tmp$population), 
-    x = all_weeks)$y
+    smooth.spline(x = tmp$time, y = tmp$population), 
+    x = all_times)$y
   
   out <- tibble(
     region = paste(do_city, "(City)"),  # to match up with case dataframe
-    obs_week = all_weeks,
-    population_smooth = N,
-    births_per_week_smooth = b
+    time = all_times,
+    population_size = N
   )
   
-  smoothed_demog <- bind_rows(
-    smoothed_demog,
+  population_sizes <- bind_rows(
+    population_sizes,
     out
   )
 }
@@ -131,16 +131,17 @@ for(do_city in unique(demog_data$region)){
 
 # Save the cleaned data ---------------------------------------------------
 
+demog_data <- population_sizes %>%
+  left_join(birth_rates, by = "time") %>%
+  dplyr::select(-year)
+
 saveRDS(
   object = demog_data,
   file = "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
 )
 
-measles_full <- measles_data %>%
-  left_join(smoothed_demog,  by = c("region", "obs_week"))
-
 saveRDS(
-  object = measles_full,
-  file = "../data/clean-data/weekly-measles-and-demog-niger-cities-clean.RDS"
+  object = measles_data,
+  file = "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 )
 
