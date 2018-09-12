@@ -28,6 +28,7 @@ measles_process <- Csnippet(
   double trans[nrate];	// transition numbers
   double lambda;        // force of infection
   double beta;          // transmission rate
+  double gamma = 365/14;   // recovery rate (14 days)
   double dW;            // white noise
   double seas;          // seasonality term
   double dN0S, dN0I, dNSI, dNIR;  // transitions
@@ -35,7 +36,7 @@ measles_process <- Csnippet(
   // Calculate force of infection
   seas = (1 + exp(dot_product(K, &xi1, &b1)));
   beta = beta_mu*seas;
-  lambda = beta*I/pop;
+  lambda = beta*I/N;
 
   // Gamma noise, mean=dt, variance=(beta_sd^2 dt)
   dW = rgammawn(beta_sd, dt);
@@ -49,7 +50,7 @@ measles_process <- Csnippet(
   reulermultinom(1, I, &rate[1], dt, &trans[1]);
 
   // Transitions
-  dN0S = rpois(births * dt);
+  dN0S = rpois(mu * N * dt);
   dN0I = rpois(iota * dt);
   dNSI = trans[0];
   dNIR = trans[1];
@@ -59,7 +60,7 @@ measles_process <- Csnippet(
   I += dN0I + dNSI - dNIR;
   R +=               dNIR;
 
-  cases += dNSI;  // cases are cumulative infections (I->R)
+  cases += dNSI;  // cases are cumulative infections (S->I)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta * dW/dt) / gamma;
   "
@@ -135,14 +136,13 @@ initial_values <- Csnippet(
 # Make data tables --------------------------------------------------------
 
 do_city <- "Niamey (City)"
-do_file <- "../data/clean-data/weekly-measles-and-demog-niger-cities-clean.RDS"
+do_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 measles_data <- readRDS(do_file) %>%
   dplyr::filter(region == do_city)
 
 obs_data <- measles_data %>%
-  dplyr::select(obs_week, cases) %>%
+  dplyr::select(time, cases) %>%
   dplyr::rename(
-    time = obs_week,
     reports = cases
   )
 
@@ -151,31 +151,32 @@ if(do_city == "Niamey (City)"){
   obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
 }
 
-covar_data <- measles_data %>%
-  dplyr::select(obs_week, population_smooth, births_per_week_smooth) %>%
+covar_file <- "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
+covar_data <- readRDS(covar_file) %>%
+  dplyr::filter(region == do_city) %>%
+  dplyr::select(time, population_size, birth_per_person_per_year) %>%
   dplyr::rename(
-    time = obs_week,
-    pop = population_smooth,
-    births = births_per_week_smooth
+    N = population_size,
+    mu = birth_per_person_per_year
   )
 
 # Generate basis functions for seasonality
 bspline_basis <- periodic.bspline.basis(
-  obs_data$time,
+  covar_data$time,
   nbasis = 6,
   degree = 3,
-  period = 52,
+  period = 1,
   names = "xi%d"
 ) %>%
   as_tibble()
-matplot(bspline_basis, type = "l")
+
 covar_data <- bind_cols(covar_data, bspline_basis)
 
 
 # Combine everything into a pomp object -----------------------------------
 
 params <- c(
-  beta_mu = 25,
+  beta_mu = 500,
   beta_sd = 0.001,
   b1 = 3,
   b2 = 3,
@@ -194,7 +195,7 @@ measles_pomp <- pomp(
   times = "time",
   covar = covar_data,
   tcovar = "time",
-  t0 = 1,
+  t0 = 1995.000,
   rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
@@ -205,8 +206,7 @@ measles_pomp <- pomp(
   paramnames = names(params),
   params = params,
   globals = "int K = 6;
-             double R_0 = 700000;
-             double gamma = 0.5;",
+             double R_0 = 700000;",
   zeronames = c("cases", "W")
 )
 
