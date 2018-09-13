@@ -33,8 +33,8 @@ library("dplyr", lib.loc="~/myRlib/")
 library("lhs", lib.loc="~/myRlib/")
 
 
-# Set up output files -----------------------------------------------------
-
+# # Set up output files -----------------------------------------------------
+# 
 # mles <- data.frame(
 #   do_grid = NA,
 #   loglik = NA,
@@ -50,7 +50,8 @@ library("lhs", lib.loc="~/myRlib/")
 #   iota = NA,
 #   rho = NA,
 #   S_0 = NA,
-#   I_0 = NA
+#   I_0 = NA,
+#   R_0 = NA
 # )
 # 
 # ll_file <- "initial-mif-lls.csv"
@@ -59,7 +60,7 @@ library("lhs", lib.loc="~/myRlib/")
 # mf_traces <- data.frame(
 #   do_grid = NA,
 #   iteration = NA,
-#   loglik = NA, 
+#   loglik = NA,
 #   nfail = NA,
 #   beta_mu = NA,
 #   beta_sd = NA,
@@ -72,7 +73,8 @@ library("lhs", lib.loc="~/myRlib/")
 #   iota = NA,
 #   rho = NA,
 #   S_0 = NA,
-#   I_0 = NA
+#   I_0 = NA,
+#   R_0 = NA
 # )
 # 
 # trace_file <- "initial-mif-traces.csv"
@@ -94,37 +96,37 @@ grid_size <- 1000
 param_uppers <- tibble(
   beta_mu = 1000,
   beta_sd = 5,
-  b1 = 10,
-  b2 = 10,
-  b3 = 10,
-  b4 = 10,
-  b5 = 10,
-  b6 = 10,
+  b1 = 3,
+  b2 = 3,
+  b3 = 3,
+  b4 = 3,
+  b5 = 3,
+  b6 = 3,
   iota = 10,
   rho = 0.8,
-  S_0 = 100000,
-  I_0 = 500
+  S_0 = 0.16,
+  I_0 = 0.0008
 ) %>%
   as.numeric()
-names(param_uppers) <- names(coef(measles_pomp))
+names(param_uppers) <- names(coef(measles_pomp))[1:12]
 
 # Lower bounds for random parameters
 param_lowers <- tibble(
   beta_mu = 26,
   beta_sd = 0.00001,
-  b1 = -10,
-  b2 = -10,
-  b3 = -10,
-  b4 = -10,
-  b5 = -10,
-  b6 = -10,
+  b1 = -3,
+  b2 = -3,
+  b3 = -3,
+  b4 = -3,
+  b5 = -3,
+  b6 = -3,
   iota = 0.001,
   rho = 0.1,
-  S_0 = 1000,
-  I_0 = 10
+  S_0 = 0.00016,
+  I_0 = 0.000016
 ) %>%
   as.numeric()
-names(param_lowers) <- names(coef(measles_pomp))
+names(param_lowers) <- names(coef(measles_pomp))[1:12]
 
 # Construct random latin hypercube sample
 set.seed(123471246)  # get same LHS every time
@@ -135,7 +137,7 @@ for(i in 1:ncol(lhs_grid)){
 }
 
 colnames(lhs_grid) <- names(coef(measles_pomp))
-
+lhs_grid[,13] <- 1 - (lhs_grid[,11] + lhs_grid[,12])
 
 # Perform initial MIF -----------------------------------------------------
 
@@ -162,11 +164,12 @@ mf <- measles_pomp %>%
       b5 = 0.02,
       b6 = 0.02,
       I_0 = ivp(0.1),
-      S_0 = ivp(0.1)
+      S_0 = ivp(0.1),
+      R_0 = ivp(0.1)
     )
   ) 
 
-ll <- logmeanexp(replicate(2,logLik(pfilter(mf))), se=TRUE)
+ll <- logmeanexp(replicate(2,logLik(pfilter(mf, Np = particles))), se=TRUE)
 coef_ests <- data.frame(t(coef(mf)))
 
 outdf <- data.frame(

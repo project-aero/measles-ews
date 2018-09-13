@@ -60,7 +60,7 @@ measles_process <- Csnippet(
   I += dN0I + dNSI - dNIR;
   R +=               dNIR;
 
-  cases += dNSI;  // cases are cumulative infections (S->I)
+  cases += dNIR;  // cases are cumulative infections (S->I)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta * dW/dt) / gamma;
   "
@@ -105,8 +105,7 @@ from_estimation <- Csnippet(
   Tiota = exp(iota);
   Tbeta_sd = exp(beta_sd);
   Trho = expit(rho);
-  TS_0 = exp(S_0);
-  TI_0 = exp(I_0);
+  from_log_barycentric (&TS_0, &S_0, 3);
   "
 )
 
@@ -116,17 +115,17 @@ to_estimation <- Csnippet(
   Tiota = log(iota);
   Tbeta_sd = log(beta_sd);
   Trho = logit(rho);
-  TS_0 = log(S_0);
-  TI_0 = log(I_0);
+  to_log_barycentric (&TS_0, &S_0, 3);
   "
 )
 
 initial_values <- Csnippet(
   "
-  S = nearbyint(S_0);
-  I = nearbyint(I_0);
-  R = nearbyint(R_0);
-  cases = 0;
+  double m = N/(S_0+I_0+R_0);
+  S = nearbyint(m*S_0);
+  I = nearbyint(m*I_0);
+  R = nearbyint(m*R_0);
+  cases = 0.5*m*I_0;
   W = 0;
   RE = 0;
   "
@@ -175,6 +174,9 @@ covar_data <- bind_cols(covar_data, bspline_basis)
 
 # Combine everything into a pomp object -----------------------------------
 
+# initial_S = round(20000/covar_data$N[1], 2) = 0.03
+# initial_I = round(200/covar_data$N[1], 5) = 0.00032
+
 params <- c(
   beta_mu = 500,
   beta_sd = 0.001,
@@ -186,8 +188,9 @@ params <- c(
   b6 = 0,
   iota = 2,
   rho = 0.5,
-  S_0 = 20000, 
-  I_0 = 100
+  S_0 = 0.03, 
+  I_0 = 0.00032,
+  R_0 = (1 - (0.03 + 0.00032))
 )
 
 measles_pomp <- pomp(
@@ -205,8 +208,7 @@ measles_pomp <- pomp(
   fromEstimationScale = from_estimation,
   paramnames = names(params),
   params = params,
-  globals = "int K = 6;
-             double R_0 = 700000;",
+  globals = "int K = 6;",
   zeronames = c("cases", "W")
 )
 
@@ -229,4 +231,4 @@ saveRDS(object = measles_pomp, file = "measles-pomp-object.RDS")
 #   theme(strip.text=element_blank()) +
 #   geom_hline(aes(yintercept = 0))
 # 
-# logLik(pfilter(measles_pomp, Np = 1000))
+# logLik(pfilter(measles_pomp, Np = 2000))

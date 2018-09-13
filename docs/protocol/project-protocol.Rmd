@@ -5,9 +5,9 @@ subtitle: Linking early warning signals to the temporal epidemiology of measles 
 author: "Andrew Tredennick (atredenn@gmail.com)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  html_document: default
   pdf_document:
     fig_caption: yes
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -106,12 +106,13 @@ Table: Transitions in the SIR model. We show the determinstic transmission rate 
 #### Model fitting
 
 We will fit the model to data via iterated filtering to maximize the likelihood, as implemented in the R package `pomp`.
-We seek to estimate 14 parameters for each city (Table 2).
+We seek to estimate 13 parameters for each city (Table 2).
+Note that we set $\gamma = 365/14$ assuming a 2 week infectious period.
+We assume $\gamma$ is known to improve estimates of other parameters and because the infectious period of measles is well studied.
 
 | Parameter | Description |
 | --------- | ----------- |
 | $\beta$ | Mean rate of transmission |
-| $\gamma$ | Constant rate of recovery |
 | $\rho$ | Constant reporting fraction |
 | $q_i$ for $i \in \{1,2,3,4,5,6\}$ | B-spline coefficients for seasonality |
 | $\psi$ | External infections |
@@ -351,4 +352,7 @@ ggplot(plotit, aes(x = rnaught, y = correlations)) +
   - We are going to forego the proposed initial search via particle filtering because doing so over a large enough parameter space to be meaningful is too computationally expensive. Instead, after conferring with Pej, the new plan is to start with MIF from 1,000 starting parameter sets from a Latin Hypercube design. Then we'll gradually take subsets of those.
   - Imported infections are now stochastic: `psi[t] ~ rpois(psi)`.
   - Likihood is now poisson. Initial fitting kept showing very little overdispersion, so we're going to use Poisson to speed up computation.
+
++ **09-12-2018**
+  - Set $\gamma = 365/14$ assuming it is a known parameter.
 
