@@ -2,6 +2,7 @@
 #SBATCH --array=1-1000
 #SBATCH -t 10:00:00
 #SBATCH -N 1
+#SBATCH --constraint="intel"
 #SBATCH --ntasks-per-node 1
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
