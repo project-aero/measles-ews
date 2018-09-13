@@ -60,7 +60,7 @@ measles_process <- Csnippet(
   I += dN0I + dNSI - dNIR;
   R +=               dNIR;
 
-  cases += dNIR;  // cases are cumulative infections (S->I)
+  cases += dNSI;  // cases are cumulative infections (S->I)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta * dW/dt) / gamma;
   "
@@ -73,7 +73,7 @@ measles_dmeasure <- Csnippet(
   "
   double mean;
   double f;
-  mean = cases*rho;
+  mean = cases*0.5;
   // f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
   f = dpois(reports, mean, give_log);  // poisson likelihood
 
@@ -87,7 +87,7 @@ measles_dmeasure <- Csnippet(
 measles_rmeasure <- Csnippet(
   "
   // reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
-  reports = rpois(rho*cases);  // poisson measurement process
+  reports = rpois(0.5*cases);  // poisson measurement process
   if (reports > 0.0) {
     reports = nearbyint(reports);
   } else {
@@ -104,7 +104,6 @@ from_estimation <- Csnippet(
   Tbeta_mu = exp(beta_mu);
   Tiota = exp(iota);
   Tbeta_sd = exp(beta_sd);
-  Trho = expit(rho);
   from_log_barycentric (&TS_0, &S_0, 3);
   "
 )
@@ -114,7 +113,6 @@ to_estimation <- Csnippet(
   Tbeta_mu = log(beta_mu);
   Tiota = log(iota);
   Tbeta_sd = log(beta_sd);
-  Trho = logit(rho);
   to_log_barycentric (&TS_0, &S_0, 3);
   "
 )
@@ -187,7 +185,6 @@ params <- c(
   b5 = 2,
   b6 = 0,
   iota = 2,
-  rho = 0.5,
   S_0 = 0.03, 
   I_0 = 0.00032,
   R_0 = (1 - (0.03 + 0.00032))
