@@ -12,5 +12,4 @@ cd ~/measles/code/
 module load R
  
 # parallel R: submit job with one MPI master
-mkdir ./mif-objects/
 R CMD BATCH -$SLURM_ARRAY_TASK_ID global-search-mif.R
