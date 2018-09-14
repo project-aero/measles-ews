@@ -171,16 +171,16 @@ bspline_basis <- periodic.bspline.basis(
 
 covar_data <- bind_cols(covar_data, bspline_basis)
 
-back_covars <- covar_data %>% 
-  slice(1:365) %>%
-  mutate(
-    time2 = time-1
-  ) %>%
-  dplyr::select(-time) %>%
-  dplyr::rename(time = time2) %>%
-  dplyr::select(time, N, mu, starts_with("x"))
-
-covar_data <- bind_rows(back_covars, covar_data)
+# back_covars <- covar_data %>% 
+#   slice(1:365) %>%
+#   mutate(
+#     time2 = time-1
+#   ) %>%
+#   dplyr::select(-time) %>%
+#   dplyr::rename(time = time2) %>%
+#   dplyr::select(time, N, mu, starts_with("x"))
+# 
+# covar_data <- bind_rows(back_covars, covar_data)
 
 # Combine everything into a pomp object -----------------------------------
 
@@ -208,7 +208,7 @@ measles_pomp <- pomp(
   times = "time",
   covar = covar_data,
   tcovar = "time",
-  t0 = 1994.000,
+  t0 = 1995.000,
   rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
