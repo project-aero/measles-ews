@@ -38,6 +38,11 @@ ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
   geom_line(alpha = 0.1) +
   facet_wrap(~parameter, scales = "free_y")
 
+# mifs_last <- mif_traces_long %>% filter(iteration == 99) %>% 
+#   filter(parameter %in% c("loglik", "S_0")) %>%
+#   spread(parameter, value)
+# 
+# plot(mifs_last$loglik, mifs_last$S_0)
 
 # Simulate model at MLEs --------------------------------------------------
 
