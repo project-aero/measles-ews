@@ -48,6 +48,7 @@ library("lhs", lib.loc="~/myRlib/")
 #   b5 = NA,
 #   b6 = NA,
 #   iota = NA,
+#   rho = NA,
 #   S_0 = NA,
 #   I_0 = NA,
 #   R_0 = NA
@@ -70,6 +71,7 @@ library("lhs", lib.loc="~/myRlib/")
 #   b5 = NA,
 #   b6 = NA,
 #   iota = NA,
+#   rho = NA,
 #   S_0 = NA,
 #   I_0 = NA,
 #   R_0 = NA
@@ -101,11 +103,12 @@ param_uppers <- tibble(
   b5 = 3,
   b6 = 3,
   iota = 50,
+  rho = 0.9,
   S_0 = 0.16,
   I_0 = 0.0008
 ) %>%
   as.numeric()
-names(param_uppers) <- names(coef(measles_pomp))[1:11]
+names(param_uppers) <- names(coef(measles_pomp))[1:12]
 
 # Lower bounds for random parameters
 param_lowers <- tibble(
@@ -118,11 +121,12 @@ param_lowers <- tibble(
   b5 = -3,
   b6 = -3,
   iota = 0.001,
+  rho = 0.1,
   S_0 = 0.00016,
   I_0 = 0.000016
 ) %>%
   as.numeric()
-names(param_lowers) <- names(coef(measles_pomp))[1:11]
+names(param_lowers) <- names(coef(measles_pomp))[1:12]
 
 # Construct random latin hypercube sample
 set.seed(123471246)  # get same LHS every time
@@ -133,12 +137,12 @@ for(i in 1:ncol(lhs_grid)){
 }
 
 colnames(lhs_grid) <- names(coef(measles_pomp))
-lhs_grid[,12] <- 1 - (lhs_grid[,10] + lhs_grid[,11])
+lhs_grid[,13] <- 1 - (lhs_grid[,11] + lhs_grid[,12])
 
 # Perform initial MIF -----------------------------------------------------
 
 particles <- 2000
-mif_iters <- 50
+mif_iters <- 100
 
 mf <- measles_pomp %>% 
   mif2(
@@ -152,6 +156,7 @@ mf <- measles_pomp %>%
       beta_mu = 0.02,
       beta_sd = 0.02,
       iota = 0.02,
+      rho = 0.02,
       b1 = 0.02,
       b2 = 0.02,
       b3 = 0.02,

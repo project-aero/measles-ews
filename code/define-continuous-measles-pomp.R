@@ -73,7 +73,7 @@ measles_dmeasure <- Csnippet(
   "
   double mean;
   double f;
-  mean = cases*0.5;
+  mean = cases*rho;
   // f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
   f = dpois(reports, mean, give_log);  // poisson likelihood
 
@@ -87,7 +87,7 @@ measles_dmeasure <- Csnippet(
 measles_rmeasure <- Csnippet(
   "
   // reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
-  reports = rpois(0.5*cases);  // poisson measurement process
+  reports = rpois(rho*cases);  // poisson measurement process
   if (reports > 0.0) {
     reports = nearbyint(reports);
   } else {
@@ -103,6 +103,7 @@ from_estimation <- Csnippet(
   "
   Tbeta_mu = exp(beta_mu);
   Tiota = exp(iota);
+  Trho = expit(rho);
   Tbeta_sd = exp(beta_sd);
   from_log_barycentric (&TS_0, &S_0, 3);
   "
@@ -112,6 +113,7 @@ to_estimation <- Csnippet(
   "
   Tbeta_mu = log(beta_mu);
   Tiota = log(iota);
+  Trho = logit(rho);
   Tbeta_sd = log(beta_sd);
   to_log_barycentric (&TS_0, &S_0, 3);
   "
@@ -169,6 +171,16 @@ bspline_basis <- periodic.bspline.basis(
 
 covar_data <- bind_cols(covar_data, bspline_basis)
 
+back_covars <- covar_data %>% 
+  slice(1:365) %>%
+  mutate(
+    time2 = time-1
+  ) %>%
+  dplyr::select(-time) %>%
+  dplyr::rename(time = time2) %>%
+  dplyr::select(time, N, mu, starts_with("x"))
+
+covar_data <- bind_rows(back_covars, covar_data)
 
 # Combine everything into a pomp object -----------------------------------
 
@@ -185,6 +197,7 @@ params <- c(
   b5 = 2,
   b6 = 0,
   iota = 2,
+  rho = 0.5,
   S_0 = 0.03, 
   I_0 = 0.00032,
   R_0 = (1 - (0.03 + 0.00032))
@@ -195,7 +208,7 @@ measles_pomp <- pomp(
   times = "time",
   covar = covar_data,
   tcovar = "time",
-  t0 = 1995.000,
+  t0 = 1994.000,
   rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
