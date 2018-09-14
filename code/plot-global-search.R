@@ -15,18 +15,19 @@ library(pomp)
 
 # Load data ---------------------------------------------------------------
 
-mif_traces <- read_csv("../results/initial-mif-traces.csv", col_types = cols()) %>%
+mif_traces <- read.csv("../results/initial-mif-traces.csv") %>%
+  as_tibble() %>%
   slice(2:n())
-mif_finals <- read_csv("../results/initial-mif-lls.csv", col_types = cols()) %>%
+mif_finals <- read.csv("../results/initial-mif-lls.csv") %>%
+  as_tibble() %>%
   slice(2:n())
 
 
 # Plot MIF traces ---------------------------------------------------------
 
 best_grids <- mif_finals %>%
-  arrange(-loglik)
-
-best_grids <- best_grids[1:200, ] %>%
+  arrange(-loglik) %>%
+  slice(1:200) %>%
   pull(do_grid)
 
 mif_traces_long <- mif_traces %>%
