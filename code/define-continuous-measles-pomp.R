@@ -58,7 +58,6 @@ measles_process <- Csnippet(
   // Balance the equations
   S += dN0S - dNSI;
   I += dN0I + dNSI - dNIR;
-  R +=               dNIR;
 
   cases += dNSI;  // cases are cumulative infections (S->I)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
@@ -105,7 +104,7 @@ from_estimation <- Csnippet(
   Tiota = exp(iota);
   Trho = expit(rho);
   Tbeta_sd = exp(beta_sd);
-  from_log_barycentric (&TS_0, &S_0, 3);
+  from_log_barycentric (&TS_0, &S_0, 2);
   "
 )
 
@@ -115,17 +114,15 @@ to_estimation <- Csnippet(
   Tiota = log(iota);
   Trho = logit(rho);
   Tbeta_sd = log(beta_sd);
-  to_log_barycentric (&TS_0, &S_0, 3);
+  to_log_barycentric (&TS_0, &S_0, 2);
   "
 )
 
 initial_values <- Csnippet(
   "
-  double m = N/(S_0+I_0+R_0);
-  S = nearbyint(m*S_0);
-  I = nearbyint(m*I_0);
-  R = nearbyint(m*R_0);
-  cases = 0.5*m*I_0;
+  S = nearbyint(N*S_0);
+  I = nearbyint(N*I_0);
+  cases = 0.5*N*I_0;
   W = 0;
   RE = 0;
   "
@@ -171,22 +168,6 @@ bspline_basis <- periodic.bspline.basis(
 
 covar_data <- bind_cols(covar_data, bspline_basis)
 
-# back_covars <- covar_data %>% 
-#   slice(1:365) %>%
-#   mutate(
-#     time2 = time-1
-#   ) %>%
-#   dplyr::select(-time) %>%
-#   dplyr::rename(time = time2) %>%
-#   dplyr::select(time, N, mu, starts_with("x"))
-# 
-# covar_data <- bind_rows(back_covars, covar_data)
-
-# Combine everything into a pomp object -----------------------------------
-
-# initial_S = round(20000/covar_data$N[1], 2) = 0.03
-# initial_I = round(200/covar_data$N[1], 5) = 0.00032
-
 params <- c(
   beta_mu = 500,
   beta_sd = 0.001,
@@ -199,8 +180,7 @@ params <- c(
   iota = 2,
   rho = 0.5,
   S_0 = 0.03, 
-  I_0 = 0.00032,
-  R_0 = (1 - (0.03 + 0.00032))
+  I_0 = 0.00032
 )
 
 measles_pomp <- pomp(
@@ -213,7 +193,7 @@ measles_pomp <- pomp(
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,
-  statenames = c("S", "I", "R", "cases", "W", "RE"),
+  statenames = c("S", "I", "cases", "W", "RE"),
   toEstimationScale = to_estimation,
   fromEstimationScale = from_estimation,
   paramnames = names(params),

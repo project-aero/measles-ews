@@ -50,8 +50,7 @@ library("lhs", lib.loc="~/myRlib/")
 #   iota = NA,
 #   rho = NA,
 #   S_0 = NA,
-#   I_0 = NA,
-#   R_0 = NA
+#   I_0 = NA
 # )
 # 
 # ll_file <- "initial-mif-lls.csv"
@@ -73,8 +72,7 @@ library("lhs", lib.loc="~/myRlib/")
 #   iota = NA,
 #   rho = NA,
 #   S_0 = NA,
-#   I_0 = NA,
-#   R_0 = NA
+#   I_0 = NA
 # )
 # 
 # trace_file <- "initial-mif-traces.csv"
@@ -108,11 +106,11 @@ param_uppers <- tibble(
   I_0 = 0.0008
 ) %>%
   as.numeric()
-names(param_uppers) <- names(coef(measles_pomp))[1:12]
+names(param_uppers) <- names(coef(measles_pomp))
 
 # Lower bounds for random parameters
 param_lowers <- tibble(
-  beta_mu = 26,
+  beta_mu = 5,
   beta_sd = 0.00001,
   b1 = -3,
   b2 = -3,
@@ -126,7 +124,7 @@ param_lowers <- tibble(
   I_0 = 0.000016
 ) %>%
   as.numeric()
-names(param_lowers) <- names(coef(measles_pomp))[1:12]
+names(param_lowers) <- names(coef(measles_pomp))
 
 # Construct random latin hypercube sample
 set.seed(123471246)  # get same LHS every time
@@ -137,12 +135,12 @@ for(i in 1:ncol(lhs_grid)){
 }
 
 colnames(lhs_grid) <- names(coef(measles_pomp))
-lhs_grid[,13] <- 1 - (lhs_grid[,11] + lhs_grid[,12])
+
 
 # Perform initial MIF -----------------------------------------------------
 
 particles <- 2000
-mif_iters <- 100
+mif_iters <- 50
 
 mf <- measles_pomp %>% 
   mif2(
@@ -164,12 +162,32 @@ mf <- measles_pomp %>%
       b5 = 0.02,
       b6 = 0.02,
       I_0 = ivp(0.1),
-      S_0 = ivp(0.1),
-      R_0 = ivp(0.1)
+      S_0 = ivp(0.1)
     )
-  ) 
+  ) %>%
+  mif2(
+    Nmif = mif_iters,
+    Np = particles,
+    transform = TRUE,
+    cooling.fraction.50 = 0.5,
+    cooling.type = "geometric",
+    rw.sd = rw.sd(
+      beta_mu = 0.02,
+      beta_sd = 0.02,
+      iota = 0.02,
+      rho = 0.02,
+      b1 = 0.02,
+      b2 = 0.02,
+      b3 = 0.02,
+      b4 = 0.02,
+      b5 = 0.02,
+      b6 = 0.02,
+      I_0 = ivp(0.1),
+      S_0 = ivp(0.1)
+    )
+  )
 
-ll <- logmeanexp(replicate(10,logLik(pfilter(mf, Np = particles))), se=TRUE)
+ll <- logmeanexp(replicate(20, logLik(pfilter(mf, Np = particles))), se=TRUE)
 coef_ests <- data.frame(t(coef(mf)))
 
 outdf <- data.frame(
