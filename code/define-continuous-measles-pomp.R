@@ -50,7 +50,7 @@ measles_process <- Csnippet(
   reulermultinom(1, I, &rate[1], dt, &trans[1]);
 
   // Transitions
-  dN0S = rpois(mu * N * dt);
+  dN0S = rpois(0.7 * mu * N * dt);
   dN0I = rpois(iota * dt);
   dNSI = trans[0];
   dNIR = trans[1];
@@ -104,7 +104,8 @@ from_estimation <- Csnippet(
   Tiota = exp(iota);
   Trho = expit(rho);
   Tbeta_sd = exp(beta_sd);
-  from_log_barycentric (&TS_0, &S_0, 2);
+  TS_0 = expit(S_0);
+  TI_0 = expit(I_0);
   "
 )
 
@@ -114,7 +115,8 @@ to_estimation <- Csnippet(
   Tiota = log(iota);
   Trho = logit(rho);
   Tbeta_sd = log(beta_sd);
-  to_log_barycentric (&TS_0, &S_0, 2);
+  TS_0 = logit(S_0);
+  TI_0 = logit(I_0);
   "
 )
 
