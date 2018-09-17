@@ -50,7 +50,7 @@ measles_process <- Csnippet(
   reulermultinom(1, I, &rate[1], dt, &trans[1]);
 
   // Transitions
-  dN0S = rpois(0.7 * mu * N * dt);
+  dN0S = rpois(0.3 * mu * N * dt);
   dN0I = rpois(iota * dt);
   dNSI = trans[0];
   dNIR = trans[1];

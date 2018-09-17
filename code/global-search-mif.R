@@ -88,7 +88,7 @@ start_population <- as.numeric(measles_pomp@covar[1,1])
 # Define Latin hypercube parameter space ----------------------------------
 
 # Number of random parameters to generate
-grid_size <- 1000
+grid_size <- 5000
 
 # Upper bounds for random parameters
 param_uppers <- tibble(
@@ -139,8 +139,8 @@ colnames(lhs_grid) <- names(coef(measles_pomp))
 
 # Perform initial MIF -----------------------------------------------------
 
-particles <- 2000
-mif_iters <- 50
+particles <- 10000
+mif_iters <- 100
 
 mf <- measles_pomp %>% 
   mif2(
@@ -187,7 +187,7 @@ mf <- measles_pomp %>%
     )
   )
 
-ll <- logmeanexp(replicate(20, logLik(pfilter(mf, Np = particles))), se=TRUE)
+ll <- logmeanexp(replicate(50, logLik(pfilter(mf, Np = particles))), se=TRUE)
 coef_ests <- data.frame(t(coef(mf)))
 
 outdf <- data.frame(
@@ -212,7 +212,7 @@ outmif <- data.frame(
 trace_file <- "initial-mif-traces.csv"
 write.table(outmif, trace_file, sep = ",", col.names = F, append = T, row.names = FALSE)
 
-saveRDS(object = mf, file = paste0("./mif-objects/mifobject-", do_grid, ".RDS"))
+# saveRDS(object = mf, file = paste0("./mif-objects/mifobject-", do_grid, ".RDS"))
 
 
 
