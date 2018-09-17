@@ -38,11 +38,11 @@ ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
   geom_line(alpha = 0.1) +
   facet_wrap(~parameter, scales = "free_y")
 
-# mifs_last <- mif_traces_long %>% filter(iteration == 99) %>% 
-#   filter(parameter %in% c("loglik", "S_0")) %>%
-#   spread(parameter, value)
-# 
-# plot(mifs_last$loglik, mifs_last$S_0)
+mifs_last <- mif_traces_long %>% filter(iteration == 50) %>%
+  filter(parameter %in% c("loglik", "S_0")) %>%
+  spread(parameter, value)
+
+plot(mifs_last$loglik, mifs_last$S_0)
 
 # Simulate model at MLEs --------------------------------------------------
 
@@ -78,7 +78,6 @@ simulate(
   scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
   guides(color = FALSE) +
   facet_wrap(~sim, ncol = 2) +
-  scale_y_sqrt() +
   theme(strip.text=element_blank())
 
 simulate(
@@ -141,3 +140,6 @@ final_mles <- mif_finals %>%
   dplyr::select(-do_grid, -loglik_se)
 
 pairs(final_mles, pch = ".")
+
+ggplot(final_mles, aes(x = S_0, y = rho, color = loglik)) +
+  geom_point()
