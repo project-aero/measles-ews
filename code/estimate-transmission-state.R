@@ -13,6 +13,7 @@
 library(tidyverse)
 library(pomp)
 library(lubridate)
+library(ggridges)
 
 
 # Load MLEs ---------------------------------------------------------------
@@ -201,5 +202,29 @@ measles_pomp <- pomp(
 )
 
 
-test <- pfilter(object = measles_pomp, Np=1000, save.states = TRUE)
+test <- pfilter(object = measles_pomp, Np=10000, save.states = TRUE)
+states <- test@saved.states
 
+out <- as_tibble(lapply(states, `[`,6,)) %>%
+  mutate(
+    particle = 1:n()
+  ) %>%
+  gather(key = time, value = beta, -particle)
+
+transmission_ts <- out %>%
+  group_by(time) %>%
+  summarise(
+    med = median(beta),
+    upper = quantile(beta, 0.95),
+    lower = quantile(beta, 0.05)
+  ) %>%
+  slice(2:n()) %>%
+  mutate(
+    week = 1:n()
+  )
+
+ggplot(transmission_ts, aes(x = week, y = med)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
+  geom_line() +
+  theme_minimal() +
+  labs(x = "Week", y = expression(paste("Trasnmission rate, ",beta)))
