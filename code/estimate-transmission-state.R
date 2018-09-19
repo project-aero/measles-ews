@@ -202,7 +202,7 @@ measles_pomp <- pomp(
 )
 
 
-test <- pfilter(object = measles_pomp, Np=10000, save.states = TRUE)
+test <- pfilter(object = measles_pomp, Np=20000, save.states = TRUE)
 states <- test@saved.states
 
 out <- as_tibble(lapply(states, `[`,6,)) %>%
@@ -215,8 +215,8 @@ transmission_ts <- out %>%
   group_by(time) %>%
   summarise(
     med = median(beta),
-    upper = quantile(beta, 0.95),
-    lower = quantile(beta, 0.05)
+    upper = quantile(beta, 0.80),
+    lower = quantile(beta, 0.20)
   ) %>%
   slice(2:n()) %>%
   mutate(
@@ -227,4 +227,7 @@ ggplot(transmission_ts, aes(x = week, y = med)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
   geom_line() +
   theme_minimal() +
-  labs(x = "Week", y = expression(paste("Trasnmission rate, ",beta)))
+  scale_y_log10() +
+  labs(x = "Week", y = expression(paste("Trasnmission rate, log(",beta,")")))
+
+cor.test(transmission_ts$week, transmission_ts$med, method = "kendall")
