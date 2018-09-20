@@ -13,7 +13,7 @@
 library(tidyverse)
 library(pomp)
 library(lubridate)
-library(ggridges)
+library(ggthemes)
 
 
 # Load MLEs ---------------------------------------------------------------
@@ -202,8 +202,14 @@ measles_pomp <- pomp(
 )
 
 
+
+# Run particle filter -----------------------------------------------------
+
 test <- pfilter(object = measles_pomp, Np=20000, save.states = TRUE)
-states <- test@saved.states
+states <- test@saved.states  # save the states separately
+
+
+# Extract transmission rate -----------------------------------------------
 
 out <- as_tibble(lapply(states, `[`,6,)) %>%
   mutate(
@@ -223,11 +229,74 @@ transmission_ts <- out %>%
     week = 1:n()
   )
 
-ggplot(transmission_ts, aes(x = week, y = med)) +
+
+# Plot the transmission time series ---------------------------------------
+
+trans_plot <- ggplot(transmission_ts, aes(x = week, y = med)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
-  geom_line() +
-  theme_minimal() +
+  geom_line(size = 0.2) +
+  stat_smooth(se = FALSE, color = "red", method = "lm", size = 0.7) +
   scale_y_log10() +
-  labs(x = "Week", y = expression(paste("Trasnmission rate, log(",beta,")")))
+  theme_minimal() +
+  labs(x = "Week", y = expression(paste("Mean trasnmission rate (",beta,")")))
+
+ggsave(
+  plot = trans_plot,
+  filename = "../figures/transmission-ts-posts.pdf", width = 5, height = 4
+)
+
+
+# Calculate correlation with time -----------------------------------------
 
 cor.test(transmission_ts$week, transmission_ts$med, method = "kendall")
+
+
+# Save the transmission time series ---------------------------------------
+
+write_csv(transmission_ts, path = "../results/transmission-posteriors.csv")
+
+
+# Extract S, I states -----------------------------------------------------
+
+out_S <- as_tibble(lapply(states, `[`,1,)) %>%
+  mutate(
+    particle = 1:n()
+  ) %>%
+  gather(key = time, value = susceptible, -particle)
+
+out_I <- as_tibble(lapply(states, `[`,3,)) %>%
+  mutate(
+    particle = 1:n()
+  ) %>%
+  gather(key = time, value = infected, -particle) %>%
+  mutate(
+    `number of reports per week` = rpois(n(), infected*as.numeric(mles["rho"]))
+    # infected = rnbinom(n(), size = 20, mu = infected*as.numeric(mles["rho"]))
+  ) %>%
+  dplyr::select(-infected)
+
+
+out_si <- out_S %>%
+  left_join(out_I, by = c("particle", "time")) %>%
+  gather(key = state, value = abundance, -particle, -time)
+
+states_filtered <- out_si %>%
+  group_by(state, time) %>%
+  summarise(
+    med_abundance = median(abundance),
+    upper_abundance = quantile(abundance, 0.975),
+    lower_abundance = quantile(abundance, 0.025)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    date = rep(measles_data$date, times = 2),
+    observations = c(measles_data$cases, rep(NA, nrow(measles_data)))
+  )
+
+ggplot(data = states_filtered, aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_abundance, ymax = upper_abundance), alpha = 0.5) +
+  geom_point(aes(y = observations)) +
+  geom_line(aes(y = med_abundance)) +
+  labs(x = "Date", y = "Number of persons") +
+  facet_wrap(~state, ncol = 1, scales = "free_y") +
+  theme_minimal()
