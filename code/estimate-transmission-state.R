@@ -33,14 +33,13 @@ measles_process <- Csnippet(
   double trans[nrate];	// transition numbers
   double lambda;        // force of infection
   double beta;          // transmission rate
-  double beta_t;
   double gamma = 365/14;   // recovery rate (14 days)
   double dW;            // white noise
   double seas;          // seasonality term
   double dN0S, dN0I, dNSI, dNIR;  // transitions
   
   // Beta random walk
-  beta_t = exp(rnorm(0, 1))*beta_mu;
+  beta_t *= rgammawn(0.001, dt)/dt;
 
   // Calculate force of infection
   seas = (1 + exp(dot_product(K, &xi1, &b1)));
@@ -71,7 +70,6 @@ measles_process <- Csnippet(
   cases += dNSI;  // cases are cumulative infections (S->I)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta * dW/dt) / gamma;
-  beta_state = beta_t;
   "
 )
 
@@ -136,7 +134,7 @@ initial_values <- Csnippet(
   cases = 0.5*N*I_0;
   W = 0;
   RE = 0; 
-  beta_state = 0;
+  beta_t = 31.5;
   "
 )
 
@@ -192,7 +190,7 @@ measles_pomp <- pomp(
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,
-  statenames = c("S", "I", "cases", "W", "RE", "beta_state"),
+  statenames = c("S", "I", "cases", "W", "RE", "beta_t"),
   toEstimationScale = to_estimation,
   fromEstimationScale = from_estimation,
   paramnames = names(params),
@@ -205,7 +203,7 @@ measles_pomp <- pomp(
 
 # Run particle filter -----------------------------------------------------
 
-test <- pfilter(object = measles_pomp, Np=20000, save.states = TRUE)
+test <- pfilter(object = measles_pomp, Np=50000, save.states = TRUE)
 states <- test@saved.states  # save the states separately
 
 
@@ -221,8 +219,8 @@ transmission_ts <- out %>%
   group_by(time) %>%
   summarise(
     med = median(beta),
-    upper = quantile(beta, 0.80),
-    lower = quantile(beta, 0.20)
+    upper = quantile(beta, 0.975),
+    lower = quantile(beta, 0.025)
   ) %>%
   slice(2:n()) %>%
   mutate(
@@ -235,8 +233,7 @@ transmission_ts <- out %>%
 trans_plot <- ggplot(transmission_ts, aes(x = week, y = med)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
   geom_line(size = 0.2) +
-  stat_smooth(se = FALSE, color = "red", method = "lm", size = 0.7) +
-  scale_y_log10() +
+  stat_smooth(se = FALSE, color = "red", method = "loess", size = 0.7) +
   theme_minimal() +
   labs(x = "Week", y = expression(paste("Mean trasnmission rate (",beta,")")))
 
@@ -304,24 +301,24 @@ ggplot(data = states_filtered, aes(x = date)) +
 
 # Try pMCMC ---------------------------------------------------------------
 
-test <- pmcmc(measles_pomp, Np = 1000, Nmcmc = 1000,
-              proposal = mvn.diag.rw(c(beta_mu = 0.01, beta_sd = 0.01,
-                                       b1 = 0.01, b2 = 0.01, b3 = 0.01, b4 = 0.01,
-                                       b5 = 0.01, b6 = 0.01, iota = 0.01, rho = 0.01,
-                                       S_0 = 0.01, I_0 = 0.00001)))
-
-
-simulate(
-  measles_pomp,
-  params = coef(test),
-  nsim = 9,
-  as.data.frame = TRUE,
-  include.data = TRUE) %>%
-  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
-  geom_line() +
-  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
-  guides(color = FALSE) +
-  facet_wrap(~sim, ncol = 2) +
-  scale_y_sqrt() +
-  theme(strip.text=element_blank())
+# test <- pmcmc(measles_pomp, Np = 1000, Nmcmc = 1000,
+#               proposal = mvn.diag.rw(c(beta_mu = 0.01, beta_sd = 0.01,
+#                                        b1 = 0.01, b2 = 0.01, b3 = 0.01, b4 = 0.01,
+#                                        b5 = 0.01, b6 = 0.01, iota = 0.01, rho = 0.01,
+#                                        S_0 = 0.01, I_0 = 0.00001)))
+# 
+# 
+# simulate(
+#   measles_pomp,
+#   params = coef(test),
+#   nsim = 9,
+#   as.data.frame = TRUE,
+#   include.data = TRUE) %>%
+#   ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+#   geom_line() +
+#   scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+#   guides(color = FALSE) +
+#   facet_wrap(~sim, ncol = 2) +
+#   scale_y_sqrt() +
+#   theme(strip.text=element_blank())
 

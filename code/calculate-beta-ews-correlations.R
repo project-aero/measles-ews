@@ -12,6 +12,7 @@ library(tidyverse)
 library(ggthemes)
 library(lubridate)
 library(spaero)
+library(DescTools)
 
 
 # Load previous results ---------------------------------------------------
@@ -22,7 +23,7 @@ ews_results <- readRDS("../results/ews-niger-cities.RDS") %>%
 beta_results <- read_csv("../results/transmission-posteriors.csv", col_types = cols()) %>%
   dplyr::select(time, med) %>%
   mutate(
-    date = unique(ews$date)[2:length(unique(ews$date))]
+    date = unique(ews_results$date)[2:length(unique(ews_results$date))]
   ) %>%
   dplyr::select(-time) %>%
   rename(beta_value = med) %>%
@@ -44,9 +45,9 @@ ews_beta <- ews_results %>%
 ews_beta_corrs <- ews_beta %>%
   group_by(ews) %>%
   summarise(
-    spearman_value = SpearmanRho(value, beta_value, use = c("pairwise.complete.obs"),  conf.level = 0.95)[1],
-    spearman_lwr = SpearmanRho(value, beta_value, use = c("pairwise.complete.obs"),  conf.level = 0.95)[2],
-    spearman_upr = SpearmanRho(value, beta_value, use = c("pairwise.complete.obs"),  conf.level = 0.95)[3], 
+    spearman_value = SpearmanRho(value, beta_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
+    spearman_lwr = SpearmanRho(value, beta_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
+    spearman_upr = SpearmanRho(value, beta_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
     spearman_pvalue = cor.test(value, beta_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
   ) %>%
   mutate(
@@ -61,7 +62,7 @@ ggplot(ews_beta_corrs, aes(x = ews, y = spearman_value, color = color_id_final))
   geom_hline(aes(yintercept = 0), linetype = 2) +
   geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.1) +
   geom_point() +
-  scale_color_manual(values = c("blue", "red", "grey35"), guide = FALSE) +
+  scale_color_manual(values = c("blue", "grey35"), guide = FALSE) +
   labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
   theme_minimal() +
   coord_flip()

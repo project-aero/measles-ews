@@ -86,17 +86,18 @@ The data come from [*somewhere/someone*], and used here with permission from [*s
 \label{fig:data}
 \end{figure}
 
-## Stochastic *SI* model
-The model is a continuous time *SI* model with limited demography, specified as a set of stochastic differential equations:
+## Stochastic *SIR* model
+The model is a continuous time *SIR* model with limited demography, specified as a set of stochastic differential equations:
 
 \begin{align}
 dS &= \mu_t N_t dt - \lambda_t S_t dt + dU_t \\
-dI &= \psi_t dt + \lambda_t S_t dt - \gamma I_t dt + dV_t
+dI &= \psi_t dt + \lambda_t S_t dt - \gamma I_t dt + dV_t \\
+dR &= \gamma I_t dt + dW_t,
 \end{align}
 
 \noindent{}where $\mu_t$ is birth rate at time *t*, $\gamma$ is the time-invariant recovery rate, $\psi_t$ is rate of imported infections, $\lambda_t$ is the time-varying force of infectionm, and $U_t$ and $V_t$ are noise terms.
-We do not include a death process in the model because we expect death rates from the susceptible and infectious classes to be minimal relative to births and we are not interested in the recovered class since we know total population size.
-Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
+We do not include a death process in the model because we expect death rates from the susceptible and infectious classes to be minimal relative to births.
+Moreover, we do not explicitly model the recovered class (*R*) because $S(t)+I(t)+R(t) = N(t)$ and we have estimates of population size through time, $N(t)$.
 We model stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
 Transitions in the model are shown in Table \ref{table:model-trans}.
 We model $\lambda_t$ as a function of a seasonal tranmission rate subject to additional environmental variability through time:
