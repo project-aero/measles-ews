@@ -24,7 +24,6 @@ output:
     fig_caption: yes
     keep_tex: no
 urlcolor: black
-pandoc_args : --filter filter.py
 ---
 \raggedright
 \vspace*{0.2in}

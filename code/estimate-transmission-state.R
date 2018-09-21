@@ -270,7 +270,7 @@ out_I <- as_tibble(lapply(states, `[`,3,)) %>%
   ) %>%
   gather(key = time, value = infected, -particle) %>%
   mutate(
-    `number of reports per week` = rpois(n(), infected*as.numeric(mles["rho"]))
+    `reported cases` = rpois(n(), infected*as.numeric(mles["rho"]))
     # infected = rnbinom(n(), size = 20, mu = infected*as.numeric(mles["rho"]))
   ) %>%
   dplyr::select(-infected)
@@ -300,3 +300,28 @@ ggplot(data = states_filtered, aes(x = date)) +
   labs(x = "Date", y = "Number of persons") +
   facet_wrap(~state, ncol = 1, scales = "free_y") +
   theme_minimal()
+
+
+# Try pMCMC ---------------------------------------------------------------
+
+test <- pmcmc(measles_pomp, Np = 1000, Nmcmc = 1000,
+              proposal = mvn.diag.rw(c(beta_mu = 0.01, beta_sd = 0.01,
+                                       b1 = 0.01, b2 = 0.01, b3 = 0.01, b4 = 0.01,
+                                       b5 = 0.01, b6 = 0.01, iota = 0.01, rho = 0.01,
+                                       S_0 = 0.01, I_0 = 0.00001)))
+
+
+simulate(
+  measles_pomp,
+  params = coef(test),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
