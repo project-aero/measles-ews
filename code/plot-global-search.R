@@ -27,7 +27,7 @@ mif_finals <- read.csv("../results/initial-mif-lls.csv") %>%
 
 best_grids <- mif_finals %>%
   arrange(-loglik) %>%
-  slice(1:1000) %>%
+  slice(1:200) %>%
   pull(do_grid)
 
 mif_traces_long <- mif_traces %>%
