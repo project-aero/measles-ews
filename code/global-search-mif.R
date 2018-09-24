@@ -33,55 +33,9 @@ library("dplyr", lib.loc="~/myRlib/")
 library("lhs", lib.loc="~/myRlib/")
 
 
-# # Set up output files -----------------------------------------------------
-# 
-# mles <- data.frame(
-#   do_grid = NA,
-#   loglik = NA,
-#   loglik_se = NA,
-#   beta_mu = NA,
-#   beta_sd = NA,
-#   b1 = NA,
-#   b2 = NA,
-#   b3 = NA,
-#   b4 = NA,
-#   b5 = NA,
-#   b6 = NA,
-#   iota = NA,
-#   rho = NA,
-#   S_0 = NA,
-#   I_0 = NA
-# )
-# 
-# ll_file <- "initial-mif-lls.csv"
-# write.table(mles, ll_file, sep = ",", col.names = T, append = T, row.names = FALSE)
-# 
-# mf_traces <- data.frame(
-#   do_grid = NA,
-#   iteration = NA,
-#   loglik = NA,
-#   nfail = NA,
-#   beta_mu = NA,
-#   beta_sd = NA,
-#   b1 = NA,
-#   b2 = NA,
-#   b3 = NA,
-#   b4 = NA,
-#   b5 = NA,
-#   b6 = NA,
-#   iota = NA,
-#   rho = NA,
-#   S_0 = NA,
-#   I_0 = NA
-# )
-# 
-# trace_file <- "initial-mif-traces.csv"
-# write.table(mf_traces, trace_file, sep = ",", col.names = T, append = T, row.names = FALSE)
-
-
 # Load pomp object --------------------------------------------------------
 
-measles_pomp <- readRDS("measles-pomp-object.RDS")
+measles_pomp <- readRDS("measles-pomp-object-Agadez.RDS")
 start_population <- as.numeric(measles_pomp@covar[1,1])
 
 
@@ -103,7 +57,8 @@ param_uppers <- tibble(
   iota = 50,
   rho = 0.9,
   S_0 = 0.16,
-  I_0 = 0.0008
+  I_0 = 0.0008,
+  tau = 50
 ) %>%
   as.numeric()
 names(param_uppers) <- names(coef(measles_pomp))
@@ -121,7 +76,8 @@ param_lowers <- tibble(
   iota = 0.001,
   rho = 0.1,
   S_0 = 0.00016,
-  I_0 = 0.000016
+  I_0 = 0.000016,
+  tau = 0.00001
 ) %>%
   as.numeric()
 names(param_lowers) <- names(coef(measles_pomp))

@@ -8,9 +8,6 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
-##  https://github.com/theresasophia/pomp-astic/blob/master/mle_stst%2B_study.R
-
-
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
@@ -73,8 +70,8 @@ measles_dmeasure <- Csnippet(
   double mean;
   double f;
   mean = cases*rho;
-  // f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
-  f = dpois(reports, mean, give_log);  // poisson likelihood
+  f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
+  //f = dpois(reports, mean, give_log);  // poisson likelihood
 
   lik = (give_log) ? log(f) : f;
   "
@@ -85,8 +82,8 @@ measles_dmeasure <- Csnippet(
 
 measles_rmeasure <- Csnippet(
   "
-  // reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
-  reports = rpois(rho*cases);  // poisson measurement process
+  reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
+  //reports = rpois(rho*cases);  // poisson measurement process
   if (reports > 0.0) {
     reports = nearbyint(reports);
   } else {
@@ -106,6 +103,7 @@ from_estimation <- Csnippet(
   Tbeta_sd = exp(beta_sd);
   TS_0 = expit(S_0);
   TI_0 = expit(I_0);
+  Ttau = exp(tau);
   "
 )
 
@@ -117,6 +115,7 @@ to_estimation <- Csnippet(
   Tbeta_sd = log(beta_sd);
   TS_0 = logit(S_0);
   TI_0 = logit(I_0);
+  Ttau = log(tau);
   "
 )
 
@@ -133,78 +132,88 @@ initial_values <- Csnippet(
 
 # Make data tables --------------------------------------------------------
 
-do_city <- "Niamey (City)"
 do_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
-measles_data <- readRDS(do_file) %>%
-  dplyr::filter(region == do_city)
 
-obs_data <- measles_data %>%
-  dplyr::select(time, cases) %>%
-  dplyr::rename(
-    reports = cases
+all_cities <- readRDS(do_file) %>%
+  pull(region) %>%
+  unique()
+
+for(do_city in all_cities){
+  measles_data <- readRDS(do_file) %>%
+    dplyr::filter(region == do_city)
+  
+  obs_data <- measles_data %>%
+    dplyr::select(time, cases) %>%
+    dplyr::rename(
+      reports = cases
+    )
+  
+  if(do_city == "Niamey (City)"){
+    # REMOVE SUSPICIOUS DATA POINT AND REPLACE WITH MEAN OF NEIGHBORS #
+    obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
+  }
+  
+  covar_file <- "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
+  covar_data <- readRDS(covar_file) %>%
+    dplyr::filter(region == do_city) %>%
+    dplyr::select(time, population_size, birth_per_person_per_year) %>%
+    dplyr::rename(
+      N = population_size,
+      mu = birth_per_person_per_year
+    )
+  
+  # Generate basis functions for seasonality
+  bspline_basis <- periodic.bspline.basis(
+    covar_data$time,
+    nbasis = 6,
+    degree = 3,
+    period = 1,
+    names = "xi%d"
+  ) %>%
+    as_tibble()
+  
+  covar_data <- bind_cols(covar_data, bspline_basis)
+  
+  params <- c(
+    beta_mu = 500,
+    beta_sd = 0.001,
+    b1 = 3,
+    b2 = 3,
+    b3 = 6,
+    b4 = 5,
+    b5 = 2,
+    b6 = 0,
+    iota = 2,
+    rho = 0.5,
+    S_0 = 0.03, 
+    I_0 = 0.00032,
+    tau = 0.001
   )
-
-if(do_city == "Niamey (City)"){
-  # REMOVE SUSPICIOUS DATA POINT AND REPLACE WITH MEAN OF NEIGHBORS #
-  obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
+  
+  measles_pomp <- pomp(
+    data = obs_data,
+    times = "time",
+    covar = covar_data,
+    tcovar = "time",
+    t0 = 1995.000,
+    rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
+    rmeasure = measles_rmeasure,
+    dmeasure = measles_dmeasure,
+    initializer = initial_values,
+    statenames = c("S", "I", "cases", "W", "RE"),
+    toEstimationScale = to_estimation,
+    fromEstimationScale = from_estimation,
+    paramnames = names(params),
+    params = params,
+    globals = "int K = 6;",
+    zeronames = c("cases", "W")
+  )
+  
+  city_abb <- substr(do_city, start = 1, stop = 6)
+  outfile <- paste0("measles-pomp-object-", city_abb, ".RDS")
+  saveRDS(object = measles_pomp, file = outfile)
 }
 
-covar_file <- "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
-covar_data <- readRDS(covar_file) %>%
-  dplyr::filter(region == do_city) %>%
-  dplyr::select(time, population_size, birth_per_person_per_year) %>%
-  dplyr::rename(
-    N = population_size,
-    mu = birth_per_person_per_year
-  )
-
-# Generate basis functions for seasonality
-bspline_basis <- periodic.bspline.basis(
-  covar_data$time,
-  nbasis = 6,
-  degree = 3,
-  period = 1,
-  names = "xi%d"
-) %>%
-  as_tibble()
-
-covar_data <- bind_cols(covar_data, bspline_basis)
-
-params <- c(
-  beta_mu = 500,
-  beta_sd = 0.001,
-  b1 = 3,
-  b2 = 3,
-  b3 = 6,
-  b4 = 5,
-  b5 = 2,
-  b6 = 0,
-  iota = 2,
-  rho = 0.5,
-  S_0 = 0.03, 
-  I_0 = 0.00032
-)
-
-measles_pomp <- pomp(
-  data = obs_data,
-  times = "time",
-  covar = covar_data,
-  tcovar = "time",
-  t0 = 1995.000,
-  rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
-  rmeasure = measles_rmeasure,
-  dmeasure = measles_dmeasure,
-  initializer = initial_values,
-  statenames = c("S", "I", "cases", "W", "RE"),
-  toEstimationScale = to_estimation,
-  fromEstimationScale = from_estimation,
-  paramnames = names(params),
-  params = params,
-  globals = "int K = 6;",
-  zeronames = c("cases", "W")
-)
-
-saveRDS(object = measles_pomp, file = "measles-pomp-object.RDS")
 
 
 # Extra plotting code for testing -----------------------------------------
