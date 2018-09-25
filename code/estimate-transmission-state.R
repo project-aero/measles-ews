@@ -232,8 +232,7 @@ transmission_ts <- out %>%
 
 trans_plot <- ggplot(transmission_ts, aes(x = week, y = med)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
-  geom_line(size = 0.2) +
-  stat_smooth(se = FALSE, color = "red", method = "loess", size = 0.7) +
+  geom_line() +
   theme_minimal() +
   labs(x = "Week", y = expression(paste("Mean trasnmission rate (",beta,")")))
 
@@ -298,27 +297,4 @@ ggplot(data = states_filtered, aes(x = date)) +
   facet_wrap(~state, ncol = 1, scales = "free_y") +
   theme_minimal()
 
-
-# Try pMCMC ---------------------------------------------------------------
-
-# test <- pmcmc(measles_pomp, Np = 1000, Nmcmc = 1000,
-#               proposal = mvn.diag.rw(c(beta_mu = 0.01, beta_sd = 0.01,
-#                                        b1 = 0.01, b2 = 0.01, b3 = 0.01, b4 = 0.01,
-#                                        b5 = 0.01, b6 = 0.01, iota = 0.01, rho = 0.01,
-#                                        S_0 = 0.01, I_0 = 0.00001)))
-# 
-# 
-# simulate(
-#   measles_pomp,
-#   params = coef(test),
-#   nsim = 9,
-#   as.data.frame = TRUE,
-#   include.data = TRUE) %>%
-#   ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
-#   geom_line() +
-#   scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
-#   guides(color = FALSE) +
-#   facet_wrap(~sim, ncol = 2) +
-#   scale_y_sqrt() +
-#   theme(strip.text=element_blank())
 
