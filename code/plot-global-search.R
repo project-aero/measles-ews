@@ -6,19 +6,19 @@
 # Author:
 #  Andrew Tredennick
 
+DO_CITY <- "Agadez"
 
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
 library(pomp)
 
-
 # Load data ---------------------------------------------------------------
 
-mif_traces <- read.csv("../results/initial-mif-traces.csv") %>%
+mif_traces <- read.csv(paste0("../results/initial-mif-traces-", DO_CITY, ".csv")) %>%
   as_tibble() %>%
   slice(2:n())
-mif_finals <- read.csv("../results/initial-mif-lls.csv") %>%
+mif_finals <- read.csv(paste0("../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
   as_tibble() %>%
   slice(2:n())
 
@@ -26,6 +26,7 @@ mif_finals <- read.csv("../results/initial-mif-lls.csv") %>%
 # Plot MIF traces ---------------------------------------------------------
 
 best_grids <- mif_finals %>%
+  filter(loglik < 0) %>%
   arrange(-loglik) %>%
   slice(1:200) %>%
   pull(do_grid)
@@ -47,11 +48,12 @@ plot(mifs_last$loglik, mifs_last$S_0)
 # Simulate model at MLEs --------------------------------------------------
 
 mles <- mif_finals %>%
+  filter(loglik < 0) %>%
   filter(loglik == max(loglik, na.rm = T)) %>%
   # filter(do_grid == 584) %>%
   dplyr::select(-do_grid, -loglik, -loglik_se)
 
-measles_pomp <- readRDS("measles-pomp-object.RDS")
+measles_pomp <- readRDS(paste0("measles-pomp-object-", DO_CITY, ".RDS"))
 
 simulate(
   measles_pomp,
@@ -137,6 +139,7 @@ cowplot::plot_grid(basis_plot, beta_plot, ncol = 1, align = "v")
 # Plot likelihood surface -------------------------------------------------
 
 final_mles <- mif_finals %>%
+  filter(loglik < 0) %>%
   dplyr::select(-do_grid, -loglik_se)
 
 pairs(final_mles, pch = ".")
