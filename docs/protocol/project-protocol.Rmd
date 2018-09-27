@@ -5,9 +5,9 @@ subtitle: Linking early warning signals to the temporal epidemiology of measles 
 author: "Andrew Tredennick (atredenn@gmail.com)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
+  html_document: default
   pdf_document:
     fig_caption: yes
-  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -24,6 +24,7 @@ theme_set(theme_minimal())
 ## Authors
 + Andrew Tredennick
 + Eamon O'Dea
++ Toby Brett
 + Pejman Rohani
 + John Drake
 
@@ -76,13 +77,12 @@ The stochastic random variables are specified as follows:
 \begin{align}
 n_{S,t} &\sim \text{Poisson}(\mu_t N_t \times dt) \\
 n_{E,t} &\sim \text{Binomial}(\lambda_{E,t}, S_{t}) \\
-n_{I,t} &\sim \text{Binomial}(\lambda_{I}, E_{t}) \\
+n_{I,t} &\sim \text{Binomial}(\lambda_{I,t}, E_{t}) \\
 n_{O,t} &\sim \text{Poisson}(\psi \times dt) \\
-n_{R,t} &\sim \text{Binomial}(\lambda_{R}, I_{t}),
+n_{R,t} &\sim \text{Binomial}(\lambda_{R,t}, I_{t}),
 \end{align}
 
 \noindent{}where $\mu_t$ is the birth rate at time *t*, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
-Only $\lambda_E$ varies over time.
 These probabilities reflect the processes of tranmission, transition from the latent period to the infectious period, and recovery, which we model as:
 
 \begin{align}
@@ -108,7 +108,7 @@ We model demographic stochasticity in births and imported infections by drawing 
 Transitions in the model are shown in Table 1.
 In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_{E(t)} = \beta_t / \gamma$.
 
-We assume observed case reports ($\textbf{y}$) are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$),
+We assume observed case reports ($\textbf{y}$) are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
 
 \begin{align}
 y_t \sim \text{Negative Binomial} \left( \rho I_t, \tau \right).
@@ -383,3 +383,5 @@ ggplot(plotit, aes(x = rnaught, y = correlations)) +
   - Remove $R$ from the model because we don't need it -- we have population size as a covariate. This should speed things up.
   - Added some text on using the filtering distribution for final inference.
 
++ **09-27-2018**
+  - Updates model to SEIR and better notation after consulting with Toby.
