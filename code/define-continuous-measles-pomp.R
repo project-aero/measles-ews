@@ -106,6 +106,7 @@ from_estimation <- Csnippet(
   Trho = expit(rho);
   Tbeta_sd = exp(beta_sd);
   TS_0 = expit(S_0);
+  TE_0 = expit(E_0);
   TI_0 = expit(I_0);
   Ttau = exp(tau);
   "
@@ -118,6 +119,7 @@ to_estimation <- Csnippet(
   Trho = logit(rho);
   Tbeta_sd = log(beta_sd);
   TS_0 = logit(S_0);
+  TE_0 = logit(E_0);
   TI_0 = logit(I_0);
   Ttau = log(tau);
   "
@@ -126,6 +128,7 @@ to_estimation <- Csnippet(
 initial_values <- Csnippet(
   "
   S = nearbyint(N*S_0);
+  E = nearbyint(N*E_0);
   I = nearbyint(N*I_0);
   cases = 0.5*N*I_0;
   W = 0;
@@ -190,7 +193,8 @@ for(do_city in all_cities){
     iota = 2,
     rho = 0.5,
     S_0 = 0.03, 
-    I_0 = 0.00032,
+    I_0 = 0.00032*0.5,
+    E_0 = 0.00032*0.5,
     tau = 0.001
   )
   
@@ -212,7 +216,7 @@ for(do_city in all_cities){
     globals = "int K = 6;",
     zeronames = c("cases", "W")
   )
-  
+
   city_abb <- substr(do_city, start = 1, stop = 6)
   outfile <- paste0("measles-pomp-object-", city_abb, ".RDS")
   saveRDS(object = measles_pomp, file = outfile)
