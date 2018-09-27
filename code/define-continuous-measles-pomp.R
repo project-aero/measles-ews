@@ -2,7 +2,7 @@
 #  Script to define a 'pomp' model object for the dynamics of measles in
 #  Niger. The model is a continuous-time SIR model with a time-varying
 #  transmission rate. The model is specified as a set of nonlinear stochastic
-#  differential equations (SDEs).
+#  difference equations (SDEs).
 #
 # Author:
 #  Andrew Tredennick (atredenn@gmail.com)
@@ -20,15 +20,16 @@ library(pomp)
 measles_process <- Csnippet(
   "
   // Define the variables
-  int nrate = 2;        // number of rates
-  double rate[nrate];		// transition rates
-  double trans[nrate];	// transition numbers
-  double lambda;        // force of infection
-  double beta;          // transmission rate
-  double gamma = 365/14;   // recovery rate (14 days)
-  double dW;            // white noise
-  double seas;          // seasonality term
-  double dN0S, dN0I, dNSI, dNIR;  // transitions
+  int nrate = 2;          // number of rates
+  double rate[nrate];	  	// transition rates
+  double trans[nrate];   	// transition numbers
+  double lambda;          // force of infection
+  double beta;            // transmission rate
+  double eta = 365/9;     // infectious rate (9 days latent)
+  double gamma = 365/5;   // recovery rate (5 days infectious)
+  double dW;              // white noise
+  double seas;            // seasonality term
+  double dN0S, dN0I, dNSE, dNEI, dNIR;  // transitions
 
   // Calculate force of infection
   seas = (1 + exp(dot_product(K, &xi1, &b1)));
@@ -39,24 +40,28 @@ measles_process <- Csnippet(
   dW = rgammawn(beta_sd, dt);
 
   // Compute the transition rates
-  rate[0] = lambda*dW/dt;                 // force of infection
-  rate[1] = gamma;	                      // recovery
+  rate[0] = lambda*dW/dt; // force of infection
+  rate[1] = eta;          // infectious rate from latent
+  rate[2] = gamma;	      // recovery from infectious
 
   // Compute the state transitions
   reulermultinom(1, S, &rate[0], dt, &trans[0]);
-  reulermultinom(1, I, &rate[1], dt, &trans[1]);
+  reulermultinom(1, E, &rate[1], dt, &trans[1]);
+  reulermultinom(1, I, &rate[2], dt, &trans[2]);
 
   // Transitions
   dN0S = rpois(0.3 * mu * N * dt);
   dN0I = rpois(iota * dt);
-  dNSI = trans[0];
-  dNIR = trans[1];
+  dNSE = trans[0];
+  dNEI = trans[1];
+  dNIR = trans[2];
 
   // Balance the equations
-  S += dN0S - dNSI;
-  I += dN0I + dNSI - dNIR;
+  S += dN0S - dNSE;
+  E +=        dNSE - dNEI;
+  I += dN0I        + dNEI - dNIR;
 
-  cases += dNSI;  // cases are cumulative infections (S->I)
+  cases += dNEI;  // cases are cumulative infections (E->I)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta * dW/dt) / gamma;
   "
@@ -71,7 +76,6 @@ measles_dmeasure <- Csnippet(
   double f;
   mean = cases*rho;
   f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
-  //f = dpois(reports, mean, give_log);  // poisson likelihood
 
   lik = (give_log) ? log(f) : f;
   "
@@ -83,7 +87,7 @@ measles_dmeasure <- Csnippet(
 measles_rmeasure <- Csnippet(
   "
   reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
-  //reports = rpois(rho*cases);  // poisson measurement process
+
   if (reports > 0.0) {
     reports = nearbyint(reports);
   } else {
@@ -200,7 +204,7 @@ for(do_city in all_cities){
     rmeasure = measles_rmeasure,
     dmeasure = measles_dmeasure,
     initializer = initial_values,
-    statenames = c("S", "I", "cases", "W", "RE"),
+    statenames = c("S", "E", "I", "cases", "W", "RE"),
     toEstimationScale = to_estimation,
     fromEstimationScale = from_estimation,
     paramnames = names(params),
