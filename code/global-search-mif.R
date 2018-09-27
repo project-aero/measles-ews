@@ -35,7 +35,7 @@ library("lhs", lib.loc="~/myRlib/")
 
 # Load pomp object --------------------------------------------------------
 
-measles_pomp <- readRDS("measles-pomp-object-Agadez.RDS")
+measles_pomp <- readRDS("measles-pomp-object-Niamey.RDS")
 start_population <- as.numeric(measles_pomp@covar[1,1])
 
 
@@ -48,16 +48,17 @@ grid_size <- 5000
 param_uppers <- tibble(
   beta_mu = 1000,
   beta_sd = 5,
-  b1 = 3,
-  b2 = 3,
-  b3 = 3,
-  b4 = 3,
-  b5 = 3,
-  b6 = 3,
-  iota = 50,
-  rho = 0.9,
-  S_0 = 0.16,
-  I_0 = 0.0008,
+  b1 = 10,
+  b2 = 10,
+  b3 = 10,
+  b4 = 10,
+  b5 = 10,
+  b6 = 10,
+  iota = 500,
+  rho = 0.999,
+  S_0 = 0.2,
+  E_0 = 0.008,
+  I_0 = 0.008,
   tau = 50
 ) %>%
   as.numeric()
@@ -67,15 +68,16 @@ names(param_uppers) <- names(coef(measles_pomp))
 param_lowers <- tibble(
   beta_mu = 5,
   beta_sd = 0.00001,
-  b1 = -3,
-  b2 = -3,
-  b3 = -3,
-  b4 = -3,
-  b5 = -3,
-  b6 = -3,
+  b1 = -10,
+  b2 = -10,
+  b3 = -10,
+  b4 = -10,
+  b5 = -10,
+  b6 = -10,
   iota = 0.001,
-  rho = 0.1,
+  rho = 0.001,
   S_0 = 0.00016,
+  E_0 = 0.000016,
   I_0 = 0.000016,
   tau = 0.00001
 ) %>%
@@ -118,14 +120,16 @@ mf <- measles_pomp %>%
       b5 = 0.02,
       b6 = 0.02,
       I_0 = ivp(0.1),
-      S_0 = ivp(0.1)
+      E_0 = ivp(0.1),
+      S_0 = ivp(0.1),
+      tau = 0.02
     )
   ) %>%
   mif2(
     Nmif = mif_iters,
     Np = particles,
     transform = TRUE,
-    cooling.fraction.50 = 0.5,
+    cooling.fraction.50 = 0.9,
     cooling.type = "geometric",
     rw.sd = rw.sd(
       beta_mu = 0.02,
@@ -139,7 +143,9 @@ mf <- measles_pomp %>%
       b5 = 0.02,
       b6 = 0.02,
       I_0 = ivp(0.1),
-      S_0 = ivp(0.1)
+      E_0 = ivp(0.1),
+      S_0 = ivp(0.1),
+      tau = 0.02
     )
   )
 
@@ -170,137 +176,3 @@ write.table(outmif, trace_file, sep = ",", col.names = F, append = T, row.names 
 
 # saveRDS(object = mf, file = paste0("./mif-objects/mifobject-", do_grid, ".RDS"))
 
-
-
-
-
-# Perform initial parameter search with pfilter ---------------------------
-
-# if(file.exists("initial-search-lls.RDS") == FALSE){
-#   
-#   particles <- 2000
-#   cores <- 20
-#   cl <- makeCluster(cores)
-#   registerDoParallel(cl)
-#   
-#   clusterCall(cl, function(x) .libPaths(x), .libPaths("~/myRlib"))
-# 
-#   foreach(
-#     guess = iter(guesses,"row"),
-#     .combine = rbind,
-#     .packages = c("pomp","magrittr","dplyr"),
-#     .errorhandling = "remove",
-#     .export = "measles_pomp",
-#     .inorder = FALSE
-#   ) %dopar% {
-#     ll <- logmeanexp(replicate(10, logLik(pfilter(measles_pomp, Np = particles, params = guess))), se=TRUE)
-#     data.frame(
-#       loglik = ll[1],
-#       loglik_se = ll[2]
-#     ) %>%
-#       bind_cols(guess)
-#      
-#   } -> initial_lls
-# 
-#   saveRDS(object = initial_lls, file = "initial-search-lls.RDS")
-# 
-# } else{
-#   warning("Output file already exists.")
-# }
-
-
-
-
-# Perform initial MIF search ----------------------------------------------
-
-# tic <- Sys.time()
-# ll <- logmeanexp(replicate(10, logLik(pfilter(measles_pomp, params = guesses[1,], Np = 2000))), se=TRUE)
-# Sys.time()-tic # 40.5 seconds
-# 
-# 
-# tic <- Sys.time()
-# measles_pomp %>% 
-#   mif2(
-#     start = unlist(guesses[1,]),
-#     Nmif = 25,
-#     Np = 200,
-#     transform = TRUE,
-#     cooling.fraction.50 = 1,
-#     cooling.type = "geometric",
-#     rw.sd = rw.sd(
-#       beta_mu = 0.02, 
-#       gamma = 0.02,
-#       rho = 0.02, 
-#       tau = 0.02, 
-#       beta_sd = 0.02,
-#       b1 = 0.02, 
-#       b2 = 0.02, 
-#       b3 = 0.02, 
-#       b4 = 0.02, 
-#       b5 = 0.02, 
-#       b6 = 0.02,
-#       I_0 = ivp(0.1, 52), 
-#       S_0 = ivp(0.1, 52),
-#       R_0 = ivp(0.1, 52),
-#       iota = 0.02
-#     )
-#   ) -> mf
-# 
-# toc <- Sys.time()
-# timeit <- toc-tic
-# 
-# saveRDS(mf, "testmf.RDS")
-# saveRDS(timeit, "proctime.RDS")
-
-# 
-# if(file.exists("global-search.RDS") == FALSE){
-#   
-#   foreach(
-#     guess = iter(guesses[1:10,],"row"),
-#     .combine = rbind,
-#     .packages = c("pomp","magrittr"),
-#     .errorhandling = "remove",
-#     .export = "measles_pomp",
-#     .inorder = FALSE
-#   ) 
-#   %dopar% {
-#     measles_pomp %>% 
-#       mif2(
-#         start = unlist(guess),
-#         Nmif = 25,
-#         Np = 2000,
-#         transform = TRUE,
-#         cooling.fraction.50 = 1,
-#         cooling.type = "geometric",
-#         rw.sd = rw.sd(
-#           beta_mu = 0.02, 
-#           gamma = 0.02,
-#           rho = 0.02, 
-#           tau = 0.02, 
-#           beta_sd = 0.02,
-#           b1 = 0.02, 
-#           b2 = 0.02, 
-#           b3 = 0.02, 
-#           b4 = 0.02, 
-#           b5 = 0.02, 
-#           b6 = 0.02,
-#           I_0 = ivp(0.1, 52), 
-#           S_0 = ivp(0.1, 52),
-#           R_0 = ivp(0.1, 52),
-#           iota = 0.02
-#         )
-#       ) -> mf
-#     
-#     ll <- logmeanexp(replicate(10,logLik(pfilter(mf))), se=TRUE)
-#     tibble(
-#       loglik = ll[1],
-#       loglik_se = ll[2], 
-#       as.list(coef(mf))
-#     )
-#   } -> global_mles
-#   
-#   saveRDS(object = global_mles, file = "global-search.RDS")
-#   
-# } else{
-#   global_mles <- readRDS("global-search.RDS")
-# }

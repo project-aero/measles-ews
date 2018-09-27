@@ -5,9 +5,9 @@ subtitle: Linking early warning signals to the temporal epidemiology of measles 
 author: "Andrew Tredennick (atredenn@gmail.com)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  html_document: default
   pdf_document:
     fig_caption: yes
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -54,52 +54,76 @@ If EWS and $\mathcal{R}_E$ are negatively correlated or not significantly posivi
 
 The goal is fit a model to estimate:
 
- + The latent *S* and *I* latent states
+ + The latent *S*, *E*, and *I* latent states
  + Time-varying rate of transmision, $\beta_t$
  + Time-varying effective reproductive ratio, $\mathcal{R}_{E(t)}$
  
 
-#### The mechanistic SIR model
+#### The mechanistic SEIR model
     
-The model is a continuous time SIR model with limited demography, specified as a set of stochastic differential equations (SDEs):
+The model is a discrete-time approximation of a continuous-time SEIR model with limited demography, specified as a set of difference equations,
 
 \begin{align}
-dS &= \mu_t N_t dt - \lambda_t S_t dt + dU_t \\
-dI &= \psi_t dt + \lambda_t S_t dt - \gamma I_t dt + dV_t
+S_{t+dt} &= n_{S,t} - n_{E,t} \\
+E_{t+dt} &= n_{E,t} - n_{I,t} \\
+I_{t+dt} &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
-\noindent{}where $\mu_t$ is birth rate at time *t*, $\gamma$ is the time-invariant recovery rate, $\psi_t$ is rate of imported infections, and $\lambda_t$ is the time-varying force of infection.
-We do not include a death process in the model because we expect death rates from the susceptible and infectious classes to be minimal relative to births and we are not interested in robust estimates of the recovered class.
-Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
-We model stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
-Transitions in the model are shown in Table 1.
-We model $\lambda_t$ as a function of a seasonal tranmission rate subject to additional environmental variability through time:
+\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
+$n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious indiviuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
+The stochastic random variables are specified as follows:
 
 \begin{align}
-\lambda_t &= \frac{\beta_t I_t}{N_t}, \\
-\beta_t &= \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t, 
+n_{S,t} &\sim \text{Poisson}(\mu_t N_t \times dt) \\
+n_{E,t} &\sim \text{Binomial}(\lambda_{E,t}, S_{t}) \\
+n_{I,t} &\sim \text{Binomial}(\lambda_{I}, E_{t}) \\
+n_{O,t} &\sim \text{Poisson}(\psi \times dt) \\
+n_{R,t} &\sim \text{Binomial}(\lambda_{R}, I_{t}),
 \end{align}
 
-\noindent{}where $\beta_t$ is the rate of transmission at time *t*, $\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+\noindent{}where $\mu_t$ is the birth rate at time *t*, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
+Only $\lambda_E$ varies over time.
+These probabilities reflect the processes of tranmission, transition from the latent period to the infectious period, and recovery, which we model as:
+
+\begin{align}
+\lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
+\lambda_{I,t} &= 1 - e^{-\eta E_{t} dt} \\
+\lambda_{R,t} &= 1 - e^{-\gamma I_{t} dt},
+\end{align}
+
+\noindent{}where $\beta_t$ is time-varying rate of transmission, $\eta$ is time-invariant rate from the exposed class to the infectious class, and $\gamma$ is time-invariant recovery rate.
+We model rate of transmission as:
+
+\begin{equation}
+\beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t.
+\end{equation}
+
+$\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as a gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ (Bretó and Ionides 2011).
+
+We do not include a death process in the model because we expect death rates from the susceptible and infectious classes to be minimal relative to births and we are not interested in robust estimates of the recovered class.
+Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
+We model demographic stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
+Transitions in the model are shown in Table 1.
 In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_{E(t)} = \beta_t / \gamma$.
 
-We assume observed case reports ($\textbf{y}$) are drawn from a Poisson distribution subject to a constant reporting fraction ($\rho$),
+We assume observed case reports ($\textbf{y}$) are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$),
 
 \begin{align}
-y_t \sim \text{Poisson} \left( \rho I_t \right).
+y_t \sim \text{Negative Binomial} \left( \rho I_t, \tau \right).
 \end{align}
 
-| Transition | ($\Delta S$, $\Delta I$) | Propensity |
+| Transition | ($\Delta S$, $\Delta E$, $\Delta I$) | Propensity |
 | --------------- | ------------ | -------------------------------------------- |
-| birth | $(1, 0)$ | $N_t \mu$ |
-| imported infections | $(0, 1)$ | $\psi_t$ |
-| transmission (deterministic) | $(-1, 1)$ | $SI \beta_t / N_t$ |
-| transmission (stochastic) | $(-k, k)$ | $\frac{S}{k}\sum^k_{j=0} \left(\begin{matrix}k\\j\end{matrix} \right) (-1)^{k-j+1} \tau_{\text{f}}^{-1} \text{ln}(1 + (\beta_tI/N_t)) \tau_{\text{f}} (S-j)$ |
-| recovery | $(0, -1)$ | $I\gamma$ |
+| birth | $(1, 0, 0)$ | $N_t \mu_t$ |
+| transmission (deterministic) | $(-1, 1, 0)$ | $SI \beta_t / N_t$ |
+| transmission (stochastic) | $(-k, k, 0)$ | $\frac{S}{k}\sum^k_{j=0} \left(\begin{matrix}k\\j\end{matrix} \right) (-1)^{k-j+1} \tau_{\text{f}}^{-1} \text{ln}(1 + (\beta_tI/N_t)) \tau_{\text{f}} (S-j)$ |
+| symptomatic (infectious) | $(0,-1,1)$ | $E\eta$
+| imported infections | $(0, 0, 1)$ | $\psi_t$ |
+| recovery | $(0, 0, -1)$ | $I\gamma$ |
 
-Table: Transitions in the SI model. We show the determinstic transmission rate for clarity, but our model uses the stochastic tranmission rate.
+Table: Transitions in the SEIR model. We show the determinstic transmission rate for clarity, but our model uses the stochastic tranmission rate.
 
 
 #### Model fitting

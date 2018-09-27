@@ -23,6 +23,7 @@ mles <- data.frame(
   iota = NA,
   rho = NA,
   S_0 = NA,
+  E_0 = NA,
   I_0 = NA,
   tau = NA
 )
@@ -46,6 +47,7 @@ mf_traces <- data.frame(
   iota = NA,
   rho = NA,
   S_0 = NA,
+  E_0 = NA,
   I_0 = NA,
   tau = NA
 )
