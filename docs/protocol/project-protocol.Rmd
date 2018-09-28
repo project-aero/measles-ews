@@ -5,9 +5,9 @@ subtitle: Linking early warning signals to the temporal epidemiology of measles 
 author: "Andrew Tredennick (atredenn@gmail.com)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  html_document: default
   pdf_document:
     fig_caption: yes
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -108,10 +108,12 @@ We model demographic stochasticity in births and imported infections by drawing 
 Transitions in the model are shown in Table 1.
 In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_{E(t)} = \beta_t / \gamma$.
 
-We assume observed case reports ($\textbf{y}$) are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
+The data are weekly observations of reported cases.
+To relate our model, which iterates on a daily time step, to the data, we created a variable $x$ that is the cumulative number of individuals that transitioned from the exposed class to the infectious class over seven day periods: $x = \sum_{i=1}^7 n_{I,i}$.
+We assume observed case reports ($\textbf{y}$) for each week *w* are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
 
 \begin{align}
-y_t \sim \text{Negative Binomial} \left( \rho I_t, \tau \right).
+y_w \sim \text{Negative Binomial} \left( \rho x_w, \tau \right).
 \end{align}
 
 | Transition | ($\Delta S$, $\Delta E$, $\Delta I$) | Propensity |
