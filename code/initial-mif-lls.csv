@@ -1,2 +1,2 @@
-"do_grid","loglik","loglik_se","beta_mu","beta_sd","b1","b2","b3","b4","b5","b6","iota","rho","S_0","E_0","I_0"
-NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+"do_grid","loglik","loglik_se","beta_mu","beta_sd","b1","b2","b3","b4","b5","b6","iota","rho","S_0","E_0","I_0","tau"
+NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
