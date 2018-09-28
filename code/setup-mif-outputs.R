@@ -24,8 +24,8 @@ mles <- data.frame(
   rho = NA,
   S_0 = NA,
   E_0 = NA,
-  I_0 = NA,
-  tau = NA
+  I_0 = NA
+  # tau = NA
 )
 
 ll_file <- "initial-mif-lls.csv"
@@ -48,8 +48,8 @@ mf_traces <- data.frame(
   rho = NA,
   S_0 = NA,
   E_0 = NA,
-  I_0 = NA,
-  tau = NA
+  I_0 = NA
+  # tau = NA
 )
 
 trace_file <- "initial-mif-traces.csv"

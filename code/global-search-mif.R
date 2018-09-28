@@ -58,8 +58,8 @@ param_uppers <- tibble(
   rho = 0.999,
   S_0 = 0.2,
   E_0 = 0.008,
-  I_0 = 0.008,
-  tau = 50
+  I_0 = 0.008
+  # tau = 50
 ) %>%
   as.numeric()
 names(param_uppers) <- names(coef(measles_pomp))
@@ -78,8 +78,8 @@ param_lowers <- tibble(
   rho = 0.001,
   S_0 = 0.00016,
   E_0 = 0.000016,
-  I_0 = 0.000016,
-  tau = 0.00001
+  I_0 = 0.000016
+  # tau = 0.00001
 ) %>%
   as.numeric()
 names(param_lowers) <- names(coef(measles_pomp))
@@ -121,8 +121,8 @@ mf <- measles_pomp %>%
       b6 = 0.02,
       I_0 = ivp(0.1),
       E_0 = ivp(0.1),
-      S_0 = ivp(0.1),
-      tau = 0.02
+      S_0 = ivp(0.1)
+      # tau = 0.02
     )
   ) %>%
   mif2(
@@ -144,8 +144,8 @@ mf <- measles_pomp %>%
       b6 = 0.02,
       I_0 = ivp(0.1),
       E_0 = ivp(0.1),
-      S_0 = ivp(0.1),
-      tau = 0.02
+      S_0 = ivp(0.1)
+      # tau = 0.02
     )
   )
 

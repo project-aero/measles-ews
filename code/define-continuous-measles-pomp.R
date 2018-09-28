@@ -25,7 +25,7 @@ measles_process <- Csnippet(
   double trans[nrate];   	// transition numbers
   double lambda;          // force of infection
   double beta;            // transmission rate
-  double eta = 365/9;     // infectious rate (9 days latent)
+  double eta = 365/8;     // infectious rate (8 days latent)
   double gamma = 365/5;   // recovery rate (5 days infectious)
   double dW;              // white noise
   double seas;            // seasonality term
@@ -75,7 +75,8 @@ measles_dmeasure <- Csnippet(
   double mean;
   double f;
   mean = cases*rho;
-  f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
+  // f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
+  f = dpois(reports, mean, give_log);
 
   lik = (give_log) ? log(f) : f;
   "
@@ -86,7 +87,8 @@ measles_dmeasure <- Csnippet(
 
 measles_rmeasure <- Csnippet(
   "
-  reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
+  //reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
+  reports = rpois(rho*cases);
 
   if (reports > 0.0) {
     reports = nearbyint(reports);
@@ -108,7 +110,7 @@ from_estimation <- Csnippet(
   TS_0 = expit(S_0);
   TE_0 = expit(E_0);
   TI_0 = expit(I_0);
-  Ttau = exp(tau);
+  //Ttau = exp(tau);
   "
 )
 
@@ -121,7 +123,7 @@ to_estimation <- Csnippet(
   TS_0 = logit(S_0);
   TE_0 = logit(E_0);
   TI_0 = logit(I_0);
-  Ttau = log(tau);
+  //Ttau = log(tau);
   "
 )
 
@@ -194,8 +196,8 @@ for(do_city in all_cities){
     rho = 0.5,
     S_0 = 0.03, 
     E_0 = 0.00032*0.5,
-    I_0 = 0.00032*0.5,
-    tau = 0.001
+    I_0 = 0.00032*0.5
+    # tau = 0.001
   )
   
   measles_pomp <- pomp(

@@ -6,7 +6,7 @@
 # Author:
 #  Andrew Tredennick
 
-DO_CITY <- "Agadez"
+DO_CITY <- "Niamey"
 
 # Load libraries ----------------------------------------------------------
 
@@ -22,6 +22,9 @@ mif_finals <- read.csv(paste0("../results/initial-mif-lls-", DO_CITY, ".csv")) %
   as_tibble() %>%
   slice(2:n())
 
+mif_finals <- read.csv("~/Desktop/initial-mif-lls.csv") %>%
+  as_tibble() %>%
+  slice(2:n())
 
 # Plot MIF traces ---------------------------------------------------------
 
