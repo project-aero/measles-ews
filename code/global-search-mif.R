@@ -97,8 +97,8 @@ colnames(lhs_grid) <- names(coef(measles_pomp))
 
 # Perform initial MIF -----------------------------------------------------
 
-particles <- 5000
-mif_iters <- 50
+particles <- 10000
+mif_iters <- 100
 
 mf <- measles_pomp %>% 
   mif2(
@@ -149,7 +149,7 @@ mf <- measles_pomp %>%
     )
   )
 
-ll <- logmeanexp(replicate(20, logLik(pfilter(mf, Np = particles))), se=TRUE)
+ll <- logmeanexp(replicate(50, logLik(pfilter(mf, Np = particles))), se=TRUE)
 coef_ests <- data.frame(t(coef(mf)))
 
 outdf <- data.frame(

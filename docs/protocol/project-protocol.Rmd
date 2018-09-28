@@ -65,20 +65,20 @@ The goal is fit a model to estimate:
 The model is a discrete-time approximation of a continuous-time SEIR model with limited demography, specified as a set of difference equations,
 
 \begin{align}
-S_{t+dt} &= n_{S,t} - n_{E,t} \\
-E_{t+dt} &= n_{E,t} - n_{I,t} \\
-I_{t+dt} &= n_{I,t} + n_{O,t} - n_{R,t},
+S_{t+\delta t} &= n_{S,t} - n_{E,t} \\
+E_{t+\delta t} &= n_{E,t} - n_{I,t} \\
+I_{t+\delta t} &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
-\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
+\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+\delta t$.
 $n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious indiviuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
 The stochastic random variables are specified as follows:
 
 \begin{align}
-n_{S,t} &\sim \text{Poisson}(\mu_t N_t \times dt) \\
+n_{S,t} &\sim \text{Poisson}(\mu_t N_t \times \delta t) \\
 n_{E,t} &\sim \text{Binomial}(\lambda_{E,t}, S_{t}) \\
 n_{I,t} &\sim \text{Binomial}(\lambda_{I,t}, E_{t}) \\
-n_{O,t} &\sim \text{Poisson}(\psi \times dt) \\
+n_{O,t} &\sim \text{Poisson}(\psi \times \delta t) \\
 n_{R,t} &\sim \text{Binomial}(\lambda_{R,t}, I_{t}),
 \end{align}
 
@@ -86,9 +86,9 @@ n_{R,t} &\sim \text{Binomial}(\lambda_{R,t}, I_{t}),
 These probabilities reflect the processes of tranmission, transition from the latent period to the infectious period, and recovery, which we model as:
 
 \begin{align}
-\lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
-\lambda_{I,t} &= 1 - e^{-\eta E_{t} dt} \\
-\lambda_{R,t} &= 1 - e^{-\gamma I_{t} dt},
+\lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t \delta t}{N_t}} \\
+\lambda_{I,t} &= 1 - e^{-\eta E_{t} \delta t} \\
+\lambda_{R,t} &= 1 - e^{-\gamma I_{t} \delta t},
 \end{align}
 
 \noindent{}where $\beta_t$ is time-varying rate of transmission, $\eta$ is time-invariant rate from the exposed class to the infectious class, and $\gamma$ is time-invariant recovery rate.
