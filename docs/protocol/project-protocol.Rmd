@@ -61,8 +61,10 @@ The goal is fit a model to estimate:
  
 
 #### The mechanistic SEIR model
+
+![optional caption text](../../figures/seir-diagram.png){height=350px}
     
-The model is a discrete-time approximation of a continuous-time SEIR model with limited demography, specified as a set of difference equations,
+The model is a discrete-time approximation of a continuous-time SEIR model (Fig. 1) with limited demography, specified as a set of difference equations,
 
 \begin{align}
 S_{t+\delta t} &= n_{S,t} - n_{E,t} \\
@@ -102,7 +104,7 @@ $\beta$ is the mean transmission rate, $\psi$ accounts for measles infections fr
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as a gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ (Bretó and Ionides 2011).
 
-We do not include a death process in the model because we expect death rates from the susceptible and infectious classes to be minimal relative to births and we are not interested in robust estimates of the recovered class.
+We do not include a death process in the model because the rate of infection is much faster than the rate of death.
 Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
 We model demographic stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
 Transitions in the model are shown in Table 1.

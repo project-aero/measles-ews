@@ -12,55 +12,55 @@ node [shape = circle,
 style=filled,
 color = '#B2A389',
 fontname = Helvetica] // sets as circles
-Births;
+Births [label = 'Births', fontsize = 30];
 
 node [shape = circle,
 style=filled,
 color = '#B2A389',
 fontname = Helvetica] // sets as circles
-Imports;
+Imports [label = 'Imports', fontsize = 30];
 
 node [shape = circle,
 style=filled,
 color = '#F2E3B6',
 fontname = Helvetica] // sets as circles
-Susceptible;
+Susceptible [label = 'Susceptible', fontsize = 30];
 
 node [shape = circle,
 style=filled,
 color = '#D55D45',
 fontname = Helvetica] // sets as circles
-Exposed;
+Exposed [label = 'Exposed', fontsize = 30];
 
 node [shape = circle,
 style=filled,
 color = '#D55D45',
 fontname = Helvetica] // sets as circles
-Infectious;
+Infectious [label = 'Infectious', fontsize = 30];
 
 node [shape = circle,
 style=filled,
 color = '#BCDAF2',
 fontname = Helvetica] // sets as circles
-Recovered;
+Recovered [label = 'Recovered', fontsize = 30];
 
 
 node [shape = oval,
 style=filled,
 color = '#026773',fontcolor=white,
 fontname = Helvetica] // sets as circles
-Reported;
+Reported [label = 'Reported', fontsize = 30];
 
 # several 'edge' statements
 edge [arrowhead=vee]
-Births->Susceptible [label = '&#956;N'] 
-Susceptible->Exposed [label = '&#946;SI/N']
-Exposed->Infectious [label = '&#957;E']
-Imports->Infectious [label = '&#968;']
-Infectious->Recovered [label = '&#947;I']
+Births->Susceptible [label = '&#956;N', fontsize = 35] 
+Susceptible->Exposed [label = '&#946;SI/N', fontsize = 35]
+Exposed->Infectious [label = '&#957;E', fontsize = 35]
+Imports->Infectious [label = '&#968;', fontsize = 35]
+Infectious->Recovered [label = '&#947;I', fontsize = 35]
 
 edge [arrowhead=vee,style=dashed]
-Infectious->Reported [label = '&#961;&#947;I']
+Infectious->Reported [label = '&#961;&#947;I', fontsize = 35]
 # a 'graph' statement
 graph [overlap = true, fontsize = 10,mindist=0.4]
 }
