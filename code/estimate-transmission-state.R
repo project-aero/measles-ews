@@ -22,25 +22,30 @@ mles <- read_csv("../results/initial-mif-lls.csv") %>%
   filter(loglik == max(loglik, na.rm = T)) %>%
   dplyr::select(-do_grid, -loglik, -loglik_se)
 
+mles <- read_csv("~/Desktop/initial-mif-lls.csv") %>%
+  filter(loglik == max(loglik, na.rm = T)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
 
 # Update procress C snippet with beta random walk -------------------------
 
 measles_process <- Csnippet(
   "
   // Define the variables
-  int nrate = 2;        // number of rates
-  double rate[nrate];		// transition rates
-  double trans[nrate];	// transition numbers
-  double lambda;        // force of infection
-  double beta;          // transmission rate
-  double gamma = 365/14;   // recovery rate (14 days)
-  double dW;            // white noise
-  double seas;          // seasonality term
-  double dN0S, dN0I, dNSI, dNIR;  // transitions
-  
+  int nrate = 3;          // number of rates
+  double rate[nrate];	  	// transition rates
+  double trans[nrate];   	// transition numbers
+  double lambda;          // force of infection
+  double beta;            // transmission rate
+  double eta = 365/8;     // infectious rate (8 days latent)
+  double gamma = 365/5;   // recovery rate (5 days infectious)
+  double dW;              // white noise
+  double seas;            // seasonality term
+  double dN0S, dN0I, dNSE, dNEI, dNIR;  // transitions
+
   // Beta random walk
   beta_t *= rgammawn(0.001, dt)/dt;
-
+  
   // Calculate force of infection
   seas = (1 + exp(dot_product(K, &xi1, &b1)));
   beta = beta_t*seas;
@@ -50,28 +55,33 @@ measles_process <- Csnippet(
   dW = rgammawn(beta_sd, dt);
   
   // Compute the transition rates
-  rate[0] = lambda*dW/dt;                 // force of infection
-  rate[1] = gamma;	                      // recovery
+  rate[0] = lambda*dW/dt; // force of infection
+  rate[1] = eta;          // infectious rate from latent
+  rate[2] = gamma;	      // recovery from infectious
   
   // Compute the state transitions
   reulermultinom(1, S, &rate[0], dt, &trans[0]);
-  reulermultinom(1, I, &rate[1], dt, &trans[1]);
+  reulermultinom(1, E, &rate[1], dt, &trans[1]);
+  reulermultinom(1, I, &rate[2], dt, &trans[2]);
   
   // Transitions
   dN0S = rpois(0.3 * mu * N * dt);
   dN0I = rpois(iota * dt);
-  dNSI = trans[0];
-  dNIR = trans[1];
+  dNSE = trans[0];
+  dNEI = trans[1];
+  dNIR = trans[2];
   
   // Balance the equations
-  S += dN0S - dNSI;
-  I += dN0I + dNSI - dNIR;
+  S += dN0S - dNSE;
+  E +=        dNSE - dNEI;
+  I += dN0I        + dNEI - dNIR;
   
-  cases += dNSI;  // cases are cumulative infections (S->I)
+  cases += dNIR;  // cases are cumulative reports at end of infectious period (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta * dW/dt) / gamma;
   "
 )
+
 
 # Define likelihood function ----------------------------------------------
 
@@ -80,8 +90,8 @@ measles_dmeasure <- Csnippet(
   double mean;
   double f;
   mean = cases*rho;
-  // f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
-  f = dpois(reports, mean, give_log);  // poisson likelihood
+  f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
+  // f = dpois(reports, mean, give_log);
   
   lik = (give_log) ? log(f) : f;
   "
@@ -92,8 +102,9 @@ measles_dmeasure <- Csnippet(
 
 measles_rmeasure <- Csnippet(
   "
-  // reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
-  reports = rpois(rho*cases);  // poisson measurement process
+  reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
+  // reports = rpois(rho*cases);
+  
   if (reports > 0.0) {
   reports = nearbyint(reports);
   } else {
@@ -112,7 +123,9 @@ from_estimation <- Csnippet(
   Trho = expit(rho);
   Tbeta_sd = exp(beta_sd);
   TS_0 = expit(S_0);
+  TE_0 = expit(E_0);
   TI_0 = expit(I_0);
+  Ttau = exp(tau);
   "
 )
 
@@ -123,18 +136,21 @@ to_estimation <- Csnippet(
   Trho = logit(rho);
   Tbeta_sd = log(beta_sd);
   TS_0 = logit(S_0);
+  TE_0 = logit(E_0);
   TI_0 = logit(I_0);
+  Ttau = log(tau);
   "
 )
 
 initial_values <- Csnippet(
   "
   S = nearbyint(N*S_0);
+  E = nearbyint(N*E_0);
   I = nearbyint(N*I_0);
   cases = 0.5*N*I_0;
   W = 0;
-  RE = 0; 
-  beta_t = 31.5;
+  RE = 0;
+  beta_t = 475;
   "
 )
 
@@ -190,7 +206,7 @@ measles_pomp <- pomp(
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,
-  statenames = c("S", "I", "cases", "W", "RE", "beta_t"),
+  statenames = c("S", "E", "I", "cases", "W", "RE", "beta_t"),
   toEstimationScale = to_estimation,
   fromEstimationScale = from_estimation,
   paramnames = names(params),
@@ -203,13 +219,13 @@ measles_pomp <- pomp(
 
 # Run particle filter -----------------------------------------------------
 
-test <- pfilter(object = measles_pomp, Np=50000, save.states = TRUE)
+test <- pfilter(object = measles_pomp, Np=5000, save.states = TRUE)
 states <- test@saved.states  # save the states separately
 
 
 # Extract transmission rate -----------------------------------------------
 
-out <- as_tibble(lapply(states, `[`,6,)) %>%
+out <- as_tibble(lapply(states, `[`,7,)) %>%
   mutate(
     particle = 1:n()
   ) %>%
@@ -220,21 +236,26 @@ transmission_ts <- out %>%
   summarise(
     med = median(beta),
     upper = quantile(beta, 0.975),
-    lower = quantile(beta, 0.025)
+    lower = quantile(beta, 0.025),
+    upper2 = quantile(beta, 0.9),
+    lower2 = quantile(beta, 0.1)
   ) %>%
   slice(2:n()) %>%
   mutate(
-    week = 1:n()
+    week = 1:n(),
+    date = measles_data$date[2:nrow(measles_data)]
   )
 
 
 # Plot the transmission time series ---------------------------------------
 
-trans_plot <- ggplot(transmission_ts, aes(x = week, y = med)) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
-  geom_line() +
+trans_plot <- ggplot(transmission_ts, aes(x = date, y = med)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = ptol_pal()(1)) +
+  # geom_ribbon(aes(ymin = lower2, ymax = upper2), alpha = 0.4, fill = "coral") +
+  geom_hline(aes(yintercept = mles$beta_mu), color = ptol_pal()(2)[2], linetype = 2) +
+  geom_line(color = ptol_pal()(1)) +
   theme_minimal() +
-  labs(x = "Week", y = expression(paste("Mean trasnmission rate (",beta,")")))
+  labs(x = "Date", y = expression(paste("Mean trasnmission rate, ",beta," (",yr^-1,")"))) 
 
 ggsave(
   plot = trans_plot,
@@ -260,7 +281,7 @@ out_S <- as_tibble(lapply(states, `[`,1,)) %>%
   ) %>%
   gather(key = time, value = susceptible, -particle)
 
-out_I <- as_tibble(lapply(states, `[`,3,)) %>%
+out_I <- as_tibble(lapply(states, `[`,4,)) %>%
   mutate(
     particle = 1:n()
   ) %>%
@@ -291,10 +312,11 @@ states_filtered <- out_si %>%
 
 ggplot(data = states_filtered, aes(x = date)) +
   geom_ribbon(aes(ymin = lower_abundance, ymax = upper_abundance), alpha = 0.5) +
-  geom_point(aes(y = observations)) +
+  geom_point(aes(y = observations), color = "red", size = 0.3) +
   geom_line(aes(y = med_abundance)) +
   labs(x = "Date", y = "Number of persons") +
   facet_wrap(~state, ncol = 1, scales = "free_y") +
+  scale_y_sqrt() +
   theme_minimal()
 
 
