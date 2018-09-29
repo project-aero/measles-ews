@@ -61,7 +61,7 @@ measles_process <- Csnippet(
   E +=        dNSE - dNEI;
   I += dN0I        + dNEI - dNIR;
 
-  cases += dNEI;  // cases are cumulative infections (E->I)
+  cases += dNIR;  // cases are cumulative reports at end of infectious period (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta * dW/dt) / gamma;
   "
