@@ -8,6 +8,9 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
+DO_CITY <- "Niamey"
+pomp_city <- "Niamey (City)"
+
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
@@ -18,11 +21,7 @@ library(ggthemes)
 
 # Load MLEs ---------------------------------------------------------------
 
-mles <- read_csv("../results/initial-mif-lls.csv") %>%
-  filter(loglik == max(loglik, na.rm = T)) %>%
-  dplyr::select(-do_grid, -loglik, -loglik_se)
-
-mles <- read_csv("~/Desktop/initial-mif-lls.csv") %>%
+mles <- read_csv(paste0("../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
   filter(loglik == max(loglik, na.rm = T)) %>%
   dplyr::select(-do_grid, -loglik, -loglik_se)
 
@@ -76,9 +75,9 @@ measles_process <- Csnippet(
   E +=        dNSE - dNEI;
   I += dN0I        + dNEI - dNIR;
   
-  cases += dNIR;  // cases are cumulative reports at end of infectious period (I->R)
+  cases += dNIR;  // caseas are cumulative reports at end of infectious period (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
-  RE = (beta * dW/dt) / gamma;
+  RE = ((beta_t * dt) / (gamma*dt)) * (S / N) ;
   "
 )
 
@@ -157,10 +156,9 @@ initial_values <- Csnippet(
 
 # Make data tables --------------------------------------------------------
 
-do_city <- "Niamey (City)"
 do_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 measles_data <- readRDS(do_file) %>%
-  dplyr::filter(region == do_city)
+  dplyr::filter(region == pomp_city)
 
 obs_data <- measles_data %>%
   dplyr::select(time, cases) %>%
@@ -168,14 +166,14 @@ obs_data <- measles_data %>%
     reports = cases
   )
 
-if(do_city == "Niamey (City)"){
+if(pomp_city == "Niamey (City)"){
   # REMOVE SUSPICIOUS DATA POINT AND REPLACE WITH MEAN OF NEIGHBORS #
   obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
 }
 
 covar_file <- "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
 covar_data <- readRDS(covar_file) %>%
-  dplyr::filter(region == do_city) %>%
+  dplyr::filter(region == pomp_city) %>%
   dplyr::select(time, population_size, birth_per_person_per_year) %>%
   dplyr::rename(
     N = population_size,
@@ -225,7 +223,7 @@ states <- test@saved.states  # save the states separately
 
 # Extract transmission rate -----------------------------------------------
 
-out <- as_tibble(lapply(states, `[`,7,)) %>%
+out <- as_tibble(lapply(states, `[`,6,)) %>%
   mutate(
     particle = 1:n()
   ) %>%
@@ -252,7 +250,7 @@ transmission_ts <- out %>%
 trans_plot <- ggplot(transmission_ts, aes(x = date, y = med)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = ptol_pal()(1)) +
   # geom_ribbon(aes(ymin = lower2, ymax = upper2), alpha = 0.4, fill = "coral") +
-  geom_hline(aes(yintercept = mles$beta_mu), color = ptol_pal()(2)[2], linetype = 2) +
+  # geom_hline(aes(yintercept = mles$beta_mu), color = ptol_pal()(2)[2], linetype = 2) +
   geom_line(color = ptol_pal()(1)) +
   theme_minimal() +
   labs(x = "Date", y = expression(paste("Mean trasnmission rate, ",beta," (",yr^-1,")"))) 
