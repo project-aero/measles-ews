@@ -16,7 +16,7 @@ library(lubridate)
 
 # Read in data and format -------------------------------------------------
 
-file_name <- "../data/raw-data/niger_regional_1995_2005.csv"  # fromt the AERO data repo
+file_name <- "../data/raw-data/niger_regional_1995_2005.csv"  # from the AERO data repo
 niger_measles_raw <- suppressWarnings(
   read_csv(file_name, col_types = cols())
 ) 
@@ -54,6 +54,24 @@ measles_data <- niger_measles_raw %>%
   mutate(
     time = decimal_date(date)
   )
+
+# Make tibble with initial conditions NA row
+initial_conditions_datarow <- tibble(
+  region = unique(measles_data$region),
+  date = min(measles_data$date) - 7,
+  year = year(min(measles_data$date) - 7),
+  week_of_year = 52,
+  obs_week = NA,
+  cases = NA
+) %>%
+  mutate(
+    time = decimal_date(date)
+  )
+
+# Add in initial time NAs for observations
+measles_data <- measles_data %>%
+  bind_rows(initial_conditions_datarow) %>%
+  arrange(region, date)
 
 
 # Read in demographic data and format ------------------------------------

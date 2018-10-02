@@ -146,10 +146,10 @@ initial_values <- Csnippet(
   S = nearbyint(N*S_0);
   E = nearbyint(N*E_0);
   I = nearbyint(N*I_0);
-  cases = 0.5*N*I_0;
+  cases = nearbyint(N*I_0);
   W = 0;
   RE = 0;
-  beta_t = 475;
+  beta_t = beta_mu;
   "
 )
 
@@ -199,7 +199,7 @@ measles_pomp <- pomp(
   times = "time",
   covar = covar_data,
   tcovar = "time",
-  t0 = 1995.000,
+  t0 = 1994.978,
   rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
@@ -223,7 +223,7 @@ states <- test@saved.states  # save the states separately
 
 # Extract transmission rate -----------------------------------------------
 
-out <- as_tibble(lapply(states, `[`,6,)) %>%
+out <- as_tibble(lapply(states, `[`,7,)) %>%
   mutate(
     particle = 1:n()
   ) %>%
@@ -260,10 +260,6 @@ ggsave(
   filename = "../figures/transmission-ts-posts.pdf", width = 5, height = 4
 )
 
-
-# Calculate correlation with time -----------------------------------------
-
-cor.test(transmission_ts$week, transmission_ts$med, method = "kendall")
 
 
 # Save the transmission time series ---------------------------------------

@@ -159,7 +159,7 @@ for(do_city in all_cities){
   
   if(do_city == "Niamey (City)"){
     # REMOVE SUSPICIOUS DATA POINT AND REPLACE WITH MEAN OF NEIGHBORS #
-    obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
+    obs_data$reports[276] <- round(mean(obs_data$reports[c(275,277)]))
   }
   
   covar_file <- "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
@@ -205,7 +205,7 @@ for(do_city in all_cities){
     times = "time",
     covar = covar_data,
     tcovar = "time",
-    t0 = 1995.000,
+    t0 = min(obs_data$time),
     rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
     rmeasure = measles_rmeasure,
     dmeasure = measles_dmeasure,
