@@ -75,8 +75,12 @@ measles_dmeasure <- Csnippet(
   double mean;
   double f;
   mean = cases*rho;
-  f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
-  // f = dpois(reports, mean, give_log);
+  if (ISNA(reports)) {  // for catching missing observations
+    lik = (give_log) ? 0 : 1;
+  } else {
+    f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
+    // f = dpois(reports, mean, give_log);
+  }
 
   lik = (give_log) ? log(f) : f;
   "
