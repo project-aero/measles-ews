@@ -52,7 +52,7 @@ fontname = Helvetica] // sets as circles
 Reported [label = 'Reported', fontsize = 30];
 
 # several 'edge' statements
-edge [arrowhead=vee]
+edge [arrowhead=vee, fontname = Helvetica]
 Births->Susceptible [label = '&#956;N', fontsize = 35] 
 Susceptible->Exposed [label = '&#946;SI/N', fontsize = 35]
 Exposed->Infectious [label = '&#957;E', fontsize = 35]
@@ -65,4 +65,7 @@ Infectious->Reported [label = '&#961;&#947;I', fontsize = 35]
 graph [overlap = true, fontsize = 10,mindist=0.4]
 }
 "
+
+png(filename = "../figures/seir-diagram.png", width = 357, height = 615, units = "px")
 grViz(myplot,engine='neato',options= list(start = 6906))
+dev.off()
