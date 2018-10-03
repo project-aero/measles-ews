@@ -77,7 +77,8 @@ measles_process <- Csnippet(
   
   cases += dNIR;  // caseas are cumulative reports at end of infectious period (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
-  RE = ((beta_t * dt) / (gamma*dt)) * (S / N) ;
+  RE = (beta_t / gamma) * (S / N);
+  RE_seas = (beta / gamma) * (S / N);
   "
 )
 
@@ -89,8 +90,12 @@ measles_dmeasure <- Csnippet(
   double mean;
   double f;
   mean = cases*rho;
+  if (ISNA(reports)) {  // for catching missing observations
+  lik = (give_log) ? 0 : 1;
+  } else {
   f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
   // f = dpois(reports, mean, give_log);
+  }
   
   lik = (give_log) ? log(f) : f;
   "
@@ -149,6 +154,7 @@ initial_values <- Csnippet(
   cases = nearbyint(N*I_0);
   W = 0;
   RE = 0;
+  RE_seas = 0;
   beta_t = beta_mu;
   "
 )
@@ -199,12 +205,12 @@ measles_pomp <- pomp(
   times = "time",
   covar = covar_data,
   tcovar = "time",
-  t0 = 1994.978,
+  t0 = min(obs_data$time),
   rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,
-  statenames = c("S", "E", "I", "cases", "W", "RE", "beta_t"),
+  statenames = c("S", "E", "I", "cases", "W", "RE", "RE_seas", "beta_t"),
   toEstimationScale = to_estimation,
   fromEstimationScale = from_estimation,
   paramnames = names(params),
@@ -221,15 +227,16 @@ test <- pfilter(object = measles_pomp, Np=5000, save.states = TRUE)
 states <- test@saved.states  # save the states separately
 
 
-# Extract transmission rate -----------------------------------------------
 
-out <- as_tibble(lapply(states, `[`,7,)) %>%
+# Extract expected number of cases per infected ---------------------------
+
+re_seasonal <- as_tibble(lapply(states, `[`,7,)) %>%
   mutate(
     particle = 1:n()
   ) %>%
   gather(key = time, value = beta, -particle)
 
-transmission_ts <- out %>%
+re_seasonal_ts <- re_seasonal %>%
   group_by(time) %>%
   summarise(
     med = median(beta),
@@ -241,22 +248,46 @@ transmission_ts <- out %>%
   slice(2:n()) %>%
   mutate(
     week = 1:n(),
-    date = measles_data$date[2:nrow(measles_data)]
+    date = measles_data$date[2:nrow(measles_data)],
+    type = "Seasonal"
+  )
+
+re_nonseasonal <- as_tibble(lapply(states, `[`,6,)) %>%
+  mutate(
+    particle = 1:n()
+  ) %>%
+  gather(key = time, value = beta, -particle)
+
+re_nonseasonal_ts <- re_nonseasonal %>%
+  group_by(time) %>%
+  summarise(
+    med = median(beta),
+    upper = quantile(beta, 0.975),
+    lower = quantile(beta, 0.025),
+    upper2 = quantile(beta, 0.9),
+    lower2 = quantile(beta, 0.1)
+  ) %>%
+  slice(2:n()) %>%
+  mutate(
+    week = 1:n(),
+    date = measles_data$date[2:nrow(measles_data)],
+    type = "Non-seasonal"
   )
 
 
-# Plot the transmission time series ---------------------------------------
+# Plot the effective R time series ----------------------------------------
 
-trans_plot <- ggplot(transmission_ts, aes(x = date, y = med)) +
+re_series <- re_seasonal_ts %>%
+  bind_rows(re_nonseasonal_ts)
+
+ggplot(re_series, aes(x = date, y = med)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = ptol_pal()(1)) +
-  # geom_ribbon(aes(ymin = lower2, ymax = upper2), alpha = 0.4, fill = "coral") +
-  # geom_hline(aes(yintercept = mles$beta_mu), color = ptol_pal()(2)[2], linetype = 2) +
   geom_line(color = ptol_pal()(1)) +
+  facet_wrap(~type, ncol = 1, scales = "free_y") +
   theme_minimal() +
-  labs(x = "Date", y = expression(paste("Mean trasnmission rate, ",beta," (",yr^-1,")"))) 
+  labs(x = "Date", y = expression(paste("Number of secondary cases, ",R[E],"(t)"))) 
 
 ggsave(
-  plot = trans_plot,
   filename = "../figures/transmission-ts-posts.pdf", width = 5, height = 4
 )
 
@@ -304,12 +335,11 @@ states_filtered <- out_si %>%
     observations = c(measles_data$cases, rep(NA, nrow(measles_data)))
   )
 
-ggplot(data = states_filtered, aes(x = date)) +
-  geom_ribbon(aes(ymin = lower_abundance, ymax = upper_abundance), alpha = 0.5) +
-  geom_point(aes(y = observations), color = "red", size = 0.3) +
-  geom_line(aes(y = med_abundance)) +
-  labs(x = "Date", y = "Number of persons") +
-  facet_wrap(~state, ncol = 1, scales = "free_y") +
+ggplot(data = filter(states_filtered, state =="reported cases"), aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_abundance, ymax = upper_abundance), alpha = 0.5, fill = ptol_pal()(2)[1]) +
+  geom_point(aes(y = observations), color = ptol_pal()(2)[2], size = 0.3, shape = 19) +
+  # geom_line(aes(y = med_abundance)) +
+  labs(x = "Date", y = "Reported cases") +
   scale_y_sqrt() +
   theme_minimal()
 
