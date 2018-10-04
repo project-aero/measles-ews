@@ -1,5 +1,5 @@
 # estimate-transmission-state.R
-#  This script runs replicate particle filters at the MLEs but allowing
+#  This script runs a plain vanilla particle filter at the MLEs but allowing
 #  mean transmission to talk a random walk in time. The filtering distribution
 #  for the state of mean transmission at each time gives us the estimate and
 #  distribution of transmission over the course of the time series.
@@ -79,6 +79,7 @@ measles_process <- Csnippet(
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
   RE = (beta_t / gamma) * (S / N);
   RE_seas = (beta / gamma) * (S / N);
+  cases_state = rnbinom_mu(1/tau, rho*cases);
   "
 )
 
@@ -152,6 +153,7 @@ initial_values <- Csnippet(
   E = nearbyint(N*E_0);
   I = nearbyint(N*I_0);
   cases = nearbyint(N*I_0);
+  cases_state = nearbyint(N*I_0);
   W = 0;
   RE = 0;
   RE_seas = 0;
@@ -210,13 +212,13 @@ measles_pomp <- pomp(
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,
-  statenames = c("S", "E", "I", "cases", "W", "RE", "RE_seas", "beta_t"),
+  statenames = c("S", "E", "I", "cases", "cases_state", "W", "RE", "RE_seas", "beta_t"),
   toEstimationScale = to_estimation,
   fromEstimationScale = from_estimation,
   paramnames = names(params),
   params = params,
   globals = "int K = 6;",
-  zeronames = c("cases", "W")
+  zeronames = c("cases", "W", "cases_state")
 )
 
 
@@ -235,7 +237,7 @@ extract_from_list <- function(filter_list, state_number){
     mutate(
       particle = 1:n()
     ) %>%
-    gather(key = time, value = beta, -particle)
+    gather(key = time, value = value, -particle)
   
   return(out)
 }
@@ -244,11 +246,11 @@ summarise_filtered_state <- function(df, state_name, observations = NA){
   out <- df %>%
     group_by(time) %>%
     summarise(
-      med = median(beta),
-      upper_95 = quantile(beta, 0.975),
-      lower_95 = quantile(beta, 0.025),
-      upper_80 = quantile(beta, 0.9),
-      lower_80 = quantile(beta, 0.1)
+      med = median(value),
+      upper_95 = quantile(value, 0.975),
+      lower_95 = quantile(value, 0.025),
+      upper_80 = quantile(value, 0.9),
+      lower_80 = quantile(value, 0.1)
     ) %>%
     slice(2:n()) %>%
     mutate(
@@ -262,7 +264,7 @@ summarise_filtered_state <- function(df, state_name, observations = NA){
 }
 
 
-# Extrat and summarize states ---------------------------------------------
+# Extract and summarize states --------------------------------------------
 
 state_names <- names(states[[1]][,1])
 
@@ -322,7 +324,7 @@ infected <- extract_from_list(
 
 cases <- extract_from_list(
   filter_list =  states, 
-  state_number = which(state_names == "cases")
+  state_number = which(state_names == "cases_state")
 ) %>%
   summarise_filtered_state(
     state_name = "cases",
@@ -349,3 +351,26 @@ saveRDS(
   file = outfile
 )
 
+
+# Calculate log-likelihood of “new” model and save ------------------------
+ll <- logmeanexp(
+  replicate(
+    n = 10,
+    logLik(
+      object = pfilter(
+        object = measles_pomp, 
+        Np = 10000
+      )
+    )
+  ), 
+  se=TRUE
+)
+
+ll_tbl <- ll %>%
+  as_tibble() %>%
+  mutate(
+    var = c("loglik", "loglik_se")
+  )
+
+ll_file <- paste0("../results/time-vary-beta-loglik-", DO_CITY, ".csv")
+write.csv(x = ll_tbl, file = ll_file)

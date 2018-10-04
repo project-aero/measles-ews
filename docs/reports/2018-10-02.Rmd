@@ -190,6 +190,20 @@ simulate(
   theme(strip.text=element_blank())
 ```
 
+### Filtering distributions of states and parameters of interest
+
+```{r filtering-dists}
+filtered_states <- readRDS("../../results/filtered-states-Niamey.RDS") %>%
+  unnest()
+
+ggplot(filtered_states, aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95)) +
+  geom_line(aes(y = med)) +
+  geom_point(aes(y = observation)) +
+  facet_wrap(~state, scales = "free_y")
+
+```
+
 ### Estimated rate of transmission
 ```{r beta-ts, echo = FALSE, warning=FALSE, message=FALSE}
 # ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
