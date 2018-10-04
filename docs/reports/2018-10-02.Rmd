@@ -94,6 +94,7 @@ This resulted in p-values for significance of the correlation and a confidence i
 ### Traceplots of the iterated filtering paths for the parameter sets with the 200 highest log likelihoods
 ```{r traces, echo = FALSE, warning=FALSE, message=FALSE}
 library(tidyverse)
+library(ggthemes)
 library(pomp)
 
 DO_CITY <- "Niamey"
@@ -192,7 +193,7 @@ simulate(
 
 ### Filtering distributions of states and parameters of interest
 
-```{r filtering-dists}
+```{r filtering-dists, warning=FALSE, message=FALSE}
 filtered_states <- readRDS("../../results/filtered-states-Niamey.RDS") %>%
   unnest()
 
@@ -204,23 +205,33 @@ ggplot(filtered_states, aes(x = date)) +
   labs(y = "Filtered median (+/- 95% CI)", x = "Date")
 ```
 
+### Log likelihood of model at MLEs
+```{r logliks}
+ll_mle <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(loglik, loglik_se) %>%
+  mutate(
+    model = "fitted model"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+ll_tvary <- read.csv("../../results/time-vary-beta-loglik-Niamey.csv") %>%
+  dplyr::select(-X) %>%
+  spread(var, value) %>%
+  mutate(
+    model = "transmission random walk"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+logliks <- bind_rows(ll_mle, ll_tvary)
+
+knitr::kable(logliks, digits = 2)
+```
+
 ### Estimated rate of transmission
-```{r beta-ts, echo = FALSE, warning=FALSE, message=FALSE}
-# ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
-#   filter(city == "Niamey (City)")
-# 
-# beta_results <- read_csv("../../results/transmission-posteriors.csv", col_types = cols()) %>%
-#   dplyr::select(-week) %>%
-#   mutate(
-#     date = unique(ews_results$date)[2:length(unique(ews_results$date))]
-#   ) %>%
-#   dplyr::select(-time)
-# 
-# ggplot(beta_results, aes(x = date,  y = med)) +
-#   geom_ribbon(aes(ymax = upper, ymin = lower), alpha = 0.3) +
-#   geom_line() +
-#   labs(x = "Date", y = expression(paste("Rate of transmission, ", beta," (", yr^-1,")"))) +
-#   theme_minimal()
+```{r ews, echo = FALSE, warning=FALSE, message=FALSE}
+ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
+  filter(city == "Niamey (City)")
 
 ```
 

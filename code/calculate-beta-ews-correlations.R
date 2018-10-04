@@ -14,41 +14,55 @@ library(lubridate)
 library(spaero)
 library(DescTools)
 
+DO_CITY = "Niamey"
 
 # Load previous results ---------------------------------------------------
 
+# Early warning signals
 ews_results <- readRDS("../results/ews-niger-cities.RDS") %>%
-  filter(city == "Niamey (City)")
+  filter(str_detect(city, paste0("^", DO_CITY))) %>%  # city starts (^) with DO_CITY
+  rename(ews_value = value)
 
-beta_results <- read_csv("../results/transmission-posteriors.csv", col_types = cols()) %>%
-  dplyr::select(time, med) %>%
-  mutate(
-    date = unique(ews_results$date)[2:length(unique(ews_results$date))]
-  ) %>%
-  dplyr::select(-time) %>%
-  rename(beta_value = med) %>%
-  filter(beta_value != max(beta_value, na.rm = TRUE))
+# Modeled states of interest
+focal_states <- c(
+  "effective_r_nonseasonal",
+  "effective_r_seasonal",
+  "transmission_rate"
+)
 
+# Results from particle filtering
+filtered_states <- readRDS(paste0("../results/filtered-states-", DO_CITY, ".RDS")) %>%
+  filter(state %in% focal_states) %>%
+  unnest() %>%
+  dplyr::select(date, med, state) %>%
+  rename(state_value = med)
+
+
+# Define scaling function for plotting EWS and states ---------------------
 
 scale_it <- function(x){
+  # Scales values to (0,1) range
   (x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
 }
 
-ews_beta <- ews_results %>%
-  left_join(beta_results, by = "date") %>%
-  group_by(ews) %>%
+
+# Combine EWS and stats to calculate correlations -------------------------
+
+ews_states <- ews_results %>%
+  left_join(filtered_states, by = "date") %>%
+  group_by(ews, state) %>%
   mutate(
-    scaled_ews = scale_it(value),
-    scaled_beta = scale_it(beta_value)
+    scaled_ews_value = scale_it(ews_value),
+    scaled_state_value = scale_it(state_value)
   )
 
-ews_beta_corrs <- ews_beta %>%
-  group_by(ews) %>%
+ews_state_corrs <- ews_states %>%
+  group_by(ews, state) %>%
   summarise(
-    spearman_value = SpearmanRho(value, beta_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
-    spearman_lwr = SpearmanRho(value, beta_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
-    spearman_upr = SpearmanRho(value, beta_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
-    spearman_pvalue = cor.test(value, beta_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
+    spearman_value = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
+    spearman_lwr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
+    spearman_upr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
+    spearman_pvalue = cor.test(ews_value, state_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
   ) %>%
   mutate(
     pos = spearman_value > 0,
@@ -58,23 +72,31 @@ ews_beta_corrs <- ews_beta %>%
     color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
   )
 
+my_labs <- c(
+  "effective_r_nonseasonal" = "R (nonseasonal)",
+  "effective_r_seasonal" = "R (seasonal)",
+  "transmission_rate" = "Transmission rate"
+)
+
 ggplot(ews_beta_corrs, aes(x = ews, y = spearman_value, color = color_id_final)) +
   geom_hline(aes(yintercept = 0), linetype = 2) +
-  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.1) +
+  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
   geom_point() +
-  scale_color_manual(values = c("blue", "grey35"), guide = FALSE) +
+  facet_wrap(~state, labeller = as_labeller(my_labs)) +
+  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
   labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
-  theme_minimal() +
-  coord_flip()
+  theme_bw() +
+  coord_flip() +
+  theme(strip.background = element_blank()) 
 
-ggplot(ews_beta, aes(x = date)) +
-  geom_line(aes(y = scaled_ews, color = "EWS")) +
-  geom_line(aes(y = scaled_beta, color = "beta")) +
-  facet_wrap(~ews) +
-  labs(x = "Date", y = "Early warning signal\nor\nTransmission rate") +
-  scale_color_manual(values = ptol_pal()(2), labels = c(expression(paste(beta,"     ")), "EWS"), name = NULL) +
-  theme_minimal() +
-  theme(legend.position = "top")
+# ggplot(ews_beta, aes(x = date)) +
+#   geom_line(aes(y = scaled_ews, color = "EWS")) +
+#   geom_line(aes(y = scaled_beta, color = "beta")) +
+#   facet_wrap(~ews) +
+#   labs(x = "Date", y = "Early warning signal\nor\nTransmission rate") +
+#   scale_color_manual(values = ptol_pal()(2), labels = c(expression(paste(beta,"     ")), "EWS"), name = NULL) +
+#   theme_minimal() +
+#   theme(legend.position = "top")
 
 # ggplot(ews_beta, aes(x = scaled_ews, y = scaled_beta)) +
 #   stat_smooth(method = "lm", se = FALSE, color = "red") +
