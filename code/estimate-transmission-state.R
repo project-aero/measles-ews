@@ -21,7 +21,7 @@ library(ggthemes)
 
 # Load MLEs ---------------------------------------------------------------
 
-mles <- read_csv(paste0("../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
+mles <- read.csv(paste0("../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
   filter(loglik == max(loglik, na.rm = T)) %>%
   dplyr::select(-do_grid, -loglik, -loglik_se)
 
@@ -220,127 +220,132 @@ measles_pomp <- pomp(
 )
 
 
-
 # Run particle filter -----------------------------------------------------
 
-test <- pfilter(object = measles_pomp, Np=5000, save.states = TRUE)
-states <- test@saved.states  # save the states separately
+measles_filter <- pfilter(object = measles_pomp, Np=50000, save.states = TRUE)
+states <- measles_filter@saved.states  # save the states separately
 
 
+# Functions to extract and summarize filtered states ----------------------
 
-# Extract expected number of cases per infected ---------------------------
-
-re_seasonal <- as_tibble(lapply(states, `[`,7,)) %>%
-  mutate(
-    particle = 1:n()
+extract_from_list <- function(filter_list, state_number){
+  out <- as_tibble(
+    lapply(filter_list, `[`, state_number, )
   ) %>%
-  gather(key = time, value = beta, -particle)
+    mutate(
+      particle = 1:n()
+    ) %>%
+    gather(key = time, value = beta, -particle)
+  
+  return(out)
+}
 
-re_seasonal_ts <- re_seasonal %>%
-  group_by(time) %>%
-  summarise(
-    med = median(beta),
-    upper = quantile(beta, 0.975),
-    lower = quantile(beta, 0.025),
-    upper2 = quantile(beta, 0.9),
-    lower2 = quantile(beta, 0.1)
-  ) %>%
-  slice(2:n()) %>%
-  mutate(
-    week = 1:n(),
-    date = measles_data$date[2:nrow(measles_data)],
-    type = "Seasonal"
+summarise_filtered_state <- function(df, state_name, observations = NA){
+  out <- df %>%
+    group_by(time) %>%
+    summarise(
+      med = median(beta),
+      upper_95 = quantile(beta, 0.975),
+      lower_95 = quantile(beta, 0.025),
+      upper_80 = quantile(beta, 0.9),
+      lower_80 = quantile(beta, 0.1)
+    ) %>%
+    slice(2:n()) %>%
+    mutate(
+      week = 1:n(),
+      date = measles_data$date[2:nrow(measles_data)],
+      state = state_name,
+      observation = observations
+    )
+  
+  return(out)
+}
+
+
+# Extrat and summarize states ---------------------------------------------
+
+state_names <- names(states[[1]][,1])
+
+eff_rep_nonseasonal <- extract_from_list(
+  filter_list =  states, 
+  state_number = which(state_names == "RE")
+) %>%
+  summarise_filtered_state(
+    state_name = "effective_r_nonseasonal",
+    observations = NA
   )
 
-re_nonseasonal <- as_tibble(lapply(states, `[`,6,)) %>%
-  mutate(
-    particle = 1:n()
-  ) %>%
-  gather(key = time, value = beta, -particle)
+eff_rep_seasonal <- extract_from_list(
+  filter_list =  states, 
+  state_number = which(state_names == "RE_seas")
+) %>%
+  summarise_filtered_state(
+    state_name = "effective_r_seasonal",
+    observations = NA
+  )
 
-re_nonseasonal_ts <- re_nonseasonal %>%
-  group_by(time) %>%
-  summarise(
-    med = median(beta),
-    upper = quantile(beta, 0.975),
-    lower = quantile(beta, 0.025),
-    upper2 = quantile(beta, 0.9),
-    lower2 = quantile(beta, 0.1)
-  ) %>%
-  slice(2:n()) %>%
-  mutate(
-    week = 1:n(),
-    date = measles_data$date[2:nrow(measles_data)],
-    type = "Non-seasonal"
+transmission_rate <- extract_from_list(
+  filter_list =  states, 
+  state_number = which(state_names == "beta_t")
+) %>%
+  summarise_filtered_state(
+    state_name = "transmission_rate",
+    observations = NA
+  )
+
+susceptibles <- extract_from_list(
+  filter_list =  states, 
+  state_number = which(state_names == "S")
+) %>%
+  summarise_filtered_state(
+    state_name = "susceptibles",
+    observations = NA
+  )
+
+exposed <- extract_from_list(
+  filter_list =  states, 
+  state_number = which(state_names == "E")
+) %>%
+  summarise_filtered_state(
+    state_name = "exposed",
+    observations = NA
+  )
+
+infected <- extract_from_list(
+  filter_list =  states, 
+  state_number = which(state_names == "I")
+) %>%
+  summarise_filtered_state(
+    state_name = "infected",
+    observations = NA
+  )
+
+cases <- extract_from_list(
+  filter_list =  states, 
+  state_number = which(state_names == "cases")
+) %>%
+  summarise_filtered_state(
+    state_name = "cases",
+    observations = measles_data$cases[2:nrow(measles_data)]
   )
 
 
-# Plot the effective R time series ----------------------------------------
+# Combine state dfs and save ----------------------------------------------
 
-re_series <- re_seasonal_ts %>%
-  bind_rows(re_nonseasonal_ts)
-
-ggplot(re_series, aes(x = date, y = med)) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = ptol_pal()(1)) +
-  geom_line(color = ptol_pal()(1)) +
-  facet_wrap(~type, ncol = 1, scales = "free_y") +
-  theme_minimal() +
-  labs(x = "Date", y = expression(paste("Number of secondary cases, ",R[E],"(t)"))) 
-
-ggsave(
-  filename = "../figures/transmission-ts-posts.pdf", width = 5, height = 4
-)
-
-
-
-# Save the transmission time series ---------------------------------------
-
-write_csv(transmission_ts, path = "../results/transmission-posteriors.csv")
-
-
-# Extract S, I states -----------------------------------------------------
-
-out_S <- as_tibble(lapply(states, `[`,1,)) %>%
-  mutate(
-    particle = 1:n()
-  ) %>%
-  gather(key = time, value = susceptible, -particle)
-
-out_I <- as_tibble(lapply(states, `[`,4,)) %>%
-  mutate(
-    particle = 1:n()
-  ) %>%
-  gather(key = time, value = infected, -particle) %>%
-  mutate(
-    `reported cases` = rpois(n(), infected*as.numeric(mles["rho"]))
-    # infected = rnbinom(n(), size = 20, mu = infected*as.numeric(mles["rho"]))
-  ) %>%
-  dplyr::select(-infected)
-
-
-out_si <- out_S %>%
-  left_join(out_I, by = c("particle", "time")) %>%
-  gather(key = state, value = abundance, -particle, -time)
-
-states_filtered <- out_si %>%
-  group_by(state, time) %>%
-  summarise(
-    med_abundance = median(abundance),
-    upper_abundance = quantile(abundance, 0.975),
-    lower_abundance = quantile(abundance, 0.025)
-  ) %>%
+all_states <- eff_rep_nonseasonal %>%
+  bind_rows(eff_rep_seasonal) %>%
+  bind_rows(transmission_rate) %>%
+  bind_rows(susceptibles) %>%
+  bind_rows(exposed) %>%
+  bind_rows(infected) %>%
+  bind_rows(cases) %>%
   ungroup() %>%
-  mutate(
-    date = rep(measles_data$date, times = 2),
-    observations = c(measles_data$cases, rep(NA, nrow(measles_data)))
-  )
+  group_by(state) %>%
+  nest()
 
-ggplot(data = filter(states_filtered, state =="reported cases"), aes(x = date)) +
-  geom_ribbon(aes(ymin = lower_abundance, ymax = upper_abundance), alpha = 0.5, fill = ptol_pal()(2)[1]) +
-  geom_point(aes(y = observations), color = ptol_pal()(2)[2], size = 0.3, shape = 19) +
-  # geom_line(aes(y = med_abundance)) +
-  labs(x = "Date", y = "Reported cases") +
-  scale_y_sqrt() +
-  theme_minimal()
-
+outfile <- paste0("../results/filtered-states-", DO_CITY, ".RDS")
+saveRDS(
+  object = all_states, 
+  file = outfile
+)
 

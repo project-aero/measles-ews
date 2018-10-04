@@ -75,16 +75,18 @@ y_w \sim \text{Negative Binomial} \left( \rho x_w, \tau \right).
 I started the analysis by making a Latin hypercube sample of parameter values (5000 parameter sets) that served as initial conditions for iterated filtering.
 I ran `pomp::mif2()` for all 5000 initial conditions for 100 MIF itertations with 10000 particles and the cooling factor set to 1 (i.e., no cooling).
 MIF iterations were then continued for another 100 iteration with 10000 particles with the cooling factor set to 0.95.
-At the final iteration, I ran 20 replicate instances of `pomp::pfilter()` to estimate the log likelihood of the parameters for each of the 5000 MIF estimates and the Monte carlo error.
+At the final iteration, I ran 50 replicate instances of `pomp::pfilter()` with 10000 particles to estimate the log likelihood of the parameters for each of the 5000 MIF estimates and the Monte carlo error.
 
-### Estimating time-varying rate of tranmission
+### Estimating time-varying rate of tranmission and effective reproduction number
 To estimate the time-varying rate of tranmission, I ran a particle filter at the MLEs, but with a twist.
-I allowed the mean rate of tranmission ($\beta$) to take a random walk with gamma distributed white noise: `beta_t *= rgammawn(0.001, dt)/dt;`, where `beta_t[1] = 31.5`.
-I ran the particle filter woth 50000 particles and then used the filtering distribution to estimate the time course of transmission.
+I allowed the mean rate of tranmission ($\beta$) to take a random walk with gamma distributed white noise: `beta_t *= rgammawn(0.001, dt)/dt;`, where `beta_t[1]` is equal to the MLE for $\beta$..
+I ran the particle filter with 50000 particles and then used the filtering distribution to estimate the time course of transmission.
+Similarly, using the time-varying transmission rate, I estimated the effective reproduction number at each time *t* as: $\mathcal{R}_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
+I extracted the filtering distribution of $\mathcal{R}_E(t)$ with and without the seasonality component.
 
 ### Linking EWS and rate of transmission
 I calculated 10 candidate EWS from the case incidence data using a 52 week bandwidth.
-I then calculate the Spearman's rank correlation ($\rho$) between each EWS and estimated rate of transmission through time.
+I then calculate the Spearman's rank correlation ($\rho$) between each EWS and (1) estimated rate of transmission, (2) effective reproduction number without seasonality, and (3) effective reproduction number with seasonality through time.
 This resulted in p-values for significance of the correlation and a confidence interval around the point estimate of $\rho$.
 
 ## Results
