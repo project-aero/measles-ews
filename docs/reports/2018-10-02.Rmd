@@ -197,11 +197,11 @@ filtered_states <- readRDS("../../results/filtered-states-Niamey.RDS") %>%
   unnest()
 
 ggplot(filtered_states, aes(x = date)) +
-  geom_ribbon(aes(ymin = lower_95, ymax = upper_95)) +
-  geom_line(aes(y = med)) +
-  geom_point(aes(y = observation)) +
-  facet_wrap(~state, scales = "free_y")
-
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), fill = ptol_pal()(2)[1], alpha = 0.3) +
+  geom_line(aes(y = med), color = ptol_pal()(2)[1]) +
+  geom_point(aes(y = observation), color = ptol_pal()(2)[2], size = 0.3) +
+  facet_wrap(~state, scales = "free_y") +
+  labs(y = "Filtered median (+/- 95% CI)", x = "Date")
 ```
 
 ### Estimated rate of transmission
