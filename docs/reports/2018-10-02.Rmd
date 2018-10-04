@@ -96,6 +96,7 @@ This resulted in p-values for significance of the correlation and a confidence i
 library(tidyverse)
 library(ggthemes)
 library(pomp)
+library(diptest)
 
 DO_CITY <- "Niamey"
 
@@ -208,6 +209,12 @@ ggplot(filtered_states, aes(x = med)) +
   geom_histogram() +
   facet_wrap(~state, scales = "free") +
   scale_x_log10()
+
+seasonal_r <- filtered_states %>%
+  filter(state == "effective_r_seasonal") %>%
+  pull(med)
+
+diptest::dip.test(log(seasonal_r))
 ```
 
 ### Log likelihood of model at MLEs
