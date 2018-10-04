@@ -203,6 +203,11 @@ ggplot(filtered_states, aes(x = date)) +
   geom_point(aes(y = observation), color = ptol_pal()(2)[2], size = 0.3) +
   facet_wrap(~state, scales = "free_y") +
   labs(y = "Filtered median (+/- 95% CI)", x = "Date")
+
+ggplot(filtered_states, aes(x = med)) +
+  geom_histogram() +
+  facet_wrap(~state, scales = "free") +
+  scale_x_log10()
 ```
 
 ### Log likelihood of model at MLEs
