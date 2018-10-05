@@ -78,7 +78,7 @@ my_labs <- c(
   "transmission_rate" = "Transmission rate"
 )
 
-ggplot(ews_beta_corrs, aes(x = ews, y = spearman_value, color = color_id_final)) +
+ggplot(ews_state_corrs, aes(x = ews, y = spearman_value, color = color_id_final)) +
   geom_hline(aes(yintercept = 0), linetype = 2) +
   geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
   geom_point() +

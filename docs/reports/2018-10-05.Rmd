@@ -97,6 +97,7 @@ library(tidyverse)
 library(ggthemes)
 library(pomp)
 library(diptest)
+library(DescTools)
 
 DO_CITY <- "Niamey"
 
@@ -193,6 +194,17 @@ simulate(
 ```
 
 ### Filtering distributions of states and parameters of interest
+Red dots are the observed data.
+
+`effective_r_seasonal` is: $\frac{\beta_t \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right)}{\gamma}\frac{S_t}{N_t}$.
+
+`effective_r_nonseasonal` is: $\frac{\beta_t}{\gamma}\frac{S_t}{N_t}$.
+
+In both cases, $\beta_t$ is the random walk rate of transmission.
+
+The results for `effective_r_seasonal` are in line with some previous work.
+[Grais et al. (2006)](https://www.sciencedirect.com/science/article/pii/S0035920305004232) estimated effective reproductive ratios for several communes in Niamey for the 2003-2004 measles outbreak.
+Across all the communes, $R_E$ ranged from 1.4-4.7.
 
 ```{r filtering-dists, warning=FALSE, message=FALSE}
 filtered_states <- readRDS("../../results/filtered-states-Niamey.RDS") %>%
@@ -204,17 +216,6 @@ ggplot(filtered_states, aes(x = date)) +
   geom_point(aes(y = observation), color = ptol_pal()(2)[2], size = 0.3) +
   facet_wrap(~state, scales = "free_y") +
   labs(y = "Filtered median (+/- 95% CI)", x = "Date")
-
-ggplot(filtered_states, aes(x = med)) +
-  geom_histogram() +
-  facet_wrap(~state, scales = "free") +
-  scale_x_log10()
-
-seasonal_r <- filtered_states %>%
-  filter(state == "effective_r_seasonal") %>%
-  pull(med)
-
-diptest::dip.test(log(seasonal_r))
 ```
 
 ### Log likelihood of model at MLEs
@@ -240,10 +241,90 @@ logliks <- bind_rows(ll_mle, ll_tvary)
 knitr::kable(logliks, digits = 2)
 ```
 
-### Estimated rate of transmission
-```{r ews, echo = FALSE, warning=FALSE, message=FALSE}
+### Correlations with EWS
+```{r ews, warning=FALSE, message=FALSE}
+# Early warning signals
 ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
-  filter(city == "Niamey (City)")
+  filter(str_detect(city, paste0("^", DO_CITY))) %>%  # city starts (^) with DO_CITY
+  rename(ews_value = value)
 
+# Modeled states of interest
+focal_states <- c(
+  "effective_r_nonseasonal",
+  "effective_r_seasonal",
+  "transmission_rate"
+)
+
+# Results from particle filtering
+filtered_states <- readRDS(paste0("../../results/filtered-states-", DO_CITY, ".RDS")) %>%
+  filter(state %in% focal_states) %>%
+  unnest() %>%
+  dplyr::select(date, med, state) %>%
+  rename(state_value = med)
+
+
+# Define scaling function for plotting EWS and states ---------------------
+
+scale_it <- function(x){
+  # Scales values to (0,1) range
+  (x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+
+# Combine EWS and stats to calculate correlations -------------------------
+
+ews_states <- ews_results %>%
+  left_join(filtered_states, by = "date") %>%
+  group_by(ews, state) %>%
+  mutate(
+    scaled_ews_value = scale_it(ews_value),
+    scaled_state_value = scale_it(state_value)
+  )
+
+ews_state_corrs <- ews_states %>%
+  group_by(ews, state) %>%
+  summarise(
+    spearman_value = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
+    spearman_lwr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
+    spearman_upr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
+    spearman_pvalue = cor.test(ews_value, state_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
+  ) %>%
+  mutate(
+    pos = spearman_value > 0,
+    sig = spearman_pvalue < 0.05,
+    color_id_final = "cnull",
+    color_id_final = ifelse(pos == TRUE & sig == TRUE, "apos", color_id_final),
+    color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
+  )
+
+my_labs <- c(
+  "effective_r_nonseasonal" = "R (nonseasonal)",
+  "effective_r_seasonal" = "R (seasonal)",
+  "transmission_rate" = "Transmission rate"
+)
+
+ggplot(ews_state_corrs, aes(x = ews, y = spearman_value, color = color_id_final)) +
+  geom_hline(aes(yintercept = 0), linetype = 2) +
+  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
+  geom_point() +
+  facet_wrap(~state, labeller = as_labeller(my_labs)) +
+  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
+  labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
+  theme_bw() +
+  coord_flip() +
+  theme(strip.background = element_blank()) 
+```
+
+```{r prelim-ews-trans, echo = FALSE, eval=FALSE}
+ggplot(filtered_states, aes(x = med)) +
+  geom_histogram() +
+  facet_wrap(~state, scales = "free") +
+  scale_x_log10()
+
+seasonal_r <- filtered_states %>%
+  filter(state == "effective_r_seasonal") %>%
+  pull(med)
+
+diptest::dip.test(log(seasonal_r))
 ```
 
