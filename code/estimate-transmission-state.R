@@ -8,8 +8,8 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
-DO_CITY <- "Niamey"
-pomp_city <- "Niamey (City)"
+DO_CITY <- "Agadez"
+pomp_city <- "Agadez (City)"
 
 # Load libraries ----------------------------------------------------------
 
@@ -350,6 +350,13 @@ saveRDS(
   object = all_states, 
   file = outfile
 )
+
+# ggplot(all_states %>% unnest(), aes(x = date)) +
+#   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), fill = ptol_pal()(2)[1], alpha = 0.3) +
+#   geom_line(aes(y = med), color = ptol_pal()(2)[1]) +
+#   geom_point(aes(y = observation), color = ptol_pal()(2)[2], size = 0.3) +
+#   facet_wrap(~state, scales = "free_y") +
+#   labs(y = "Filtered median (+/- 95% CI)", x = "Date")
 
 
 # Calculate log-likelihood of “new” model and save ------------------------
