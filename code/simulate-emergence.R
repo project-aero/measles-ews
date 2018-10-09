@@ -15,6 +15,7 @@ DO_CITY <- "Niamey"  # the city to model
 library(tidyverse)
 library(ggthemes)
 library(pomp)
+library(pROC)
 library(spaero)
 
 
@@ -312,3 +313,39 @@ ews_long <- ews_out %>%
 ggplot(ews_long, aes(x = half, y = value)) +
   geom_boxplot() +
   facet_wrap(~metric, scales = "free_y")
+
+
+# Calculate AUC -----------------------------------------------------------
+
+cats <- tibble(
+  half = c("first", "second"),
+  cat = c(0, 1)
+)
+
+ews_long <- ews_long %>%
+  left_join(cats, by = "half")
+
+auc_tbl <- {}
+for(do_metric in unique(ews_long$metric)){
+  tmp <- filter(ews_long, metric == do_metric)
+  roc_obj <- roc(tmp$cat, tmp$value)
+  tmp_auc <- auc(roc_obj)
+  
+  tmp_tbl <- tibble(
+    metric = do_metric,
+    auc = as.numeric(tmp_auc)
+  )
+  
+  auc_tbl <- bind_rows(auc_tbl, tmp_tbl)
+}
+
+
+plt_tbl <- auc_tbl %>%
+  filter(metric %in% c("variance", "autocovariance", "autocorrelation", 
+                       "decay_time", "index_of_dispersion", "mean"))
+  
+ggplot(plt_tbl, aes(x = metric, y = auc-0.5)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(limits = c(0,0.5)) +
+  theme_minimal()
