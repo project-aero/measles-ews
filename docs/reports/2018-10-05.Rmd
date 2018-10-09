@@ -297,7 +297,20 @@ ews_state_corrs <- ews_states %>%
     color_id_final = "cnull",
     color_id_final = ifelse(pos == TRUE & sig == TRUE, "apos", color_id_final),
     color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
-  )
+  ) %>%
+  mutate(
+    ews_abbs = NA,
+    ews_abbs = ifelse(ews == "autocorrelation", "AC", ews_abbs),
+    ews_abbs = ifelse(ews == "autocovariance", "ACov", ews_abbs),
+    ews_abbs = ifelse(ews == "coefficient_of_variation", "CV", ews_abbs),
+    ews_abbs = ifelse(ews == "decay_time", "DT", ews_abbs),
+    ews_abbs = ifelse(ews == "index_of_dispersion", "ID", ews_abbs),
+    ews_abbs = ifelse(ews == "kurtosis", "Kurt", ews_abbs),
+    ews_abbs = ifelse(ews == "mean", "Mean", ews_abbs),
+    ews_abbs = ifelse(ews == "skewness", "Skew", ews_abbs),
+    ews_abbs = ifelse(ews == "variance", "Var", ews_abbs),
+    ews_abbs = ifelse(ews == "variance_first_diff", "VarDF", ews_abbs)
+  ) 
 
 my_labs <- c(
   "effective_r_nonseasonal" = "R (nonseasonal)",
@@ -517,34 +530,7 @@ ews_state_corrs <- ews_states %>%
     color_id_final = "cnull",
     color_id_final = ifelse(pos == TRUE & sig == TRUE, "apos", color_id_final),
     color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
-  )
-
-my_labs <- c(
-  "effective_r_nonseasonal" = "R (nonseasonal)",
-  "effective_r_seasonal" = "R (seasonal)",
-  "transmission_rate" = "Transmission rate"
-)
-
-ggplot(ews_state_corrs, aes(x = ews, y = spearman_value, color = color_id_final)) +
-  geom_hline(aes(yintercept = 0), linetype = 2) +
-  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
-  geom_point() +
-  facet_wrap(~state, labeller = as_labeller(my_labs)) +
-  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
-  labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
-  theme_bw() +
-  coord_flip() +
-  theme(strip.background = element_blank()) 
-
-coord_radar <- function (theta = "x", start = 0, direction = 1) {
-  theta <- match.arg(theta, c("x", "y"))
-  r <- if (theta == "x") "y" else "x"
-  ggproto("CordRadar", CoordPolar, theta = theta, r = r, start = start, 
-          direction = sign(direction),
-          is_linear = function(coord) TRUE)
-}
-
-ews_state_corrs <- ews_state_corrs %>%
+  ) %>%
   mutate(
     ews_abbs = NA,
     ews_abbs = ifelse(ews == "autocorrelation", "AC", ews_abbs),
@@ -559,92 +545,22 @@ ews_state_corrs <- ews_state_corrs %>%
     ews_abbs = ifelse(ews == "variance_first_diff", "VarDF", ews_abbs)
   ) 
 
-df2 <- ews_state_corrs %>%
-  mutate(
-    ymin = 0.082,
-    ymax = -0.082
-  ) 
+my_labs <- c(
+  "effective_r_nonseasonal" = "R (nonseasonal)",
+  "effective_r_seasonal" = "R (seasonal)",
+  "transmission_rate" = "Transmission rate"
+)
 
+ggplot(ews_state_corrs, aes(x = ews_abbs, y = spearman_value, color = color_id_final)) +
+  geom_hline(aes(yintercept = 0), linetype = 2) +
+  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
+  geom_point() +
+  facet_wrap(~state, labeller = as_labeller(my_labs)) +
+  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
+  labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
+  theme_bw() +
+  coord_flip() +
+  theme(strip.background = element_blank()) 
 
-library(fmsb)
- 
-# Create data: note in High school for Jonathan:
-data=as.data.frame(matrix( sample( 2:20 , 10 , replace=T) , ncol=10))
-colnames(data)=c("math" , "english" , "biology" , "music" , "R-coding", "data-viz" , "french" , "physic", "statistic", "sport" )
- 
-# To use the fmsb package, I have to add 2 lines to the dataframe: the max and min of each topic to show on the plot!
-data=rbind(rep(20,10) , rep(0,10) , data)
- 
-# The default radar chart proposed by the library:
-data <- ews_state_corrs %>%
-  ungroup() %>%
-  filter(state == "effective_r_seasonal") %>%
-  dplyr::select(ews_abbs, spearman_value) %>%
-  spread(key = ews_abbs, value = spearman_value)
-
-data <- rbind(rbind(rep(1,10) , rep(-1,10), data))
-radarchart(data)
- 
-# Custom the radarChart !
-radarchart( data  , axistype=1 , seg = 2,centerzero = TRUE,pty = 32,
- 
-    #custom polygon
-    pcol=rgb(0.2,0.5,0.5,0.9) , plwd=1 , 
- 
-    #custom the grid
-    cglcol="grey", cglty=1, axislabcol="grey", caxislabels=c(-1,0,1), cglwd=0.8,
- 
-    #custom labels
-    vlcex=0.8 
-    )
- 
-
-
-
-# ggplot(data = NULL, aes(x  = ews_abbs, y = spearman_value) ) +  theme_minimal() +
-#   geom_polygon(data = df2,
-#                aes(y = ymin,
-#                    group = state),
-#                linetype = 2, fill = "grey") +
-#   geom_polygon(data = df2,
-#                aes(y = ymax,
-#                    group = state),
-#                linetype = 2, fill = "white") +
-#   geom_polygon(data  = ews_state_corrs, aes(group = state, color = state),
-#                fill  = NA,   show.legend = FALSE,size = 0.4) +
-#   theme(strip.text.x = element_text(size = rel(0.8)),
-#         axis.text.x  = element_text(size = rel(0.8)),
-#         axis.ticks.y = element_blank(),
-#         axis.text.y  = element_blank(),
-#         panel.ontop = TRUE) +
-#   xlab("") + ylab("") +
-#   scale_y_continuous(breaks = c(-1,0,1))+
-#   scale_color_manual(values = rep("dodgerblue", 3))+
-#   facet_wrap(~state) +
-#   coord_radar()
-
-ttest <- function(r = 0.082, n = 572){
-  r*sqrt((n-2)/(1-r^2))
-}
-
-
-
-```
-
-
-
-
-
-```{r prelim-ews-trans, echo = FALSE, eval=FALSE}
-ggplot(filtered_states, aes(x = med)) +
-  geom_histogram() +
-  facet_wrap(~state, scales = "free") +
-  scale_x_log10()
-
-seasonal_r <- filtered_states %>%
-  filter(state == "effective_r_seasonal") %>%
-  pull(med)
-
-diptest::dip.test(log(seasonal_r))
 ```
 

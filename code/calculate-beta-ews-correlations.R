@@ -89,6 +89,44 @@ ggplot(ews_state_corrs, aes(x = ews, y = spearman_value, color = color_id_final)
   coord_flip() +
   theme(strip.background = element_blank()) 
 
+
+# Break time series into critical and sub-critical ------------------------
+
+ews_reff <- ews_states %>%
+  filter(state == "effective_r_seasonal") %>%
+  mutate(
+    critical = FALSE,
+    critical = ifelse(state_value > 1, TRUE, critical)
+  )
+
+ews_reff_corrs <- ews_reff %>%
+  group_by(ews, critical) %>%
+  summarise(
+    spearman_value = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
+    spearman_lwr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
+    spearman_upr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
+    spearman_pvalue = cor.test(ews_value, state_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
+  ) %>%
+  mutate(
+    pos = spearman_value > 0,
+    sig = spearman_pvalue < 0.05,
+    color_id_final = "cnull",
+    color_id_final = ifelse(pos == TRUE & sig == TRUE, "apos", color_id_final),
+    color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
+  )
+
+ggplot(ews_reff_corrs, aes(x = ews, y = spearman_value, color = color_id_final)) +
+  geom_hline(aes(yintercept = 0), linetype = 2) +
+  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
+  geom_point() +
+  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
+  labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
+  theme_bw() +
+  facet_wrap(~critical) +
+  coord_flip() +
+  theme(strip.background = element_blank()) 
+
+
 # ggplot(ews_beta, aes(x = date)) +
 #   geom_line(aes(y = scaled_ews, color = "EWS")) +
 #   geom_line(aes(y = scaled_beta, color = "beta")) +
