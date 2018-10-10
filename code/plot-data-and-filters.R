@@ -86,4 +86,4 @@ the_series <- ggplot(filtered_states, aes(x = date)) +
 
 outplot <- plot_grid(the_map, the_series, ncol = 2)
 
-ggsave(filename = "../figures/map-and-series.pdf", plot = outplot, height = 3, width = 8.5, units = "in")
+ggsave(filename = "../figures/map-and-series.pdf", plot = outplot, height = 4, width = 8.5, units = "in")
