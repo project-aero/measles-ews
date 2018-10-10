@@ -7,7 +7,7 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
-DO_CITY <- "Niamey"  # the city to model
+DO_CITY <- "Agadez"  # the city to model
 
 
 # Load libraries ----------------------------------------------------------
@@ -27,13 +27,18 @@ mles <- read.csv(mle_file) %>%
   filter(loglik == max(loglik, na.rm = TRUE)) %>%
   dplyr::select(-do_grid, -loglik, -loglik_se, -beta_mu)
 
+mle_beta <- read.csv(mle_file) %>% 
+  slice(2:n()) %>%  # ignore first row of storage NAs
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  pull(beta_mu)
+
 pomp_file <- paste0("./measles-pomp-object-", DO_CITY, ".RDS")
 fitted_pomp <- readRDS(pomp_file)
 
 
 # Update pomp object parameters and covars --------------------------------
 
-# Define stochastic process (SDEs) ----------------------------------------
+# Define stochastic process (SDEs) 
 
 measles_process <- Csnippet(
   "
@@ -86,7 +91,7 @@ measles_process <- Csnippet(
 )
 
 
-# Define likelihood function ----------------------------------------------
+# Define likelihood function 
 
 measles_dmeasure <- Csnippet(
   "
@@ -105,7 +110,7 @@ measles_dmeasure <- Csnippet(
 )
 
 
-# Define process simulator for observations -------------------------------
+# Define process simulator for observations 
 
 measles_rmeasure <- Csnippet(
   "
@@ -121,7 +126,7 @@ measles_rmeasure <- Csnippet(
 )
 
 
-# Define parameter transformation scales ----------------------------------
+# Define parameter transformation scales 
 
 from_estimation <- Csnippet(
   "
@@ -149,7 +154,7 @@ to_estimation <- Csnippet(
 
 initial_values <- Csnippet(
   "
-  S = nearbyint(N*0.00001);
+  S = nearbyint(N*sfact);
   E = nearbyint(N*E_0);
   I = nearbyint(N*I_0);
   cases = rho*N*I_0;
@@ -159,7 +164,7 @@ initial_values <- Csnippet(
 )
 
 
-# Make data tables --------------------------------------------------------
+# Make data tables
 do_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 
 all_cities <- readRDS(do_file) %>%
@@ -167,7 +172,7 @@ all_cities <- readRDS(do_file) %>%
   unique()
 
 measles_data <- readRDS(do_file) %>%
-  dplyr::filter(region == "Niamey (City)")
+  dplyr::filter(region == "Agadez (City)")
 
 obs_data <- measles_data %>%
   dplyr::select(time, cases) %>%
@@ -184,9 +189,12 @@ covar_table <- fitted_pomp@covar %>%
   as_tibble() %>%
   mutate(
     time = fitted_pomp@tcovar,
-    beta_mu = 370.629
+    beta_mu = mle_beta
     # beta_mu = seq(1, 200, length.out = n())
   )
+
+sfact = 0.00001
+global_str <- paste0("int K = 6; ", "double sfact = ", sfact, ";")
 
 simulator_pomp <- pomp(
   data = obs_data,
@@ -203,7 +211,7 @@ simulator_pomp <- pomp(
   fromEstimationScale = from_estimation,
   paramnames = names(mles),
   params = unlist(mles),
-  globals = "int K = 6;",
+  globals = global_str,
   zeronames = c("cases", "W")
 )
 
@@ -230,6 +238,9 @@ re_time_avg <- model_sims %>%
   summarise(time_mean_re = mean(mean_re))
 
 re_one_year <- pull(filter(re_time_avg, time_mean_re > 1), year)
+if(length(re_one_year) == 0){
+  re_one_year <- 2007
+}
 
 ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
   geom_hline(aes(yintercept = 1), linetype = 2) +
@@ -245,6 +256,7 @@ ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
 # Calculate EWS over different sections -----------------------------------
 
 ews_times <- model_sims %>%
+  filter(time > 1994.99) %>%
   filter(round(time) < re_one_year) %>%
   pull(time) %>%
   unique()
@@ -330,7 +342,7 @@ for(do_metric in unique(ews_long$metric)){
   tmp <- filter(ews_long, metric == do_metric)
   roc_obj <- roc(tmp$cat, tmp$value)
   tmp_auc <- auc(roc_obj)
-  
+  plot(roc_obj, main = do_metric)
   tmp_tbl <- tibble(
     metric = do_metric,
     auc = as.numeric(tmp_auc)
@@ -339,10 +351,9 @@ for(do_metric in unique(ews_long$metric)){
   auc_tbl <- bind_rows(auc_tbl, tmp_tbl)
 }
 
-
 plt_tbl <- auc_tbl %>%
   filter(metric %in% c("variance", "autocovariance", "autocorrelation", 
-                       "decay_time", "index_of_dispersion", "mean"))
+                       "decay_time", "mean"))
   
 ggplot(plt_tbl, aes(x = metric, y = auc-0.5)) +
   geom_col() +
