@@ -35,7 +35,7 @@ library("lhs", lib.loc="~/myRlib/")
 
 # Load pomp object --------------------------------------------------------
 
-measles_pomp <- readRDS("measles-pomp-object-Maradi.RDS")
+measles_pomp <- readRDS("measles-pomp-object-Zinder.RDS")
 start_population <- as.numeric(measles_pomp@covar[1,1])
 
 

@@ -34,7 +34,7 @@ urlcolor: black
 \begin{centering}
 
 {\LARGE
-\textbf\newline{Linking early warning signals to the temporal epidemiology\\of measles in four Nigerien cities} 
+\textbf\newline{Early warning signals anticipate emergence\\of measles in empirically-based models} 
 }
 
 \vspace{2em}
@@ -171,4 +171,7 @@ Table: Transitions in the SEIR model. We show the determinstic transmission rate
 <!-- \end{table} -->
 
 \nolinenumbers
+
+# Acknowledgments
+NIH, MIDAS, Olympus HPC
 
