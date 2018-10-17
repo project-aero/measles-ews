@@ -1,0 +1,1051 @@
+---
+title: "Measles-EWS Report"
+output:
+  html_document:
+    code_folding: hide
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+## Overview
+
+This is a report on the second round of results from fitting the stochastic SIR model to data from Niamey using iterated filtering (MIF), as implemented in `pomp::mif2()`.
+The report also covers inital analyses that formally link EWS and rate of transmission.
+
+
+![optional caption text](../../figures/seir-diagram.png){height=350px}
+
+## Methods
+
+### Stochastic SIR model
+The model is a discrete-time approximation of a continuous-time SEIR model (Fig. 1) with limited demography, specified as a set of difference equations,
+
+\begin{align}
+S_{t+\delta t} &= n_{S,t} - n_{E,t} \\
+E_{t+\delta t} &= n_{E,t} - n_{I,t} \\
+I_{t+\delta t} &= n_{I,t} + n_{O,t} - n_{R,t},
+\end{align}
+
+\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+\delta t$.
+$n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious indiviuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
+The stochastic random variables are specified as follows:
+
+\begin{align}
+n_{S,t} &\sim \text{Poisson}(\mu_t N_t \times \delta t) \\
+n_{E,t} &\sim \text{Binomial}(\lambda_{E,t}, S_{t}) \\
+n_{I,t} &\sim \text{Binomial}(\lambda_{I,t}, E_{t}) \\
+n_{O,t} &\sim \text{Poisson}(\psi \times \delta t) \\
+n_{R,t} &\sim \text{Binomial}(\lambda_{R,t}, I_{t}),
+\end{align}
+
+\noindent{}where $\mu_t$ is the birth rate at time *t*, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
+These probabilities reflect the processes of tranmission, transition from the latent period to the infectious period, and recovery, which we model as:
+
+\begin{align}
+\lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t \delta t}{N_t}} \\
+\lambda_{I,t} &= 1 - e^{-\eta E_{t} \delta t} \\
+\lambda_{R,t} &= 1 - e^{-\gamma I_{t} \delta t},
+\end{align}
+
+\noindent{}where $\beta_t$ is time-varying rate of transmission, $\eta$ is time-invariant rate from the exposed class to the infectious class, and $\gamma$ is time-invariant recovery rate.
+We model rate of transmission as:
+
+\begin{equation}
+\beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t.
+\end{equation}
+
+$\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
+The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as a gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ (Bretó and Ionides 2011).
+
+We do not include a death process in the model because the rate of infection is much faster than the rate of death.
+Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
+We model demographic stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
+Transitions in the model are shown in Table 1.
+In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_{E(t)} = \beta_t / \gamma$.
+
+The data are weekly observations of reported cases.
+To relate our model, which iterates on a daily time step, to the data, we created a variable $x$ that is the cumulative number of individuals that transitioned from the exposed class to the infectious class over seven day periods: $x = \sum_{i=1}^7 n_{I,i}$.
+We assume observed case reports ($\textbf{y}$) for each week *w* are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
+
+\begin{align}
+y_w \sim \text{Negative Binomial} \left( \rho x_w, \tau \right).
+\end{align}
+
+### Maximization by iterated filtering (MIF)
+I started the analysis by making a Latin hypercube sample of parameter values (5000 parameter sets) that served as initial conditions for iterated filtering.
+I ran `pomp::mif2()` for all 5000 initial conditions for 100 MIF itertations with 10000 particles and the cooling factor set to 1 (i.e., no cooling).
+MIF iterations were then continued for another 100 iteration with 10000 particles with the cooling factor set to 0.95.
+At the final iteration, I ran 50 replicate instances of `pomp::pfilter()` with 10000 particles to estimate the log likelihood of the parameters for each of the 5000 MIF estimates and the Monte carlo error.
+
+### Estimating time-varying rate of tranmission and effective reproduction number
+To estimate the time-varying rate of tranmission, I ran a particle filter at the MLEs, but with a twist.
+I allowed the mean rate of tranmission ($\beta$) to take a random walk with gamma distributed white noise: `beta_t *= rgammawn(0.001, dt)/dt;`, where `beta_t[1]` is equal to the MLE for $\beta$..
+I ran the particle filter with 50000 particles and then used the filtering distribution to estimate the time course of transmission.
+Similarly, using the time-varying transmission rate, I estimated the effective reproduction number at each time *t* as: $\mathcal{R}_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
+I extracted the filtering distribution of $\mathcal{R}_E(t)$ with and without the seasonality component.
+
+### Linking EWS and rate of transmission
+I calculated 10 candidate EWS from the case incidence data using a 52 week bandwidth.
+I then calculate the Spearman's rank correlation ($\rho$) between each EWS and (1) estimated rate of transmission, (2) effective reproduction number without seasonality, and (3) effective reproduction number with seasonality through time.
+This resulted in p-values for significance of the correlation and a confidence interval around the point estimate of $\rho$.
+
+# Results
+
+## NIAMEY (population 1,300,000)
+
+### Traceplots of the iterated filtering paths for the parameter sets with the 200 highest log likelihoods
+```{r traces, echo = FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(ggthemes)
+library(pomp)
+library(diptest)
+library(DescTools)
+
+DO_CITY <- "Niamey"
+
+mif_traces <- read_csv(paste0("../../results/initial-mif-traces-", DO_CITY, ".csv")) %>%
+  slice(2:n())  # remove first row of NAs
+
+mif_finals <- read_csv(paste0("../../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
+  slice(2:n())  # remove first row of NAs
+
+best_grids <- mif_finals %>%
+  arrange(-loglik) %>%
+  slice(1:200) %>%
+  pull(do_grid)
+
+mif_traces_long <- mif_traces %>%
+  gather(key = parameter, value = value, -do_grid, -iteration) %>%
+  filter(do_grid %in% best_grids)
+
+ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
+  geom_line(alpha = 0.1) +
+  facet_wrap(~parameter, scales = "free_y")
+```
+
+### Likelihood surface at final MIF iteration
+Red points are those that satisfy $L_i > \text{max}(\mathbf{L}) - 20$, where $L_i$ is the estimated likelihood for initial conditions set *i*.
+
+```{r lik-slice, warning=FALSE, message=FALSE}
+last_iter <- mif_traces %>%
+  filter(iteration == 100) %>%
+  mutate(
+    delta_loglik = abs(loglik - max(loglik)),
+    close_to_ll = "blue",
+    close_to_ll = ifelse(delta_loglik < 20.00001, "red", close_to_ll)
+  ) %>%
+  filter(delta_loglik < 100) %>%
+  dplyr::select(-do_grid, -iteration, -nfail, -delta_loglik,
+                -b1, -b2, -b3, -b4, -b5, -b6)
+
+pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 0.6)
+```
+
+### Parameter estimates with the highest log likelihood
+Note that the model was fit with a time-step of 1 day (`delta.t = 1/365`).
+```{r mles, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid) %>%
+  dplyr::select(-b1, -b2, -b3, -b4, -b5, -b6)
+
+measles_pomp <- readRDS(paste0("../../code/measles-pomp-object-", DO_CITY, ".RDS"))
+population <- as_tibble(measles_pomp@covar)%>%
+  dplyr::select(N) %>%
+  slice(1) %>%
+  pull(N)
+
+knitr::kable(mles, digits = 5) 
+```
+
+Initial estimate of susceptible population is: `r round(mles$S_0*population)`.
+
+### Model simulations at the (current) MLEs
+```{r sims, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = FALSE) %>%
+  ggplot(aes(x = time, y = S, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+```
+
+### Filtering distributions of states and parameters of interest
+Red dots are the observed data.
+
+`effective_r_seasonal` is: $\frac{\beta_t \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right)}{\gamma}\frac{S_t}{N_t}$.
+
+`effective_r_nonseasonal` is: $\frac{\beta_t}{\gamma}\frac{S_t}{N_t}$.
+
+In both cases, $\beta_t$ is the random walk rate of transmission.
+
+The results for `effective_r_seasonal` are in line with some previous work.
+[Grais et al. (2006)](https://www.sciencedirect.com/science/article/pii/S0035920305004232) estimated effective reproductive ratios for several communes in Niamey for the 2003-2004 measles outbreak.
+Across all the communes, $R_E$ ranged from 1.4-4.7.
+
+```{r filtering-dists, warning=FALSE, message=FALSE}
+filtered_states <- readRDS("../../results/filtered-states-Niamey.RDS") %>%
+  unnest()
+
+ggplot(filtered_states, aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), fill = ptol_pal()(2)[1], alpha = 0.3) +
+  geom_line(aes(y = med), color = ptol_pal()(2)[1]) +
+  geom_point(aes(y = observation), color = ptol_pal()(2)[2], size = 0.3) +
+  facet_wrap(~state, scales = "free_y") +
+  labs(y = "Filtered median (+/- 95% CI)", x = "Date")
+```
+
+### Log likelihood of model at MLEs
+```{r logliks}
+ll_mle <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(loglik, loglik_se) %>%
+  mutate(
+    model = "fitted model"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+ll_tvary <- read.csv("../../results/time-vary-beta-loglik-Niamey.csv") %>%
+  dplyr::select(-X) %>%
+  spread(var, value) %>%
+  mutate(
+    model = "transmission random walk"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+logliks <- bind_rows(ll_mle, ll_tvary)
+
+knitr::kable(logliks, digits = 2)
+```
+
+### Correlations with EWS
+```{r ews, warning=FALSE, message=FALSE}
+# Early warning signals
+ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
+  filter(str_detect(city, paste0("^", DO_CITY))) %>%  # city starts (^) with DO_CITY
+  rename(ews_value = value)
+
+# Modeled states of interest
+focal_states <- c(
+  "effective_r_nonseasonal",
+  "effective_r_seasonal",
+  "transmission_rate"
+)
+
+# Results from particle filtering
+filtered_states <- readRDS(paste0("../../results/filtered-states-", DO_CITY, ".RDS")) %>%
+  filter(state %in% focal_states) %>%
+  unnest() %>%
+  dplyr::select(date, med, state) %>%
+  rename(state_value = med)
+
+
+# Define scaling function for plotting EWS and states ---------------------
+
+scale_it <- function(x){
+  # Scales values to (0,1) range
+  (x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+
+# Combine EWS and stats to calculate correlations -------------------------
+
+ews_states <- ews_results %>%
+  left_join(filtered_states, by = "date") %>%
+  group_by(ews, state) %>%
+  mutate(
+    scaled_ews_value = scale_it(ews_value),
+    scaled_state_value = scale_it(state_value)
+  )
+
+ews_state_corrs <- ews_states %>%
+  group_by(ews, state) %>%
+  summarise(
+    spearman_value = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
+    spearman_lwr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
+    spearman_upr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
+    spearman_pvalue = cor.test(ews_value, state_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
+  ) %>%
+  mutate(
+    pos = spearman_value > 0,
+    sig = spearman_pvalue < 0.05,
+    color_id_final = "cnull",
+    color_id_final = ifelse(pos == TRUE & sig == TRUE, "apos", color_id_final),
+    color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
+  ) %>%
+  mutate(
+    ews_abbs = NA,
+    ews_abbs = ifelse(ews == "autocorrelation", "AC", ews_abbs),
+    ews_abbs = ifelse(ews == "autocovariance", "ACov", ews_abbs),
+    ews_abbs = ifelse(ews == "coefficient_of_variation", "CV", ews_abbs),
+    ews_abbs = ifelse(ews == "decay_time", "DT", ews_abbs),
+    ews_abbs = ifelse(ews == "index_of_dispersion", "ID", ews_abbs),
+    ews_abbs = ifelse(ews == "kurtosis", "Kurt", ews_abbs),
+    ews_abbs = ifelse(ews == "mean", "Mean", ews_abbs),
+    ews_abbs = ifelse(ews == "skewness", "Skew", ews_abbs),
+    ews_abbs = ifelse(ews == "variance", "Var", ews_abbs),
+    ews_abbs = ifelse(ews == "variance_first_diff", "VarDF", ews_abbs)
+  ) 
+
+my_labs <- c(
+  "effective_r_nonseasonal" = "R (nonseasonal)",
+  "effective_r_seasonal" = "R (seasonal)",
+  "transmission_rate" = "Transmission rate"
+)
+
+ggplot(ews_state_corrs, aes(x = ews, y = spearman_value, color = color_id_final)) +
+  geom_hline(aes(yintercept = 0), linetype = 2) +
+  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
+  geom_point() +
+  facet_wrap(~state, labeller = as_labeller(my_labs)) +
+  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
+  labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
+  theme_bw() +
+  coord_flip() +
+  theme(strip.background = element_blank()) 
+```
+
+## AGADEZ (population 118,000)
+
+### Traceplots of the iterated filtering paths for the parameter sets with the 200 highest log likelihoods
+```{r traces-ag, echo = FALSE, warning=FALSE, message=FALSE}
+DO_CITY <- "Agadez"
+
+mif_traces <- read_csv(paste0("../../results/initial-mif-traces-", DO_CITY, ".csv")) %>%
+  slice(2:n())  # remove first row of NAs
+
+mif_finals <- read_csv(paste0("../../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
+  slice(2:n())  # remove first row of NAs
+
+best_grids <- mif_finals %>%
+  arrange(-loglik) %>%
+  slice(1:200) %>%
+  pull(do_grid)
+
+mif_traces_long <- mif_traces %>%
+  gather(key = parameter, value = value, -do_grid, -iteration) %>%
+  filter(do_grid %in% best_grids)
+
+ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
+  geom_line(alpha = 0.1) +
+  facet_wrap(~parameter, scales = "free_y")
+```
+
+### Likelihood surface at final MIF iteration
+Red points are those that satisfy $L_i > \text{max}(\mathbf{L}) - 20$, where $L_i$ is the estimated likelihood for initial conditions set *i*.
+
+```{r lik-slice-ag, warning=FALSE, message=FALSE}
+last_iter <- mif_traces %>%
+  filter(iteration == 100) %>%
+  mutate(
+    delta_loglik = abs(loglik - max(loglik)),
+    close_to_ll = "blue",
+    close_to_ll = ifelse(delta_loglik < 20.00001, "red", close_to_ll)
+  ) %>%
+  filter(delta_loglik < 100) %>%
+  dplyr::select(-do_grid, -iteration, -nfail, -delta_loglik,
+                -b1, -b2, -b3, -b4, -b5, -b6)
+
+pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 0.6)
+```
+
+### Parameter estimates with the highest log likelihood
+Note that the model was fit with a time-step of 1 day (`delta.t = 1/365`).
+```{r mles-ag, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid) %>%
+  dplyr::select(-b1, -b2, -b3, -b4, -b5, -b6)
+
+measles_pomp <- readRDS(paste0("../../code/measles-pomp-object-", DO_CITY, ".RDS"))
+population <- as_tibble(measles_pomp@covar)%>%
+  dplyr::select(N) %>%
+  slice(1) %>%
+  pull(N)
+
+knitr::kable(mles, digits = 5) 
+```
+
+Initial estimate of susceptible population is: `r round(mles$S_0*population)`.
+
+### Model simulations at the (current) MLEs
+```{r sims-ag, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = FALSE) %>%
+  ggplot(aes(x = time, y = S, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+```
+
+### Filtering distributions of states and parameters of interest
+Red dots are the observed data.
+
+`effective_r_seasonal` is: $\frac{\beta_t \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right)}{\gamma}\frac{S_t}{N_t}$.
+
+`effective_r_nonseasonal` is: $\frac{\beta_t}{\gamma}\frac{S_t}{N_t}$.
+
+In both cases, $\beta_t$ is the random walk rate of transmission.
+
+The results for `effective_r_seasonal` are in line with some previous work.
+[Grais et al. (2006)](https://www.sciencedirect.com/science/article/pii/S0035920305004232) estimated effective reproductive ratios for several communes in Niamey for the 2003-2004 measles outbreak.
+Across all the communes, $R_E$ ranged from 1.4-4.7.
+
+```{r filtering-dists-ag, warning=FALSE, message=FALSE}
+filtered_states <- readRDS("../../results/filtered-states-Agadez.RDS") %>%
+  unnest()
+
+ggplot(filtered_states, aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), fill = ptol_pal()(2)[1], alpha = 0.3) +
+  geom_line(aes(y = med), color = ptol_pal()(2)[1]) +
+  geom_point(aes(y = observation), color = ptol_pal()(2)[2], size = 0.3) +
+  facet_wrap(~state, scales = "free_y") +
+  labs(y = "Filtered median (+/- 95% CI)", x = "Date")
+```
+
+### Log likelihood of model at MLEs
+```{r logliks-ag}
+ll_mle <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(loglik, loglik_se) %>%
+  mutate(
+    model = "fitted model"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+ll_tvary <- read.csv("../../results/time-vary-beta-loglik-Agadez.csv") %>%
+  dplyr::select(-X) %>%
+  spread(var, value) %>%
+  mutate(
+    model = "transmission random walk"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+logliks <- bind_rows(ll_mle, ll_tvary)
+
+knitr::kable(logliks, digits = 2)
+```
+
+### Correlations with EWS
+```{r ews-ag, warning=FALSE, message=FALSE}
+# Early warning signals
+ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
+  filter(str_detect(city, paste0("^", DO_CITY))) %>%  # city starts (^) with DO_CITY
+  rename(ews_value = value)
+
+# Modeled states of interest
+focal_states <- c(
+  "effective_r_nonseasonal",
+  "effective_r_seasonal",
+  "transmission_rate"
+)
+
+# Results from particle filtering
+filtered_states <- readRDS(paste0("../../results/filtered-states-", DO_CITY, ".RDS")) %>%
+  filter(state %in% focal_states) %>%
+  unnest() %>%
+  dplyr::select(date, med, state) %>%
+  rename(state_value = med)
+
+
+# Define scaling function for plotting EWS and states ---------------------
+
+scale_it <- function(x){
+  # Scales values to (0,1) range
+  (x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+
+# Combine EWS and stats to calculate correlations -------------------------
+
+ews_states <- ews_results %>%
+  left_join(filtered_states, by = "date") %>%
+  group_by(ews, state) %>%
+  mutate(
+    scaled_ews_value = scale_it(ews_value),
+    scaled_state_value = scale_it(state_value)
+  )
+
+ews_state_corrs <- ews_states %>%
+  group_by(ews, state) %>%
+  summarise(
+    spearman_value = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
+    spearman_lwr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
+    spearman_upr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
+    spearman_pvalue = cor.test(ews_value, state_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
+  ) %>%
+  mutate(
+    pos = spearman_value > 0,
+    sig = spearman_pvalue < 0.05,
+    color_id_final = "cnull",
+    color_id_final = ifelse(pos == TRUE & sig == TRUE, "apos", color_id_final),
+    color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
+  ) %>%
+  mutate(
+    ews_abbs = NA,
+    ews_abbs = ifelse(ews == "autocorrelation", "AC", ews_abbs),
+    ews_abbs = ifelse(ews == "autocovariance", "ACov", ews_abbs),
+    ews_abbs = ifelse(ews == "coefficient_of_variation", "CV", ews_abbs),
+    ews_abbs = ifelse(ews == "decay_time", "DT", ews_abbs),
+    ews_abbs = ifelse(ews == "index_of_dispersion", "ID", ews_abbs),
+    ews_abbs = ifelse(ews == "kurtosis", "Kurt", ews_abbs),
+    ews_abbs = ifelse(ews == "mean", "Mean", ews_abbs),
+    ews_abbs = ifelse(ews == "skewness", "Skew", ews_abbs),
+    ews_abbs = ifelse(ews == "variance", "Var", ews_abbs),
+    ews_abbs = ifelse(ews == "variance_first_diff", "VarDF", ews_abbs)
+  ) 
+
+my_labs <- c(
+  "effective_r_nonseasonal" = "R (nonseasonal)",
+  "effective_r_seasonal" = "R (seasonal)",
+  "transmission_rate" = "Transmission rate"
+)
+
+ggplot(ews_state_corrs, aes(x = ews_abbs, y = spearman_value, color = color_id_final)) +
+  geom_hline(aes(yintercept = 0), linetype = 2) +
+  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
+  geom_point() +
+  facet_wrap(~state, labeller = as_labeller(my_labs)) +
+  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
+  labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
+  theme_bw() +
+  coord_flip() +
+  theme(strip.background = element_blank()) 
+
+```
+
+
+## MARADI (population 267,249)
+
+### Traceplots of the iterated filtering paths for the parameter sets with the 200 highest log likelihoods
+```{r traces-md, echo = FALSE, warning=FALSE, message=FALSE}
+DO_CITY <- "Maradi"
+
+mif_traces <- read_csv(paste0("../../results/initial-mif-traces-", DO_CITY, ".csv")) %>%
+  slice(2:n())  # remove first row of NAs
+
+mif_finals <- read_csv(paste0("../../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
+  slice(2:n())  # remove first row of NAs
+
+best_grids <- mif_finals %>%
+  arrange(-loglik) %>%
+  slice(1:200) %>%
+  pull(do_grid)
+
+mif_traces_long <- mif_traces %>%
+  gather(key = parameter, value = value, -do_grid, -iteration) %>%
+  filter(do_grid %in% best_grids)
+
+ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
+  geom_line(alpha = 0.1) +
+  facet_wrap(~parameter, scales = "free_y")
+```
+
+### Likelihood surface at final MIF iteration
+Red points are those that satisfy $L_i > \text{max}(\mathbf{L}) - 20$, where $L_i$ is the estimated likelihood for initial conditions set *i*.
+
+```{r lik-slice-md, warning=FALSE, message=FALSE}
+last_iter <- mif_traces %>%
+  filter(iteration == 100) %>%
+  mutate(
+    delta_loglik = abs(loglik - max(loglik)),
+    close_to_ll = "blue",
+    close_to_ll = ifelse(delta_loglik < 20.00001, "red", close_to_ll)
+  ) %>%
+  filter(delta_loglik < 100) %>%
+  dplyr::select(-do_grid, -iteration, -nfail, -delta_loglik,
+                -b1, -b2, -b3, -b4, -b5, -b6)
+
+pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 0.6)
+```
+
+### Parameter estimates with the highest log likelihood
+Note that the model was fit with a time-step of 1 day (`delta.t = 1/365`).
+```{r mles-md, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid) %>%
+  dplyr::select(-b1, -b2, -b3, -b4, -b5, -b6)
+
+measles_pomp <- readRDS(paste0("../../code/measles-pomp-object-", DO_CITY, ".RDS"))
+population <- as_tibble(measles_pomp@covar)%>%
+  dplyr::select(N) %>%
+  slice(1) %>%
+  pull(N)
+
+knitr::kable(mles, digits = 5) 
+```
+
+Initial estimate of susceptible population is: `r round(mles$S_0*population)`.
+
+### Model simulations at the (current) MLEs
+```{r sims-md, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = FALSE) %>%
+  ggplot(aes(x = time, y = S, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+```
+
+### Filtering distributions of states and parameters of interest
+Red dots are the observed data.
+
+`effective_r_seasonal` is: $\frac{\beta_t \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right)}{\gamma}\frac{S_t}{N_t}$.
+
+`effective_r_nonseasonal` is: $\frac{\beta_t}{\gamma}\frac{S_t}{N_t}$.
+
+In both cases, $\beta_t$ is the random walk rate of transmission.
+
+The results for `effective_r_seasonal` are in line with some previous work.
+[Grais et al. (2006)](https://www.sciencedirect.com/science/article/pii/S0035920305004232) estimated effective reproductive ratios for several communes in Niamey for the 2003-2004 measles outbreak.
+Across all the communes, $R_E$ ranged from 1.4-4.7.
+
+```{r filtering-dists-md, warning=FALSE, message=FALSE}
+filtered_states <- readRDS("../../results/filtered-states-Maradi.RDS") %>%
+  unnest()
+
+ggplot(filtered_states, aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), fill = ptol_pal()(2)[1], alpha = 0.3) +
+  geom_line(aes(y = med), color = ptol_pal()(2)[1]) +
+  geom_point(aes(y = observation), color = ptol_pal()(2)[2], size = 0.3) +
+  facet_wrap(~state, scales = "free_y") +
+  labs(y = "Filtered median (+/- 95% CI)", x = "Date")
+```
+
+### Log likelihood of model at MLEs
+```{r logliks-md}
+ll_mle <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(loglik, loglik_se) %>%
+  mutate(
+    model = "fitted model"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+ll_tvary <- read.csv("../../results/time-vary-beta-loglik-Maradi.csv") %>%
+  dplyr::select(-X) %>%
+  spread(var, value) %>%
+  mutate(
+    model = "transmission random walk"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+logliks <- bind_rows(ll_mle, ll_tvary)
+
+knitr::kable(logliks, digits = 2)
+```
+
+### Correlations with EWS
+```{r ews-md, warning=FALSE, message=FALSE}
+# Early warning signals
+ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
+  filter(str_detect(city, paste0("^", DO_CITY))) %>%  # city starts (^) with DO_CITY
+  rename(ews_value = value)
+
+# Modeled states of interest
+focal_states <- c(
+  "effective_r_nonseasonal",
+  "effective_r_seasonal",
+  "transmission_rate"
+)
+
+# Results from particle filtering
+filtered_states <- readRDS(paste0("../../results/filtered-states-", DO_CITY, ".RDS")) %>%
+  filter(state %in% focal_states) %>%
+  unnest() %>%
+  dplyr::select(date, med, state) %>%
+  rename(state_value = med)
+
+
+# Define scaling function for plotting EWS and states ---------------------
+
+scale_it <- function(x){
+  # Scales values to (0,1) range
+  (x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+
+# Combine EWS and stats to calculate correlations -------------------------
+
+ews_states <- ews_results %>%
+  left_join(filtered_states, by = "date") %>%
+  group_by(ews, state) %>%
+  mutate(
+    scaled_ews_value = scale_it(ews_value),
+    scaled_state_value = scale_it(state_value)
+  )
+
+ews_state_corrs <- ews_states %>%
+  group_by(ews, state) %>%
+  summarise(
+    spearman_value = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
+    spearman_lwr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
+    spearman_upr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
+    spearman_pvalue = cor.test(ews_value, state_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
+  ) %>%
+  mutate(
+    pos = spearman_value > 0,
+    sig = spearman_pvalue < 0.05,
+    color_id_final = "cnull",
+    color_id_final = ifelse(pos == TRUE & sig == TRUE, "apos", color_id_final),
+    color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
+  ) %>%
+  mutate(
+    ews_abbs = NA,
+    ews_abbs = ifelse(ews == "autocorrelation", "AC", ews_abbs),
+    ews_abbs = ifelse(ews == "autocovariance", "ACov", ews_abbs),
+    ews_abbs = ifelse(ews == "coefficient_of_variation", "CV", ews_abbs),
+    ews_abbs = ifelse(ews == "decay_time", "DT", ews_abbs),
+    ews_abbs = ifelse(ews == "index_of_dispersion", "ID", ews_abbs),
+    ews_abbs = ifelse(ews == "kurtosis", "Kurt", ews_abbs),
+    ews_abbs = ifelse(ews == "mean", "Mean", ews_abbs),
+    ews_abbs = ifelse(ews == "skewness", "Skew", ews_abbs),
+    ews_abbs = ifelse(ews == "variance", "Var", ews_abbs),
+    ews_abbs = ifelse(ews == "variance_first_diff", "VarDF", ews_abbs)
+  ) 
+
+my_labs <- c(
+  "effective_r_nonseasonal" = "R (nonseasonal)",
+  "effective_r_seasonal" = "R (seasonal)",
+  "transmission_rate" = "Transmission rate"
+)
+
+ggplot(ews_state_corrs, aes(x = ews_abbs, y = spearman_value, color = color_id_final)) +
+  geom_hline(aes(yintercept = 0), linetype = 2) +
+  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
+  geom_point() +
+  facet_wrap(~state, labeller = as_labeller(my_labs)) +
+  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
+  labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
+  theme_bw() +
+  coord_flip() +
+  theme(strip.background = element_blank()) 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## ZINDER (population 322,935)
+
+### Traceplots of the iterated filtering paths for the parameter sets with the 200 highest log likelihoods
+```{r traces-md, echo = FALSE, warning=FALSE, message=FALSE}
+DO_CITY <- "Zinder"
+
+mif_traces <- read_csv(paste0("../../results/initial-mif-traces-", DO_CITY, ".csv")) %>%
+  slice(2:n())  # remove first row of NAs
+
+mif_finals <- read_csv(paste0("../../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
+  slice(2:n())  # remove first row of NAs
+
+best_grids <- mif_finals %>%
+  arrange(-loglik) %>%
+  slice(1:200) %>%
+  pull(do_grid)
+
+mif_traces_long <- mif_traces %>%
+  gather(key = parameter, value = value, -do_grid, -iteration) %>%
+  filter(do_grid %in% best_grids)
+
+ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
+  geom_line(alpha = 0.1) +
+  facet_wrap(~parameter, scales = "free_y")
+```
+
+### Likelihood surface at final MIF iteration
+Red points are those that satisfy $L_i > \text{max}(\mathbf{L}) - 20$, where $L_i$ is the estimated likelihood for initial conditions set *i*.
+
+```{r lik-slice-md, warning=FALSE, message=FALSE}
+last_iter <- mif_traces %>%
+  filter(iteration == 100) %>%
+  mutate(
+    delta_loglik = abs(loglik - max(loglik)),
+    close_to_ll = "blue",
+    close_to_ll = ifelse(delta_loglik < 20.00001, "red", close_to_ll)
+  ) %>%
+  filter(delta_loglik < 100) %>%
+  dplyr::select(-do_grid, -iteration, -nfail, -delta_loglik,
+                -b1, -b2, -b3, -b4, -b5, -b6)
+
+pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 0.6)
+```
+
+### Parameter estimates with the highest log likelihood
+Note that the model was fit with a time-step of 1 day (`delta.t = 1/365`).
+```{r mles-md, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid) %>%
+  dplyr::select(-b1, -b2, -b3, -b4, -b5, -b6)
+
+measles_pomp <- readRDS(paste0("../../code/measles-pomp-object-", DO_CITY, ".RDS"))
+population <- as_tibble(measles_pomp@covar)%>%
+  dplyr::select(N) %>%
+  slice(1) %>%
+  pull(N)
+
+knitr::kable(mles, digits = 5) 
+```
+
+Initial estimate of susceptible population is: `r round(mles$S_0*population)`.
+
+### Model simulations at the (current) MLEs
+```{r sims-md, echo = FALSE, warning=FALSE, message=FALSE}
+mles <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = TRUE) %>%
+  ggplot(aes(x = time, y = reports, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+
+simulate(
+  measles_pomp,
+  params = unlist(mles),
+  nsim = 9,
+  as.data.frame = TRUE,
+  include.data = FALSE) %>%
+  ggplot(aes(x = time, y = S, group = sim, color = (sim == "data"))) +
+  geom_line() +
+  scale_color_manual(values = c(`TRUE` = "blue", `FALSE` = "red"))+
+  guides(color = FALSE) +
+  facet_wrap(~sim, ncol = 2) +
+  scale_y_sqrt() +
+  theme(strip.text=element_blank())
+```
+
+### Filtering distributions of states and parameters of interest
+Red dots are the observed data.
+
+`effective_r_seasonal` is: $\frac{\beta_t \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right)}{\gamma}\frac{S_t}{N_t}$.
+
+`effective_r_nonseasonal` is: $\frac{\beta_t}{\gamma}\frac{S_t}{N_t}$.
+
+In both cases, $\beta_t$ is the random walk rate of transmission.
+
+The results for `effective_r_seasonal` are in line with some previous work.
+[Grais et al. (2006)](https://www.sciencedirect.com/science/article/pii/S0035920305004232) estimated effective reproductive ratios for several communes in Niamey for the 2003-2004 measles outbreak.
+Across all the communes, $R_E$ ranged from 1.4-4.7.
+
+```{r filtering-dists-md, warning=FALSE, message=FALSE}
+filtered_states <- readRDS("../../results/filtered-states-Zinder.RDS") %>%
+  unnest()
+
+ggplot(filtered_states, aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), fill = ptol_pal()(2)[1], alpha = 0.3) +
+  geom_line(aes(y = med), color = ptol_pal()(2)[1]) +
+  geom_point(aes(y = observation), color = ptol_pal()(2)[2], size = 0.3) +
+  facet_wrap(~state, scales = "free_y") +
+  labs(y = "Filtered median (+/- 95% CI)", x = "Date")
+```
+
+### Log likelihood of model at MLEs
+```{r logliks-md}
+ll_mle <- mif_finals %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(loglik, loglik_se) %>%
+  mutate(
+    model = "fitted model"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+ll_tvary <- read.csv("../../results/time-vary-beta-loglik-Zinder.csv") %>%
+  dplyr::select(-X) %>%
+  spread(var, value) %>%
+  mutate(
+    model = "transmission random walk"
+  ) %>%
+  dplyr::select(model, loglik, loglik_se)
+
+logliks <- bind_rows(ll_mle, ll_tvary)
+
+knitr::kable(logliks, digits = 2)
+```
+
+### Correlations with EWS
+```{r ews-md, warning=FALSE, message=FALSE}
+# Early warning signals
+ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
+  filter(str_detect(city, paste0("^", DO_CITY))) %>%  # city starts (^) with DO_CITY
+  rename(ews_value = value)
+
+# Modeled states of interest
+focal_states <- c(
+  "effective_r_nonseasonal",
+  "effective_r_seasonal",
+  "transmission_rate"
+)
+
+# Results from particle filtering
+filtered_states <- readRDS(paste0("../../results/filtered-states-", DO_CITY, ".RDS")) %>%
+  filter(state %in% focal_states) %>%
+  unnest() %>%
+  dplyr::select(date, med, state) %>%
+  rename(state_value = med)
+
+
+# Define scaling function for plotting EWS and states ---------------------
+
+scale_it <- function(x){
+  # Scales values to (0,1) range
+  (x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+
+# Combine EWS and stats to calculate correlations -------------------------
+
+ews_states <- ews_results %>%
+  left_join(filtered_states, by = "date") %>%
+  group_by(ews, state) %>%
+  mutate(
+    scaled_ews_value = scale_it(ews_value),
+    scaled_state_value = scale_it(state_value)
+  )
+
+ews_state_corrs <- ews_states %>%
+  group_by(ews, state) %>%
+  summarise(
+    spearman_value = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
+    spearman_lwr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
+    spearman_upr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[3], 
+    spearman_pvalue = cor.test(ews_value, state_value, use = "pairwise.complete.obs", method = "spearman")[["p.value"]]
+  ) %>%
+  mutate(
+    pos = spearman_value > 0,
+    sig = spearman_pvalue < 0.05,
+    color_id_final = "cnull",
+    color_id_final = ifelse(pos == TRUE & sig == TRUE, "apos", color_id_final),
+    color_id_final = ifelse(pos == FALSE & sig == TRUE, "bneg", color_id_final)
+  ) %>%
+  mutate(
+    ews_abbs = NA,
+    ews_abbs = ifelse(ews == "autocorrelation", "AC", ews_abbs),
+    ews_abbs = ifelse(ews == "autocovariance", "ACov", ews_abbs),
+    ews_abbs = ifelse(ews == "coefficient_of_variation", "CV", ews_abbs),
+    ews_abbs = ifelse(ews == "decay_time", "DT", ews_abbs),
+    ews_abbs = ifelse(ews == "index_of_dispersion", "ID", ews_abbs),
+    ews_abbs = ifelse(ews == "kurtosis", "Kurt", ews_abbs),
+    ews_abbs = ifelse(ews == "mean", "Mean", ews_abbs),
+    ews_abbs = ifelse(ews == "skewness", "Skew", ews_abbs),
+    ews_abbs = ifelse(ews == "variance", "Var", ews_abbs),
+    ews_abbs = ifelse(ews == "variance_first_diff", "VarDF", ews_abbs)
+  ) 
+
+my_labs <- c(
+  "effective_r_nonseasonal" = "R (nonseasonal)",
+  "effective_r_seasonal" = "R (seasonal)",
+  "transmission_rate" = "Transmission rate"
+)
+
+ggplot(ews_state_corrs, aes(x = ews_abbs, y = spearman_value, color = color_id_final)) +
+  geom_hline(aes(yintercept = 0), linetype = 2) +
+  geom_errorbar(aes(ymin = spearman_lwr, ymax = spearman_upr), width = 0.2) +
+  geom_point() +
+  facet_wrap(~state, labeller = as_labeller(my_labs)) +
+  scale_color_manual(values = c(ptol_pal()(2)[1], ptol_pal()(2)[2], "grey35"), guide = FALSE) +
+  labs(y = expression(paste("Spearman's ", rho)), x = "Early warning signal") +
+  theme_bw() +
+  coord_flip() +
+  theme(strip.background = element_blank()) 
+
+```
