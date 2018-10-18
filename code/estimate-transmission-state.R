@@ -8,8 +8,8 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
-DO_CITY <- "Maradi"
-pomp_city <- "Maradi (City)"
+DO_CITY <- "Zinder"
+pomp_city <- "Zinder (City)"
 
 # Load libraries ----------------------------------------------------------
 

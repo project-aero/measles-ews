@@ -14,14 +14,15 @@ library(spaero)
 
 # Load data ---------------------------------------------------------------
 
-file_name <- "../data/clean-data/weekly-measles-and-demog-niger-cities-clean.RDS"
+file_name <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 measles_data <- readRDS(file_name) %>%
-  dplyr::select(-population_smooth, -births_per_week_smooth)
+  filter(year > 1994) %>%
+  dplyr::select(-year, -week_of_year, -obs_week, -time)
 
 
 # Calculate early warning signals -----------------------------------------
 
-window_bandwidth <- 52*2  # window of 2 years
+window_bandwidth <- 26  # half of the window size
 all_stats <- {}
 for(do_city in unique(measles_data$region)){
   city_data <- measles_data %>%

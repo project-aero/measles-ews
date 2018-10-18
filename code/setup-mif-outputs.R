@@ -54,3 +54,15 @@ mf_traces <- data.frame(
 
 trace_file <- "initial-mif-traces.csv"
 write.table(mf_traces, trace_file, sep = ",", col.names = T, append = T, row.names = FALSE)
+
+
+
+outdf <- data.frame(
+  do_grid = NA,
+  loglik = NA,
+  loglik_se = NA,
+  rho_value = NA
+) 
+
+out_file <- "rho-profile.csv"
+write.table(outdf, out_file, sep = ",", col.names = T, append = T, row.names = FALSE)

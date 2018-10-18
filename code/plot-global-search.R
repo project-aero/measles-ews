@@ -6,7 +6,7 @@
 # Author:
 #  Andrew Tredennick
 
-DO_CITY <- "Agadez"
+DO_CITY <- "Zinder"
 
 # Load libraries ----------------------------------------------------------
 
