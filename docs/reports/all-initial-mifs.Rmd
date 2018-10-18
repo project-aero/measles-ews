@@ -127,18 +127,42 @@ ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
 Red points are those that satisfy $L_i > \text{max}(\mathbf{L}) - 20$, where $L_i$ is the estimated likelihood for initial conditions set *i*.
 
 ```{r lik-slice, warning=FALSE, message=FALSE}
+
 last_iter <- mif_traces %>%
   filter(iteration == 100) %>%
   mutate(
     delta_loglik = abs(loglik - max(loglik)),
-    close_to_ll = "blue",
-    close_to_ll = ifelse(delta_loglik < 20.00001, "red", close_to_ll)
+    close_to_ll = "grey",
+    close_to_ll = ifelse(delta_loglik < 5.00001, "red", close_to_ll)
   ) %>%
   filter(delta_loglik < 100) %>%
   dplyr::select(-do_grid, -iteration, -nfail, -delta_loglik,
                 -b1, -b2, -b3, -b4, -b5, -b6)
 
-pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 0.6)
+# pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 1)
+
+vars <- colnames(last_iter)[1:(ncol(last_iter)-1)]
+par(mfrow = c(length(vars), length(vars)), mar=c(1,1,1,1))
+for(i in 1:length(vars)){
+  for(j in 1:length(vars)){
+    tmp1 <- last_iter[,c(i,ncol(last_iter))]
+    tmp2 <- last_iter[,c(j,ncol(last_iter))]
+    x1 <- as.numeric(unlist(tmp1[which(tmp1$close_to_ll=="grey"),1]))
+    y1 <- as.numeric(unlist(tmp2[which(tmp2$close_to_ll=="grey"),1]))
+    x2 <- as.numeric(unlist(tmp1[which(tmp1$close_to_ll=="red"),1]))
+    y2 <- as.numeric(unlist(tmp2[which(tmp2$close_to_ll=="red"),1]))
+    
+    if(i == j){
+      plot(x1, y1, xlab = vars[i], ylab = vars[j], col = "white", pch = 19, cex = 0.5)
+      points(x2, y2, col = "white", pch = 19, cex = 0.5)
+      text(x = mean(range(c(x1,x2)), na.rm = T), y = mean(range(c(y1,y2)), na.rm = T), labels = vars[i])
+    }
+    if(i != j){
+      plot(x1, y1, xlab = vars[i], ylab = vars[j], col = "grey", pch = 19, cex = 0.5)
+      points(x2, y2, col = "red", pch = 19, cex = 0.5)
+    }
+  }
+}
 ```
 
 ### Parameter estimates with the highest log likelihood
@@ -364,14 +388,37 @@ last_iter <- mif_traces %>%
   filter(iteration == 100) %>%
   mutate(
     delta_loglik = abs(loglik - max(loglik)),
-    close_to_ll = "blue",
-    close_to_ll = ifelse(delta_loglik < 20.00001, "red", close_to_ll)
+    close_to_ll = "grey",
+    close_to_ll = ifelse(delta_loglik < 5.00001, "red", close_to_ll)
   ) %>%
   filter(delta_loglik < 100) %>%
   dplyr::select(-do_grid, -iteration, -nfail, -delta_loglik,
                 -b1, -b2, -b3, -b4, -b5, -b6)
 
-pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 0.6)
+# pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 1)
+
+vars <- colnames(last_iter)[1:(ncol(last_iter)-1)]
+par(mfrow = c(length(vars), length(vars)), mar=c(1,1,1,1))
+for(i in 1:length(vars)){
+  for(j in 1:length(vars)){
+    tmp1 <- last_iter[,c(i,ncol(last_iter))]
+    tmp2 <- last_iter[,c(j,ncol(last_iter))]
+    x1 <- as.numeric(unlist(tmp1[which(tmp1$close_to_ll=="grey"),1]))
+    y1 <- as.numeric(unlist(tmp2[which(tmp2$close_to_ll=="grey"),1]))
+    x2 <- as.numeric(unlist(tmp1[which(tmp1$close_to_ll=="red"),1]))
+    y2 <- as.numeric(unlist(tmp2[which(tmp2$close_to_ll=="red"),1]))
+    
+    if(i == j){
+      plot(x1, y1, xlab = vars[i], ylab = vars[j], col = "white", pch = 19, cex = 0.5)
+      points(x2, y2, col = "white", pch = 19, cex = 0.5)
+      text(x = mean(range(c(x1,x2)), na.rm = T), y = mean(range(c(y1,y2)), na.rm = T), labels = vars[i])
+    }
+    if(i != j){
+      plot(x1, y1, xlab = vars[i], ylab = vars[j], col = "grey", pch = 19, cex = 0.5)
+      points(x2, y2, col = "red", pch = 19, cex = 0.5)
+    }
+  }
+}
 ```
 
 ### Parameter estimates with the highest log likelihood
@@ -599,14 +646,37 @@ last_iter <- mif_traces %>%
   filter(iteration == 100) %>%
   mutate(
     delta_loglik = abs(loglik - max(loglik)),
-    close_to_ll = "blue",
-    close_to_ll = ifelse(delta_loglik < 20.00001, "red", close_to_ll)
+    close_to_ll = "grey",
+    close_to_ll = ifelse(delta_loglik < 5.00001, "red", close_to_ll)
   ) %>%
   filter(delta_loglik < 100) %>%
   dplyr::select(-do_grid, -iteration, -nfail, -delta_loglik,
                 -b1, -b2, -b3, -b4, -b5, -b6)
 
-pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 0.6)
+# pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 1)
+
+vars <- colnames(last_iter)[1:(ncol(last_iter)-1)]
+par(mfrow = c(length(vars), length(vars)), mar=c(1,1,1,1))
+for(i in 1:length(vars)){
+  for(j in 1:length(vars)){
+    tmp1 <- last_iter[,c(i,ncol(last_iter))]
+    tmp2 <- last_iter[,c(j,ncol(last_iter))]
+    x1 <- as.numeric(unlist(tmp1[which(tmp1$close_to_ll=="grey"),1]))
+    y1 <- as.numeric(unlist(tmp2[which(tmp2$close_to_ll=="grey"),1]))
+    x2 <- as.numeric(unlist(tmp1[which(tmp1$close_to_ll=="red"),1]))
+    y2 <- as.numeric(unlist(tmp2[which(tmp2$close_to_ll=="red"),1]))
+    
+    if(i == j){
+      plot(x1, y1, xlab = vars[i], ylab = vars[j], col = "white", pch = 19, cex = 0.5)
+      points(x2, y2, col = "white", pch = 19, cex = 0.5)
+      text(x = mean(range(c(x1,x2)), na.rm = T), y = mean(range(c(y1,y2)), na.rm = T), labels = vars[i])
+    }
+    if(i != j){
+      plot(x1, y1, xlab = vars[i], ylab = vars[j], col = "grey", pch = 19, cex = 0.5)
+      points(x2, y2, col = "red", pch = 19, cex = 0.5)
+    }
+  }
+}
 ```
 
 ### Parameter estimates with the highest log likelihood
@@ -802,24 +872,10 @@ ggplot(ews_state_corrs, aes(x = ews_abbs, y = spearman_value, color = color_id_f
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## ZINDER (population 322,935)
 
 ### Traceplots of the iterated filtering paths for the parameter sets with the 200 highest log likelihoods
-```{r traces-md, echo = FALSE, warning=FALSE, message=FALSE}
+```{r traces-zd, echo = FALSE, warning=FALSE, message=FALSE}
 DO_CITY <- "Zinder"
 
 mif_traces <- read_csv(paste0("../../results/initial-mif-traces-", DO_CITY, ".csv")) %>%
@@ -845,24 +901,47 @@ ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
 ### Likelihood surface at final MIF iteration
 Red points are those that satisfy $L_i > \text{max}(\mathbf{L}) - 20$, where $L_i$ is the estimated likelihood for initial conditions set *i*.
 
-```{r lik-slice-md, warning=FALSE, message=FALSE}
+```{r lik-slice-zd, warning=FALSE, message=FALSE}
 last_iter <- mif_traces %>%
   filter(iteration == 100) %>%
   mutate(
     delta_loglik = abs(loglik - max(loglik)),
-    close_to_ll = "blue",
-    close_to_ll = ifelse(delta_loglik < 20.00001, "red", close_to_ll)
+    close_to_ll = "grey",
+    close_to_ll = ifelse(delta_loglik < 5.00001, "red", close_to_ll)
   ) %>%
   filter(delta_loglik < 100) %>%
   dplyr::select(-do_grid, -iteration, -nfail, -delta_loglik,
                 -b1, -b2, -b3, -b4, -b5, -b6)
 
-pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 0.6)
+# pairs(last_iter[,1:(ncol(last_iter)-1)], col = last_iter$close_to_ll, pch = 1, cex = 1)
+
+vars <- colnames(last_iter)[1:(ncol(last_iter)-1)]
+par(mfrow = c(length(vars), length(vars)), mar=c(1,1,1,1))
+for(i in 1:length(vars)){
+  for(j in 1:length(vars)){
+    tmp1 <- last_iter[,c(i,ncol(last_iter))]
+    tmp2 <- last_iter[,c(j,ncol(last_iter))]
+    x1 <- as.numeric(unlist(tmp1[which(tmp1$close_to_ll=="grey"),1]))
+    y1 <- as.numeric(unlist(tmp2[which(tmp2$close_to_ll=="grey"),1]))
+    x2 <- as.numeric(unlist(tmp1[which(tmp1$close_to_ll=="red"),1]))
+    y2 <- as.numeric(unlist(tmp2[which(tmp2$close_to_ll=="red"),1]))
+    
+    if(i == j){
+      plot(x1, y1, xlab = vars[i], ylab = vars[j], col = "white", pch = 19, cex = 0.5)
+      points(x2, y2, col = "white", pch = 19, cex = 0.5)
+      text(x = mean(range(c(x1,x2)), na.rm = T), y = mean(range(c(y1,y2)), na.rm = T), labels = vars[i])
+    }
+    if(i != j){
+      plot(x1, y1, xlab = vars[i], ylab = vars[j], col = "grey", pch = 19, cex = 0.5)
+      points(x2, y2, col = "red", pch = 19, cex = 0.5)
+    }
+  }
+}
 ```
 
 ### Parameter estimates with the highest log likelihood
 Note that the model was fit with a time-step of 1 day (`delta.t = 1/365`).
-```{r mles-md, echo = FALSE, warning=FALSE, message=FALSE}
+```{r mles-zd, echo = FALSE, warning=FALSE, message=FALSE}
 mles <- mif_finals %>%
   filter(loglik == max(loglik, na.rm = TRUE)) %>%
   dplyr::select(-do_grid) %>%
@@ -880,7 +959,7 @@ knitr::kable(mles, digits = 5)
 Initial estimate of susceptible population is: `r round(mles$S_0*population)`.
 
 ### Model simulations at the (current) MLEs
-```{r sims-md, echo = FALSE, warning=FALSE, message=FALSE}
+```{r sims-zd, echo = FALSE, warning=FALSE, message=FALSE}
 mles <- mif_finals %>%
   filter(loglik == max(loglik, na.rm = TRUE)) %>%
   dplyr::select(-do_grid, -loglik, -loglik_se)
@@ -927,7 +1006,7 @@ The results for `effective_r_seasonal` are in line with some previous work.
 [Grais et al. (2006)](https://www.sciencedirect.com/science/article/pii/S0035920305004232) estimated effective reproductive ratios for several communes in Niamey for the 2003-2004 measles outbreak.
 Across all the communes, $R_E$ ranged from 1.4-4.7.
 
-```{r filtering-dists-md, warning=FALSE, message=FALSE}
+```{r filtering-dists-zd, warning=FALSE, message=FALSE}
 filtered_states <- readRDS("../../results/filtered-states-Zinder.RDS") %>%
   unnest()
 
@@ -940,7 +1019,7 @@ ggplot(filtered_states, aes(x = date)) +
 ```
 
 ### Log likelihood of model at MLEs
-```{r logliks-md}
+```{r logliks-zd}
 ll_mle <- mif_finals %>%
   filter(loglik == max(loglik, na.rm = TRUE)) %>%
   dplyr::select(loglik, loglik_se) %>%
@@ -963,7 +1042,7 @@ knitr::kable(logliks, digits = 2)
 ```
 
 ### Correlations with EWS
-```{r ews-md, warning=FALSE, message=FALSE}
+```{r ews-zd, warning=FALSE, message=FALSE}
 # Early warning signals
 ews_results <- readRDS("../../results/ews-niger-cities.RDS") %>%
   filter(str_detect(city, paste0("^", DO_CITY))) %>%  # city starts (^) with DO_CITY
