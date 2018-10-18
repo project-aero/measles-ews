@@ -9,11 +9,20 @@ library(tidyverse)
 # Load profile results ----------------------------------------------------
 
 profile_data <- read.csv("../results/rho-profile-Niamey.csv") %>%
-  sliec(2:n())  # chop off first NA row
+  slice(2:n()) %>%  # chop off first NA row
+  filter(loglik > max(loglik) - 20)
 
-preds <- predict(mgcv::gam(loglik ~ s(rho_value, bs = "cs"), data = profile_data), newdata = data.frame(rho_value = seq(0.1, 0.5, by = 0.001)))
+preds <- predict(
+  mgcv::gam(
+    loglik ~ s(rho_value, bs = "cs"), data = profile_data
+  ),
+  newdata = data.frame(
+    rho_value = seq(0.2, 0.54, by = 0.0001)
+  )
+)
+
 pred_df <- tibble(
-  rho_value = seq(0.1, 0.5, by = 0.001),
+  rho_value = seq(0.2, 0.54, by = 0.0001),
   loglik = preds
 )
 
