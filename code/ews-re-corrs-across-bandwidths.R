@@ -47,6 +47,26 @@ for(do_city in unique(measles_data$region)){
 }
 
 
+z <- filtered_states %>%
+  filter(state == "effective_r_seasonal" & region == "Agadez") %>%
+  pull(state_value)
+
+mvz <- spaero::get_stats(
+  x = z,
+  center_trend = "local_constant", 
+  center_kernel = "uniform", 
+  center_bandwidth = 26, 
+  stat_trend = "local_constant", 
+  stat_kernel = "uniform", 
+  stat_bandwidth = 26, 
+  lag = 1, 
+  backward_only = TRUE
+)$stats$mean
+
+plot(z, type = "l", col = "blue")
+lines(mvz, col = "red")
+
+
 # Calculate EWS and correlations at different bandwidths ------------------
 
 bandwidth_vector <- c(13, 26, 52, 78, 104)
@@ -57,6 +77,22 @@ for(do_bw in bandwidth_vector){
   all_stats <- {}
   
   for(do_city in unique(measles_data$region)){
+    city_reff <- filtered_states %>%
+      filter(state == "effective_r_seasonal" & region == do_city) %>%
+      pull(state_value)
+    
+    smooth_reff <- spaero::get_stats(
+      x = city_reff,
+      center_trend = "local_constant", 
+      center_kernel = "uniform", 
+      center_bandwidth = window_bandwidth, 
+      stat_trend = "local_constant", 
+      stat_kernel = "uniform", 
+      stat_bandwidth = window_bandwidth, 
+      lag = 1, 
+      backward_only = TRUE
+    )$stats$mean
+    
     city_data <- measles_data %>%
       filter(region == do_city)
     
@@ -75,9 +111,10 @@ for(do_bw in bandwidth_vector){
     city_stats_tb <- as_tibble(city_stats) %>%
       mutate(
         time_iter = 1:n(),
-        date = city_data$date
+        date = city_data$date,
+        state_value = smooth_reff
       ) %>%
-      gather(key = ews, value = value, -time_iter, -date) %>%
+      gather(key = ews, value = value, -time_iter, -date, -state_value) %>%
       mutate(region = do_city)
     
     all_stats <- bind_rows(all_stats, city_stats_tb)
@@ -86,11 +123,11 @@ for(do_bw in bandwidth_vector){
   all_stats <- all_stats %>%
     rename(ews_value = value)
   
-  ews_states <- all_stats %>%
-    left_join(filtered_states, by = c("date", "region"))
+  # ews_states <- all_stats %>%
+  #   left_join(filtered_states, by = c("date", "region"))
   
-  ews_state_corrs <- ews_states %>%
-    group_by(ews, state, region) %>%
+  ews_state_corrs <- all_stats %>%
+    group_by(ews, region) %>%
     summarise(
       spearman_value = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[1],
       spearman_lwr = SpearmanRho(ews_value, state_value, use = "pairwise.complete.obs",  conf.level = 0.95)[2],
@@ -112,8 +149,7 @@ for(do_bw in bandwidth_vector){
   
 }
 
-re_seasonal_corrs <- correlations %>%
-  filter(state == "effective_r_seasonal")
+re_seasonal_corrs <- correlations
 
 ggplot(re_seasonal_corrs, aes(x = region, y = ews, fill = color_id_final)) +
   geom_tile(color = "white") +
