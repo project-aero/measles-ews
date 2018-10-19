@@ -24,6 +24,7 @@ mcap <- function(lp,parameter,confidence=0.95,lambda=0.75,Ngrid=1000)
   se_stat_squared <- 1/(2*a)
   se_total_squared <- se_mc_squared + se_stat_squared
   delta <- qchisq(confidence,df=1) * ( a * se_mc_squared + 0.5)
+  delta_line <- max(smoothed_loglik) - delta
   loglik_diff <- max(smoothed_loglik) - smoothed_loglik
   ci <- range(parameter_grid[loglik_diff < delta])
   list(lp=lp,parameter=parameter,confidence=confidence,
@@ -34,7 +35,7 @@ mcap <- function(lp,parameter,confidence=0.95,lambda=0.75,Ngrid=1000)
          smoothed=smoothed_loglik,
          quadratic=predict(quadratic_fit, list(b = parameter_grid, a = -parameter_grid^2))
        ),
-       mle=smooth_arg_max, ci=ci, delta=delta,
+       mle=smooth_arg_max, ci=ci, delta=delta, delta_line=delta_line,
        se_stat=sqrt(se_stat_squared), se_mc=sqrt(se_mc_squared), se=sqrt(se_total_squared)
   )
 }
@@ -43,20 +44,24 @@ mcap <- function(lp,parameter,confidence=0.95,lambda=0.75,Ngrid=1000)
 # Load packages -----------------------------------------------------------
 
 library(tidyverse)
+library(ggthemes)
 
 
 # Load profile results ----------------------------------------------------
 
 profile_data <- read.csv("../results/rho-profile-Niamey.csv") %>%
-  slice(2:n())  # chop off first NA row
+  slice(2:n()) %>%  # chop off first NA row
+  sample_n(100)
 
 test <- mcap(lp = profile_data$loglik, parameter = profile_data$rho_value)
 
 ggplot(test$fit, aes(x=parameter)) +
-  geom_point(data = profile_data, aes(x = rho_value, y = loglik), shape = 1, color = "grey75") +
+  geom_point(data = profile_data, aes(x = rho_value, y = loglik), shape = 1, color = "black") +
   geom_line(aes(y = smoothed), color = "red") +
   geom_line(aes(y = quadratic), color = "blue", linetype = 2) +
   geom_vline(aes(xintercept = test$ci[1]), color = "red") +
   geom_vline(aes(xintercept = test$ci[2]), color = "red") +
-  theme_minimal() 
+  geom_hline(aes(yintercept = test$delta_line), color = "red") +
+  labs(x = expression(rho), y = "profile log-likelihood") +
+  theme_few() 
 
