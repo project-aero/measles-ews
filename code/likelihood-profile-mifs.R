@@ -4,7 +4,7 @@
 #  of estimates maximizimum likelihood estimates from initial MIF runs.
 #  
 # NOTE:
-#  This script is primarily designed to be run on a high performance cluster.
+#  This script is designed to be run on a high performance cluster.
 #
 # Author:
 #  Andrew Tredennick (atredenn@gmail.com)
@@ -62,63 +62,84 @@ mles <- read.csv(mle_file) %>%
 
 # Make grid for profile ---------------------------------------------------
 
-min_value <- range(mles$rho)[1] - (range(mles$rho)[1]*0.5)
-max_value <- range(mles$rho)[2] + (range(mles$rho)[2]*0.5)
-profile_grid <- seq(from = min_value, to = max_value, length.out = 1000)
-
-# S0_grid <- seq(from = 0.1, to = 0.4, length.out = 50)
-# profile_grid <- expand.grid(rho_grid, S0_grid)
-# colnames(profile_grid) <- c("rho", "S_0") 
-
-
-# Combine profile grid with MLEs ------------------------------------------
+grid_search_size <- 100
 
 highest_mles <- mles %>%
   filter(loglik == max(loglik)) %>%
-  bind_rows(replicate(length(profile_grid)-1, ., simplify = FALSE))
+  bind_rows(replicate(grid_search_size-1, ., simplify = FALSE))
 
-profile_params <- highest_mles %>%
-  dplyr::select(-do_grid, -loglik, -loglik_se) %>%
-  mutate(
-    rho = profile_grid
-  ) %>%
-  dplyr::select(
-    beta_mu,beta_sd,b1,b2,b3,b4,b5,b6,iota,rho,S_0,E_0,I_0,tau
-  ) %>%
-  as.matrix()
+params <- colnames(mles)[4:ncol(mles)]
+params <- params[which(!params %in% c("b1","b2","b3","b4","b5","b6","tau","E_0","I_0","beta_sd"))]
 
-colnames(profile_params) <- names(coef(measles_pomp))
+large_profile_grid <- {}
+
+for(do_param in params){
+  tmp_values <- pull(mles, var = do_param)
+  min_value <- range(tmp_values)[1] - (range(tmp_values)[1]*0.5)
+  max_value <- range(tmp_values)[2] + (range(tmp_values)[2]*0.5)
+  tmp_profile <- seq(from = min_value, to = max_value, length.out = grid_search_size)
+  
+  tmp_grid <- highest_mles %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+  tmp_grid[ , do_param] <- tmp_profile
+  tmp_grid <- tmp_grid %>%
+    dplyr::select(
+      beta_mu,beta_sd,b1,b2,b3,b4,b5,b6,iota,rho,S_0,E_0,I_0,tau
+    ) %>%
+    mutate(
+      profiled_param = do_param
+    )
+  
+  large_profile_grid <- rbind(large_profile_grid, tmp_grid)
+}
 
 
 # Perform MIF -------------------------------------------------------------
 
-particles <- 10000
-mif_iters <- 100
+particles <- 100000
+mif_iters <- 10
+
+profile_params <- large_profile_grid[do_grid, ]
+profile_over <- profile_params[ , "profiled_param"]
+profile_params <- profile_params[ , which(colnames(profile_params) != "profiled_param")]
+
+if(profile_over == "beta_mu"){
+  rw_sd_setup <- rw.sd(beta_mu = 0, beta_sd = 0.02, iota = 0.02, rho = 0.02,
+                       b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02,
+                       b6 = 0.02, I_0 = ivp(0.1), E_0 = ivp(0.1), 
+                       S_0 = ivp(0.1), tau = 0.02)
+}
+
+if(profile_over == "iota"){
+  rw_sd_setup <- rw.sd(beta_mu = 0.2, beta_sd = 0.02, iota = 0, rho = 0.02,
+                       b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02,
+                       b6 = 0.02, I_0 = ivp(0.1), E_0 = ivp(0.1), 
+                       S_0 = ivp(0.1), tau = 0.02)
+}
+
+if(profile_over == "rho"){
+  rw_sd_setup <- rw.sd(beta_mu = 0.2, beta_sd = 0.02, iota = 0.02, rho = 0,
+                       b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02,
+                       b6 = 0.02, I_0 = ivp(0.1), E_0 = ivp(0.1), 
+                       S_0 = ivp(0.1), tau = 0.02)
+}
+
+if(profile_over == "S_0"){
+  rw_sd_setup <- rw.sd(beta_mu = 0.2, beta_sd = 0.02, iota = 0.02, rho = 0.02,
+                       b1 = 0.02, b2 = 0.02, b3 = 0.02, b4 = 0.02, b5 = 0.02,
+                       b6 = 0.02, I_0 = ivp(0.1), E_0 = ivp(0.1), 
+                       S_0 = ivp(0), tau = 0.02)
+}
 
 mf <- measles_pomp %>% 
   mif2(
-    start = unlist(profile_params[do_grid,]),
+    start = unlist(profile_params),
     Nmif = mif_iters,
     Np = particles,
     transform = TRUE,
     cooling.fraction.50 = 1,
     cooling.type = "geometric",
-    rw.sd = rw.sd(
-      beta_mu = 0.02,
-      beta_sd = 0.02,
-      iota = 0.02,
-      rho = 0.0,  # rho does not vary
-      b1 = 0.02,
-      b2 = 0.02,
-      b3 = 0.02,
-      b4 = 0.02,
-      b5 = 0.02,
-      b6 = 0.02,
-      I_0 = ivp(0.1),
-      E_0 = ivp(0.1),
-      S_0 = ivp(0.1),
-      tau = 0.02
-    )
+    rw.sd = rw_sd_setup
   ) %>%
   mif2(
     start = unlist(profile_params[do_grid,]),
@@ -127,22 +148,7 @@ mf <- measles_pomp %>%
     transform = TRUE,
     cooling.fraction.50 = 0.9,
     cooling.type = "geometric",
-    rw.sd = rw.sd(
-      beta_mu = 0.02,
-      beta_sd = 0.02,
-      iota = 0.02,
-      rho = 0.0,  # rho does not vary
-      b1 = 0.02,
-      b2 = 0.02,
-      b3 = 0.02,
-      b4 = 0.02,
-      b5 = 0.02,
-      b6 = 0.02,
-      I_0 = ivp(0.1),
-      E_0 = ivp(0.1),
-      S_0 = ivp(0.1),
-      tau = 0.02
-    )
+    rw.sd = rw_sd_setup
   )
 
 ll <- logmeanexp(replicate(50, logLik(pfilter(mf, Np = particles))), se=TRUE)
@@ -151,9 +157,10 @@ outdf <- data.frame(
   do_grid = do_grid,
   loglik = as.numeric(ll[1]),
   loglik_se = as.numeric(ll[2]),
-  rho_value = profile_grid[do_grid]
+  value = profile_params[do_param],
+  parameter = profile_over
 ) 
 
-out_file <- "rho-profile.csv"
+out_file <- paste0("loglik-profile-", DO_CITY, ".csv")
 write.table(outdf, out_file, sep = ",", col.names = F, append = T, row.names = FALSE)
 

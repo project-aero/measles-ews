@@ -61,8 +61,9 @@ outdf <- data.frame(
   do_grid = NA,
   loglik = NA,
   loglik_se = NA,
-  rho_value = NA
+  value = NA,
+  parameter = NA
 ) 
 
-out_file <- "rho-profile.csv"
+out_file <- "loglik-profile-Niamey.csv"
 write.table(outdf, out_file, sep = ",", col.names = T, append = T, row.names = FALSE)
