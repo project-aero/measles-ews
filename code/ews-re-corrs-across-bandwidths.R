@@ -99,7 +99,7 @@ for(do_bw in bandwidth_vector){
       backward_only = TRUE
     )$stats$mean
     
-    lag <- 4
+    lag <- 0
     smooth_reff2 <- numeric(length(smooth_reff)+lag)
     smooth_reff2[] <- NA
     smooth_reff2[(lag+1):length(smooth_reff2)] <- smooth_reff
