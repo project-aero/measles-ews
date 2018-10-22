@@ -56,13 +56,12 @@ mle_file <- paste0("initial-mif-lls-", DO_CITY, ".csv")
 mles <- read.csv(mle_file) %>%
   slice(2:n()) %>%
   na.omit() %>%
-  arrange(-loglik) %>%
-  slice(1:2000)
+  arrange(-loglik)
 
 
 # Make grid for profile ---------------------------------------------------
 
-grid_search_size <- 100
+grid_search_size <- 200
 
 highest_mles <- mles %>%
   filter(loglik == max(loglik)) %>%
@@ -151,13 +150,13 @@ mf <- measles_pomp %>%
     rw.sd = rw_sd_setup
   )
 
-ll <- logmeanexp(replicate(2, logLik(pfilter(mf, Np = particles))), se=TRUE)
+ll <- logmeanexp(replicate(50, logLik(pfilter(mf, Np = particles))), se=TRUE)
 
 outdf <- data.frame(
   do_grid = do_grid,
   loglik = as.numeric(ll[1]),
   loglik_se = as.numeric(ll[2]),
-  value = profile_params[do_param],
+  value = profile_params[profile_over],
   parameter = profile_over
 ) 
 

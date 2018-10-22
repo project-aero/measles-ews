@@ -51,17 +51,17 @@ library(ggthemes)
 
 profile_data <- read.csv("../results/rho-profile-Niamey.csv") %>%
   slice(2:n()) %>%  # chop off first NA row
-  sample_n(100)
+  sample_n(200)
 
 test <- mcap(lp = profile_data$loglik, parameter = profile_data$rho_value)
 
 ggplot(test$fit, aes(x=parameter)) +
-  geom_point(data = profile_data, aes(x = rho_value, y = loglik), shape = 1, color = "black") +
-  geom_line(aes(y = smoothed), color = "red") +
-  geom_line(aes(y = quadratic), color = "blue", linetype = 2) +
-  geom_vline(aes(xintercept = test$ci[1]), color = "red") +
-  geom_vline(aes(xintercept = test$ci[2]), color = "red") +
-  geom_hline(aes(yintercept = test$delta_line), color = "red") +
+  geom_point(data = profile_data, aes(x = rho_value, y = loglik), size = 2, color = "grey50") +
+  geom_line(aes(y = smoothed), color = "coral", size = 1) +
+  geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
+  geom_vline(aes(xintercept = test$ci[1]), color = "coral") +
+  geom_vline(aes(xintercept = test$ci[2]), color = "coral") +
+  geom_hline(aes(yintercept = test$delta_line), color = "coral") +
   labs(x = expression(rho), y = "profile log-likelihood") +
-  theme_few() 
+  ggtitle(paste0("95% CI: ", round(test$ci,2)[1], " - ", round(test$ci,2)[2]))
 
