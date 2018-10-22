@@ -75,8 +75,8 @@ large_profile_grid <- {}
 
 for(do_param in params){
   tmp_values <- pull(mles, var = do_param)
-  min_value <- range(tmp_values)[1] - (range(tmp_values)[1]*0.5)
-  max_value <- range(tmp_values)[2] + (range(tmp_values)[2]*0.5)
+  min_value <- as.numeric(quantile(tmp_values, 0.025))
+  max_value <- as.numeric(quantile(tmp_values, 0.975))
   tmp_profile <- seq(from = min_value, to = max_value, length.out = grid_search_size)
   
   tmp_grid <- highest_mles %>%
@@ -96,8 +96,8 @@ for(do_param in params){
 
 # Perform MIF -------------------------------------------------------------
 
-particles <- 100000
-mif_iters <- 10
+particles <- 10000
+mif_iters <- 100
 
 profile_params <- large_profile_grid[do_grid, ]
 profile_over <- profile_params[ , "profiled_param"]
@@ -142,7 +142,7 @@ mf <- measles_pomp %>%
     rw.sd = rw_sd_setup
   ) %>%
   mif2(
-    start = unlist(profile_params[do_grid,]),
+    start = unlist(profile_params),
     Nmif = mif_iters,
     Np = particles,
     transform = TRUE,
@@ -151,7 +151,7 @@ mf <- measles_pomp %>%
     rw.sd = rw_sd_setup
   )
 
-ll <- logmeanexp(replicate(50, logLik(pfilter(mf, Np = particles))), se=TRUE)
+ll <- logmeanexp(replicate(2, logLik(pfilter(mf, Np = particles))), se=TRUE)
 
 outdf <- data.frame(
   do_grid = do_grid,
