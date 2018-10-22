@@ -8,8 +8,8 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
-DO_CITY <- "Zinder"
-pomp_city <- "Zinder (City)"
+DO_CITY <- "Niamey"
+pomp_city <- "Niamey (City)"
 
 # Load libraries ----------------------------------------------------------
 
@@ -224,8 +224,10 @@ measles_pomp <- pomp(
 
 # Run particle filter -----------------------------------------------------
 
-measles_filter <- pfilter(object = measles_pomp, Np=50000, save.states = TRUE)
-states <- measles_filter@saved.states  # save the states separately
+measles_filter <- pfilter(object = measles_pomp, Np=50000, save.states = TRUE, pred.mean = TRUE, pred.var = TRUE)
+states <- measles_filter@saved.states  # filtering distribution of states
+predicted_means <- measles_filter@pred.mean  # prediction distribution of states
+predicted_vars <- measles_filter@pred.var  # prediction variance of states
 
 
 # Functions to extract and summarize filtered states ----------------------
@@ -262,6 +264,24 @@ summarise_filtered_state <- function(df, state_name, observations = NA){
   
   return(out)
 }
+
+
+# Extract prediction means and variances for cases ------------------------
+
+pred_cases <- t(predicted_means)[,"cases_state"]
+pred_stdev <- sqrt(t(predicted_vars)[,"cases_state"])
+
+predictive_distribution <- tibble(
+  mean_cases = pred_cases,
+  sdev_cases = pred_stdev
+)
+
+pred_outfile <- paste0("../results/predictive-dist-states-", DO_CITY, ".RDS")
+saveRDS(
+  object = predictive_distribution, 
+  file = pred_outfile
+)
+
 
 
 # Extract and summarize states --------------------------------------------

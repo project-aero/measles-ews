@@ -42,23 +42,43 @@ my_cities <- tibble(
   )
 
 
-# Load filtered states ----------------------------------------------------
+# Load case observation data ----------------------------------------------
 
-filter_ids <- grep("filtered-states", list.files("../results/"))
-filter_files <- list.files("../results/")[filter_ids]
+file_name <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+measles_data <- readRDS(file_name) %>%
+  filter(year > 1994) %>%
+  dplyr::select(-year, -week_of_year, -obs_week, -time) %>%
+  mutate(
+    region = str_sub(region, 1, str_length(region)-7)  # remove (City) from name
+  )
 
-filtered_states <- tibble()
-for(do_file in filter_files){
-  do_city <- str_split(do_file, "-")[[1]][3]
+
+
+# Load predictive distributions -------------------------------------------
+
+pred_ids <- grep("predictive-dist-states", list.files("../results/"))
+pred_files <- list.files("../results/")[pred_ids]
+
+pred_cases <- tibble()
+for(do_file in pred_files){
+  do_city <- str_split(do_file, "-")[[1]][4]
   do_city <- str_split(do_city, "[.]")[[1]][1]
   
+  tmp_data <- measles_data %>%
+    filter(region == do_city)
+  
   tmp <- readRDS(paste0("../results/", do_file)) %>%
-    filter(state == "cases") %>%
     unnest() %>%
+    slice(2:n()) %>%  # drop first row of unobserved data
     mutate(
-      city_name = do_city
+      upper_est = mean_cases + sdev_cases*2,
+      lower_est = mean_cases - sdev_cases*2,
+      lower_est = ifelse(lower_est < 0, 0, lower_est),
+      city_name = do_city,
+      date = tmp_data$date,
+      observed_cases = tmp_data$cases
     )
-  filtered_states <- bind_rows(filtered_states, tmp)
+  pred_cases <- bind_rows(pred_cases, tmp)
 }
 
 
@@ -77,9 +97,9 @@ the_map <- ggplot(region_boundaries)+
   labs(x = "Longitude", y = "Latitude") +
   theme_minimal()
 
-the_series <- ggplot(filtered_states, aes(x = date)) +
-  geom_ribbon(aes(ymin = lower_95, ymax = upper_95), color = "black") +
-  geom_line(aes(y = observation), color = ptol_pal()(3)[2], size = 0.4) +
+the_series <- ggplot(pred_cases, aes(x = date)) +
+  geom_ribbon(aes(ymin = lower_est, ymax = upper_est), color = "black") +
+  geom_line(aes(y = observed_cases), color = ptol_pal()(3)[2], size = 0.4) +
   facet_wrap(~city_name, scales = "free_y", ncol = 1) +
   labs(x = "Date", y = "Reported cases") +
   theme_minimal()

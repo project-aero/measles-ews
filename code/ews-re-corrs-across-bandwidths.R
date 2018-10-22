@@ -35,7 +35,7 @@ focal_states <- c(
 filtered_states <- {}
 for(do_city in unique(measles_data$region)){
   tmp_states <- readRDS(paste0("../results/filtered-states-", do_city, ".RDS")) %>%
-    filter(state %in% focal_states) %>%
+    # filter(state %in% focal_states) %>%
     unnest() %>%
     dplyr::select(date, med, state) %>%
     rename(state_value = med) %>%
@@ -48,11 +48,11 @@ for(do_city in unique(measles_data$region)){
 
 
 z <- filtered_states %>%
-  filter(state == "effective_r_seasonal" & region == "Agadez") %>%
+  filter(state == "effective_r_seasonal" & region == "Niamey") %>%
   pull(state_value)
 
 mvz <- spaero::get_stats(
-  x = z,
+  x = log(z),
   center_trend = "local_constant", 
   center_kernel = "uniform", 
   center_bandwidth = 26, 
@@ -63,9 +63,15 @@ mvz <- spaero::get_stats(
   backward_only = TRUE
 )$stats$mean
 
-plot(z, type = "l", col = "blue")
-lines(mvz, col = "red")
+# plot(z, type = "l", col = "blue")
+# lines(exp(mvz), col = "red")
 
+y <- filtered_states %>%
+  filter(state == "cases" & region == "Niamey") %>%
+  pull(state_value)
+# 
+# plot(y, type = "p")
+# lines(exp(mvz)*500, col = "red")
 
 # Calculate EWS and correlations at different bandwidths ------------------
 
@@ -82,7 +88,7 @@ for(do_bw in bandwidth_vector){
       pull(state_value)
     
     smooth_reff <- spaero::get_stats(
-      x = city_reff,
+      x = log(city_reff),
       center_trend = "local_constant", 
       center_kernel = "uniform", 
       center_bandwidth = window_bandwidth, 
@@ -92,6 +98,11 @@ for(do_bw in bandwidth_vector){
       lag = 1, 
       backward_only = TRUE
     )$stats$mean
+    
+    lag <- 4
+    smooth_reff2 <- numeric(length(smooth_reff)+lag)
+    smooth_reff2[] <- NA
+    smooth_reff2[(lag+1):length(smooth_reff2)] <- smooth_reff
     
     city_data <- measles_data %>%
       filter(region == do_city)
@@ -112,7 +123,7 @@ for(do_bw in bandwidth_vector){
       mutate(
         time_iter = 1:n(),
         date = city_data$date,
-        state_value = smooth_reff
+        state_value = smooth_reff2[1:length(smooth_reff)]
       ) %>%
       gather(key = ews, value = value, -time_iter, -date, -state_value) %>%
       mutate(region = do_city)
