@@ -49,19 +49,28 @@ library(ggthemes)
 
 # Load profile results ----------------------------------------------------
 
-profile_data <- read.csv("../results/rho-profile-Niamey.csv") %>%
-  slice(2:n()) %>%  # chop off first NA row
-  sample_n(200)
+all_profile_data <- read.csv("../results/loglik-profile-Niamey.csv") %>%
+  slice(2:n()) %>%
+  filter(parameter != "iota")
 
-test <- mcap(lp = profile_data$loglik, parameter = profile_data$rho_value)
+all_params <- all_profile_data$parameter
+counter = 1
+gout <- list()
+for(do_param in all_params){
+  profile_data <- filter(all_profile_data, parameter == do_param) %>% drop_na()
+  
+  test <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
+  
+  ggplot(test$fit, aes(x=parameter)) +
+    geom_point(data = profile_data, aes(x = value, y = loglik), size = 2, color = "grey50") +
+    geom_line(aes(y = smoothed), color = "coral", size = 1) +
+    geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
+    geom_vline(aes(xintercept = test$ci[1]), color = "coral") +
+    geom_vline(aes(xintercept = test$ci[2]), color = "coral") +
+    geom_hline(aes(yintercept = test$delta_line), color = "coral") +
+    labs(x = "parameter value", y = "profile log-likelihood") +
+    ggtitle(paste0(do_param," 95% CI: ", round(test$ci,2)[1], " - ", round(test$ci,2)[2]))
 
-ggplot(test$fit, aes(x=parameter)) +
-  geom_point(data = profile_data, aes(x = rho_value, y = loglik), size = 2, color = "grey50") +
-  geom_line(aes(y = smoothed), color = "coral", size = 1) +
-  geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
-  geom_vline(aes(xintercept = test$ci[1]), color = "coral") +
-  geom_vline(aes(xintercept = test$ci[2]), color = "coral") +
-  geom_hline(aes(yintercept = test$delta_line), color = "coral") +
-  labs(x = expression(rho), y = "profile log-likelihood") +
-  ggtitle(paste0("95% CI: ", round(test$ci,2)[1], " - ", round(test$ci,2)[2]))
+  counter = counter+1
+}
 

@@ -61,7 +61,7 @@ mles <- read.csv(mle_file) %>%
 
 # Make grid for profile ---------------------------------------------------
 
-grid_search_size <- 200
+grid_search_size <- 100
 
 highest_mles <- mles %>%
   filter(loglik == max(loglik)) %>%
@@ -72,11 +72,11 @@ params <- params[which(!params %in% c("b1","b2","b3","b4","b5","b6","tau","E_0",
 
 large_profile_grid <- {}
 
-for(do_param in params){
+for(do_param in c("beta_mu")){
   tmp_values <- pull(mles, var = do_param)
-  min_value <- as.numeric(quantile(tmp_values, 0.025))
-  max_value <- as.numeric(quantile(tmp_values, 0.975))
-  tmp_profile <- seq(from = min_value, to = max_value, length.out = grid_search_size)
+  min_value <- as.numeric(quantile(tmp_values, 0.01))
+  max_value <- as.numeric(quantile(tmp_values, 0.99))
+  tmp_profile <- exp(seq(from = log(min_value), to = log(max_value), length.out = grid_search_size))
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
@@ -87,7 +87,8 @@ for(do_param in params){
     ) %>%
     mutate(
       profiled_param = do_param
-    )
+    ) %>%
+    bind_rows(replicate(4, ., simplify = FALSE))
   
   large_profile_grid <- rbind(large_profile_grid, tmp_grid)
 }

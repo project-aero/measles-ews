@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --array=1-400
+#SBATCH --array=1-500
 #SBATCH -t 10:00:00
 #SBATCH -N 1
 #SBATCH --constraint="intel"
