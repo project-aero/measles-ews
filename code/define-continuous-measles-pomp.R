@@ -63,7 +63,8 @@ measles_process <- Csnippet(
 
   cases += dNIR;  // cases are cumulative reports at end of infectious period (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
-  RE = (beta * dW/dt) / gamma;
+  RE = (beta_mu / gamma) * (S / N);
+  RE_seas = (beta / gamma) * (S / N);
   "
 )
 
@@ -139,6 +140,7 @@ initial_values <- Csnippet(
   cases = 0.5*N*I_0;
   W = 0;
   RE = 0;
+  RE_seas = 0;
   "
 )
 
@@ -214,7 +216,7 @@ for(do_city in all_cities){
     rmeasure = measles_rmeasure,
     dmeasure = measles_dmeasure,
     initializer = initial_values,
-    statenames = c("S", "E", "I", "cases", "W", "RE"),
+    statenames = c("S", "E", "I", "cases", "W", "RE", "RE_seas"),
     toEstimationScale = to_estimation,
     fromEstimationScale = from_estimation,
     paramnames = names(params),

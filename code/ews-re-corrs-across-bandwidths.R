@@ -69,9 +69,13 @@ mvz <- spaero::get_stats(
 y <- filtered_states %>%
   filter(state == "cases" & region == "Niamey") %>%
   pull(state_value)
-# 
-# plot(y, type = "p")
-# lines(exp(mvz)*500, col = "red")
+
+plot(y, type = "l")
+lines(z*500, col = "red")
+
+z2 = exp(mvz)
+check_mat <- cbind(y, z)
+acf(check_mat[,1:2])
 
 # Calculate EWS and correlations at different bandwidths ------------------
 
@@ -99,7 +103,7 @@ for(do_bw in bandwidth_vector){
       backward_only = TRUE
     )$stats$mean
     
-    lag <- 0
+    lag <- 9
     smooth_reff2 <- numeric(length(smooth_reff)+lag)
     smooth_reff2[] <- NA
     smooth_reff2[(lag+1):length(smooth_reff2)] <- smooth_reff
