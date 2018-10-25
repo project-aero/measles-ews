@@ -95,10 +95,13 @@ for(do_city in cities){
 }  # next city, do_city
 
 
-ggplot(all_corrs, aes(x = ews, y = spearman_value)) +
-  geom_boxplot(notch = TRUE, notchwidth = 0.8) +
-  geom_hline(aes(yintercept = 0), color = "red") +
-  facet_wrap(~city, ncol = 1) +
-  labs(y = expression(paste("Spearman's ",rho)), x = "Early warning signal") +
-  coord_flip()
+outfile <- paste0("../results/sim-corrs-ews-re.RDS")
+saveRDS(object = all_corrs, file = outfile)
+
+# ggplot(all_corrs, aes(x = ews, y = spearman_value)) +
+#   geom_boxplot(outlier.size = 0.5) +
+#   geom_hline(aes(yintercept = 0), color = "red") +
+#   facet_wrap(~city, ncol = 1) +
+#   labs(y = expression(paste("Spearman's ",rho)), x = "Early warning signal") +
+#   coord_flip()
 
