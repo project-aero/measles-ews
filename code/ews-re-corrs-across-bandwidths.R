@@ -52,19 +52,20 @@ z <- filtered_states %>%
   pull(state_value)
 
 mvz <- spaero::get_stats(
-  x = log(z),
+  x = z,
   center_trend = "local_constant", 
   center_kernel = "uniform", 
-  center_bandwidth = 26, 
+  center_bandwidth = 52, 
   stat_trend = "local_constant", 
   stat_kernel = "uniform", 
-  stat_bandwidth = 26, 
+  stat_bandwidth = 52, 
   lag = 1, 
   backward_only = TRUE
 )$stats$mean
 
-# plot(z, type = "l", col = "blue")
-# lines(exp(mvz), col = "red")
+plot(z, type = "l", col = "blue")
+lines(mvz, col = "red")
+abline(h =1)
 
 y <- filtered_states %>%
   filter(state == "cases" & region == "Niamey") %>%
@@ -72,6 +73,7 @@ y <- filtered_states %>%
 
 plot(y, type = "l")
 lines(z*500, col = "red")
+lines(mvz*500, col = "blue")
 
 z2 = exp(mvz)
 check_mat <- cbind(y, z)
