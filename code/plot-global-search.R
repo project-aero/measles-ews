@@ -6,7 +6,7 @@
 # Author:
 #  Andrew Tredennick
 
-DO_CITY <- "Zinder"
+DO_CITY <- "Agadez"
 
 # Load libraries ----------------------------------------------------------
 
@@ -38,11 +38,11 @@ ggplot(mif_traces_long, aes(x = iteration, y = value, group = do_grid)) +
   geom_line(alpha = 0.1) +
   facet_wrap(~parameter, scales = "free_y")
 
-mifs_last <- mif_traces_long %>% filter(iteration == 50) %>%
-  filter(parameter %in% c("loglik", "S_0")) %>%
+mifs_last <- mif_traces_long %>% filter(iteration == 100) %>%
+  # filter(parameter %in% c("loglik", "S_0")) %>%
   spread(parameter, value)
 
-plot(mifs_last$loglik, mifs_last$S_0)
+plot(mifs_last$b5, mifs_last$beta_mu)
 
 # Simulate model at MLEs --------------------------------------------------
 
@@ -116,6 +116,14 @@ season <- bases %>%
   spread(key = base, value = value) %>%
   dplyr::select(-day) %>%
   as.matrix()
+
+mles <- mif_finals %>%
+  filter(loglik < 0) %>%
+  # filter(loglik == max(loglik, na.rm = T)) %>%
+  # filter(do_grid == 667) %>%
+  arrange(-loglik) %>%
+  slice(3)
+  dplyr::select(-do_grid, -loglik, -loglik_se)
 
 qis <- mles %>%
   dplyr::select(starts_with("b")) %>%
