@@ -79,13 +79,13 @@ If EWS and $\mathcal{R}_E$ are negatively correlated or not significantly posivi
 
 ## Data
 We used weekly measles case report data from four Nigerien cities, collected over an 11 year period (1995-2005) (Figure \ref{fig:data}).
-These data are ideal for stress testing EWS because each city has different population sizes, has different dynamics in terms of size of outbreaks and length of inter-epidemic periods, and each time series has different amounts of "noise" (though, the difference in variability is probably just reflective of population size differences).
+These data are ideal for stress testing EWS because each city has different population sizes, has different dynamics in terms of size of outbreaks and length of inter-epidemic periods, and each time series has different amounts of demographic stochasticity due to differences in population size.
 The data come from [*somewhere/someone*], and used here with permission from [*somewhere/someone*].
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth]{../figures/data-timeseries.pdf}
-\caption{Time series of weekly measles case reports from four cities in Niger.}
+\includegraphics[width=\textwidth]{../figures/map-and-series.pdf}
+\caption{(A) Locations and population sizes (in parantheses) of our four focal cities in Niger. (B) Time series of reported cases (yellow solid lines) and the 95\% prediction intervals for one-step-ahead forecasts from our fitted SEIR models for each city.}
 \label{fig:data}
 \end{figure}
 
@@ -130,11 +130,11 @@ $\beta$ is the mean transmission rate, $\psi$ accounts for measles infections fr
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as a gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ (Bretó and Ionides 2011).
 
-We do not include a death process in the model because we expect death rates from the susceptible and infectious classes to be minimal relative to births and we are not interested in robust estimates of the recovered class.
+We do not include a death process in the model because the rate of infection is much faster than the rate of death.
 Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
 We model demographic stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
 Transitions in the model are shown in Table 1.
-In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_{E(t)} = \beta_t / \gamma$.
+In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
 
 We assume observed case reports ($\textbf{y}$) are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
 
@@ -170,8 +170,19 @@ Table: Transitions in the SEIR model. We show the determinstic transmission rate
 <!-- \label{table:model-trans} -->
 <!-- \end{table} -->
 
+##  Model fitting and inference
+
+## Model simulations
+
+# Results
+
+Stochastic simulations from sub-critical ($\mathcal{R}_{E(t)} << 0$) to near-critical dynamics ($\mathcal{R}_{E(t)} \approx 1$) differed among the four cities (Figure 2).
+
+
 \nolinenumbers
 
 # Acknowledgments
-NIH, MIDAS, Olympus HPC
+This research was funded by the National Institute of General Medical Sciences of the National Institutes of Health (Award Number U01GM110744).
+The funders had no role in study design, data collection and analysis, decision to publish, or preparation of the manuscript.
+This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
 

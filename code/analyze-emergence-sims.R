@@ -46,8 +46,17 @@ re_one_year <- re_time_avg %>%
 
 re_series <- ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
   geom_hline(aes(yintercept = 1), linetype = 2) +
-  geom_segment(data = re_one_year, aes(x = year, xend = year, y = 0, yend = 1), color = ptol_pal()(2)[2]) +
-  geom_line(data = all_sims, aes(x = time, y = RE_seas, group = sim), alpha = 0.05, color = "grey") +
+  geom_segment(
+    data = re_one_year, 
+    aes(x = year, xend = year, y = 0, yend = 1),
+    color = ptol_pal()(2)[2]
+  ) +
+  geom_line(
+    data = all_sims, 
+    aes(x = time, y = RE_seas, group = sim), 
+    alpha = 0.05, 
+    color = "grey"
+  ) +
   geom_line(size = 0.4, color = ptol_pal()(2)[1]) +
   geom_point(size = 1, color = ptol_pal()(2)[1]) +
   scale_x_continuous(breaks = 1995:2006) +
@@ -56,7 +65,13 @@ re_series <- ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggsave(filename = "../figures/re-simulated-series.pdf", plot = re_series, width = 3, height = 5, units = "in")
+ggsave(
+  filename = "../figures/re-simulated-series.pdf", 
+  plot = re_series, 
+  width = 3, 
+  height = 5, 
+  units = "in"
+)
 
 
 
@@ -86,7 +101,10 @@ for(do_city in unique(all_sims$city)){
   
   ews_time_ids <- tibble(
     time = tmptimes,
-    half = c(rep("first", length(tmptimes)/2), rep("second", length(tmptimes)/2))
+    half = c(
+      rep("first", length(tmptimes)/2), 
+      rep("second", length(tmptimes)/2)
+      )
   )
   
   window_bandwidth <- length(tmptimes)/2
@@ -184,11 +202,26 @@ ews_long <- ews_out %>%
     scaled_value = scale_it(value)
   ) %>%
   filter(metric != "variance_first_diff") %>%
-  filter(value < 100)
+  filter(value < 100) %>%
+  ungroup() %>%
+  mutate(
+    metric = ifelse(metric == "variance", "Variance", metric),
+    metric = ifelse(metric == "variance_first_diff", "Var. 1st Diff.", metric),
+    metric = ifelse(metric == "autocovariance", "Autocovar.", metric),
+    metric = ifelse(metric == "autocorrelation", "Autocorr.", metric),
+    metric = ifelse(metric == "decay_time", "Decay time", metric),
+    metric = ifelse(metric == "mean", "Mean", metric),
+    metric = ifelse(metric == "index_of_dispersion", "Index of dis.", metric),
+    metric = ifelse(metric == "coefficient_of_variation", "Coeff. var.", metric),
+    metric = ifelse(metric == "skewness", "Skewness", metric),
+    metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
+  )
+
+
 
 gout <- list()
 for(do_city in sort(unique(ews_long$city))){
-  if(do_city != "Ziner"){
+  if(do_city != "Zinder"){
     gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
       geom_histogram(bins = 20) +
       facet_wrap(~metric, scales = "free", nrow = 1) +
@@ -214,6 +247,59 @@ for(do_city in sort(unique(ews_long$city))){
   
 }
 
-ews_hists <- cowplot::plot_grid(plotlist = gout, align = "v", nrow = 4, labels = "AUTO")
-ggsave(filename = "../figures/ews-histograms-simulation.pdf", plot = ews_hists, height = 5, width = 9, units = "in")
+ews_hists <- cowplot::plot_grid(
+  plotlist = gout, 
+  align = "v", 
+  nrow = 4, 
+  labels = "AUTO"
+)
+ggsave(
+  filename = "../figures/ews-histograms-simulation.pdf", 
+  plot = ews_hists, 
+  height = 5,
+  width = 9, 
+  units = "in"
+)
 
+
+# Calculate AUC -----------------------------------------------------------
+
+cats <- tibble(
+  half = c("first", "second"),
+  cat = c(0, 1)
+)
+
+ews_long <- ews_long %>%
+  left_join(cats, by = "half")
+
+auc_tbl <- {}
+for(do_city in unique(ews_long$city)){
+  for(do_metric in unique(ews_long$metric)){
+    tmp <- filter(ews_long, metric == do_metric & city == do_city)
+    roc_obj <- roc(tmp$cat, tmp$value)
+    tmp_auc <- auc(roc_obj)
+    plot(roc_obj, main = do_metric)
+    tmp_tbl <- tibble(
+      city = do_city,
+      metric = do_metric,
+      AUC = as.numeric(tmp_auc)
+    )
+    
+    auc_tbl <- bind_rows(auc_tbl, tmp_tbl)
+  }
+}
+
+
+plt_tbl <- auc_tbl %>%
+  filter(metric %in% c("Variance", "Autocovar.", "Autocorr.",
+                       "Decay time", "Mean"))
+
+auc_plot <- ggplot(plt_tbl, aes(x = metric, y = AUC-0.5, fill = AUC)) +
+  geom_col(position = position_dodge()) +
+  scale_y_continuous(limits = c(0,0.5)) +
+  scale_fill_viridis_c(limits = c(0,1), direction = -1, option = "C") +
+  facet_wrap(~city, nrow = 1) +
+  theme_minimal() +
+  labs(x = NULL)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(filename = "../figures/sim-emergence-aucs.pdf", plot = auc_plot, width = 8.5, height = 3, units = "in")

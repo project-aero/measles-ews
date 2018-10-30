@@ -191,14 +191,36 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
     mutate(
       time = fitted_pomp@tcovar,
       beta_mu = mle_beta
-      # beta_mu = seq(1, 200, length.out = n())
     )
+  
+  times_data <- tibble(
+    time = covar_table$time
+  ) %>%
+    mutate(
+      x = 1:n()
+    )
+  
+  newtimes <- predict(
+    lm(time~x, data = times_data), 
+    newdata = data.frame(x = (nrow(covar_table)+1):(nrow(covar_table)*10))
+  )
+  
+  extended_covar <- bind_rows(
+    covar_table,
+    tibble(
+      time = newtimes
+    )
+  )
+  
+  report_times <- newtimes[seq(1, length(newtimes), 7)]
+  
+  extende_obs_data <- bind_rows(obs_data, tibble(time = report_times))
   
   sfact = 0.00001
   global_str <- paste0("int K = 6; ", "double sfact = ", sfact, ";")
   
   simulator_pomp <- pomp(
-    data = obs_data,
+    data = extende_obs_data,
     times = "time",
     covar = covar_table,
     tcovar = "time",

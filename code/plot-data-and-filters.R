@@ -104,6 +104,6 @@ the_series <- ggplot(pred_cases, aes(x = date)) +
   labs(x = "Date", y = "Reported cases") +
   theme_minimal()
 
-outplot <- plot_grid(the_map, the_series, ncol = 2)
+outplot <- plot_grid(the_map, the_series, ncol = 2, labels = "AUTO")
 
 ggsave(filename = "../figures/map-and-series.pdf", plot = outplot, height = 4, width = 8.5, units = "in")
