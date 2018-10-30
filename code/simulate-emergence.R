@@ -12,7 +12,6 @@
 library(tidyverse)
 library(ggthemes)
 library(pomp)
-library(pROC)
 library(spaero)
 
 
@@ -274,7 +273,11 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
 
 # Save the simulations ----------------------------------------------------
 
-saveRDS(object = all_sims, file = "../simulations/emergence-simulations.RDS")
+for(do_city in all_sims$city){
+  outfile <- paste0("../simulations/emergence-simulations-", do_city, ".RDS")
+  saveRDS(object = filter(all_sims, city == do_city) %>% unnest(), file = outfile)
+}
+
 
 
 
