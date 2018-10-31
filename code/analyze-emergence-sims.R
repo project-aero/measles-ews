@@ -37,54 +37,40 @@ re_time_avg <- all_sims %>%
   ungroup() %>%
   group_by(city, year) %>%
   summarise(time_mean_re = mean(mean_re)) %>%
-  mutate(
-    diff_one = 1 - time_mean_re
-  ) %>%
-  filter(time_mean_re < 2)
+  filter(year <= 20)
 
 re_one_year <- re_time_avg %>%
   ungroup() %>%
   group_by(city) %>%
-  filter(diff_one == min(diff_one)) %>%
+  filter(round(time_mean_re,1) >= 1) %>%
   dplyr::select(city, year) %>%
+  filter(year == min(year)) %>%
   ungroup()
 
-max_years <- re_time_avg %>%
-  group_by(city) %>%
-  filter(year == max(year)) %>%
-  dplyr::select(city, year) %>%
-  dplyr::rename(maxyear = year)
-
 plot_sims <- all_sims %>% 
-  filter(sim < 51) %>%
-  left_join(max_years, by = "city") %>%
-  group_by(city) %>%
-  filter(round(time) <= maxyear)
+  filter(sim < 21 & time <= 20)
 
 
 # Plot RE series ----------------------------------------------------------
 
 re_series <- ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
   geom_hline(aes(yintercept = 1), linetype = 2) +
-  # geom_segment(
-  #   data = re_one_year,
-  #   aes(x = year, xend = year, y = 0, yend = 1),
-  #   color = ptol_pal()(2)[2]
-  # ) +
+  geom_segment(
+    data = re_one_year,
+    aes(x = year, xend = year, y = 0, yend = 1),
+    color = ptol_pal()(2)[2]
+  ) +
   geom_line(
     data = plot_sims,
     aes(x = time, y = RE_seas, group = sim),
-    alpha = 0.5,
+    alpha = 0.1,
     color = "grey"
   ) +
   geom_line(size = 0.4, color = ptol_pal()(2)[1]) +
   geom_point(size = 1, color = ptol_pal()(2)[1]) +
-  # scale_x_continuous(breaks = 1995:2006) +
-  labs(x = "Date", y = expression(R[E](t))) +
-  facet_wrap(~city, ncol = 1, scales = "free") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  coord_cartesian(xlim = NULL, ylim = c(0,2))
+  labs(x = "Simulation year", y = expression(R[E](t))) +
+  facet_wrap(~city, ncol = 1) +
+  theme_minimal() 
 
 ggsave(
   filename = "../figures/re-simulated-series.pdf", 
@@ -111,7 +97,6 @@ for(do_city in unique(all_sims$city)){
     pull(year)
   
   tmptimes <- tmpsims %>%
-    filter(time > 1994.99) %>%
     filter(round(time) < tmpyear) %>%
     pull(time) %>%
     unique()
@@ -223,7 +208,7 @@ ews_long <- ews_out %>%
     scaled_value = scale_it(value)
   ) %>%
   filter(metric != "variance_first_diff") %>%
-  filter(value < 100) %>%
+  # filter(value < 100) %>%
   ungroup() %>%
   mutate(
     metric = ifelse(metric == "variance", "Variance", metric),
@@ -311,16 +296,17 @@ for(do_city in unique(ews_long$city)){
 }
 
 
-plt_tbl <- auc_tbl %>%
-  filter(metric %in% c("Variance", "Autocovar.", "Autocorr.",
-                       "Decay time", "Mean"))
+# plt_tbl <- auc_tbl %>%
+#   filter(metric %in% c("Variance", "Autocovar.", "Autocorr.",
+#                        "Decay time", "Mean"))
 
-auc_plot <- ggplot(plt_tbl, aes(x = metric, y = AUC-0.5, fill = AUC)) +
+auc_plot <- ggplot(auc_tbl, aes(x = metric, y = AUC-0.5, fill = AUC)) +
   geom_col(position = position_dodge()) +
   scale_y_continuous(limits = c(0,0.5)) +
   scale_fill_viridis_c(limits = c(0,1), direction = -1, option = "C") +
   facet_wrap(~city, nrow = 1) +
   theme_minimal() +
   labs(x = NULL)+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave(filename = "../figures/sim-emergence-aucs.pdf", plot = auc_plot, width = 8.5, height = 3, units = "in")
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"))
+ggsave(filename = "../figures/sim-emergence-aucs.pdf", plot = auc_plot, width = 8.5, height = 2.8, units = "in")

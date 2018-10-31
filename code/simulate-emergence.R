@@ -165,17 +165,19 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
     RE_seas = 0;
     "
   )
-  
+
+  all_times <- seq(0, 30, by = 1/365)
+  report_times <- all_times[seq(1, length(all_times), 7)]
   
   # Make data tables
   the_data <- tibble(
-    time = seq(0, 30, by = 1/365),
+    time = report_times,
     reports = NA
   )
   
   # Generate basis functions for seasonality
   covar_table <- periodic.bspline.basis(
-    the_data$time,
+    all_times,
     nbasis = 6,
     degree = 3,
     period = 1,
@@ -183,7 +185,7 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
   ) %>%
     as_tibble() %>%
     mutate(
-      time = the_data$time
+      time = all_times
     )
   
   sfact <- 0.00001
@@ -224,20 +226,20 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
     include.data = FALSE) %>%
     as_tibble()
   
-  re_time_avg <- model_sims %>%
-    dplyr::select(time, RE_seas, sim) %>%
-    group_by(time) %>%
-    summarise(mean_re = mean(RE_seas)) %>%
-    mutate(
-      year = round(time)
-    ) %>%
-    group_by(year) %>%
-    summarise(time_mean_re = mean(mean_re)) %>%
-    mutate(
-      diff_one = 1 - time_mean_re,
-      city = DO_CITY
-    ) %>%
-    nest(-city)
+  # re_time_avg <- model_sims %>%
+  #   dplyr::select(time, RE_seas, sim) %>%
+  #   group_by(time) %>%
+  #   summarise(mean_re = mean(RE_seas)) %>%
+  #   mutate(
+  #     year = round(time)
+  #   ) %>%
+  #   group_by(year) %>%
+  #   summarise(time_mean_re = mean(mean_re)) %>%
+  #   mutate(
+  #     diff_one = 1 - time_mean_re,
+  #     city = DO_CITY
+  #   ) %>%
+  #   nest(-city)
   
   tmp_re_sims <- model_sims %>%
     dplyr::select(sim, time, RE_seas, reports) %>%
@@ -246,7 +248,7 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   all_sims <- bind_rows(all_sims, tmp_re_sims)
   
-  outfile <- paste0("../simulations/emergence-simulations-", do_city, ".RDS")
-  saveRDS(object = filter(all_sims, city == do_city) %>% unnest(), file = outfile)
+  outfile <- paste0("../simulations/emergence-simulations-", DO_CITY, ".RDS")
+  saveRDS(object = filter(all_sims, city == DO_CITY) %>% unnest(), file = outfile)
 }
 
