@@ -73,7 +73,8 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
     reulermultinom(1, I, &rate[2], dt, &trans[2]);
     
     // Transitions
-    dN0S = rpois(0.3 * mu * N * dt);
+    dNN0 = rpois(0.0138 * N * dt);  // deaths
+    dN0S = rpois(0.3 * mu * N * dt);  // births
     dN0I = rpois(iota * dt);
     dNSE = trans[0];
     dNEI = trans[1];
@@ -83,6 +84,7 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
     S += dN0S - dNSE;
     E +=        dNSE - dNEI;
     I += dN0I        + dNEI - dNIR;
+    N += dN0S                      - dNN0;
     
     cases += dNIR;  // cases are cumulative reports at end of infectious period (I->R)
     if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
@@ -154,10 +156,11 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   initial_values <- Csnippet(
     "
-    S = nearbyint(N*sfact);
-    E = nearbyint(N*E_0);
-    I = nearbyint(N*I_0);
-    cases = rho*N*I_0;
+    S = nearbyint(N1*sfact);
+    E = nearbyint(N1*E_0);
+    I = nearbyint(N1*I_0);
+    N = N1;
+    cases = rho*N1*I_0;
     W = 0;
     RE_seas = 0;
     "

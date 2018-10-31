@@ -15,8 +15,15 @@ library(spaero)
 
 # Load simulations --------------------------------------------------------
 
-all_sims <- readRDS("../simulations/emergence-simulations.RDS") %>%
-  unnest()
+all_files <- list.files("../simulations/")
+sim_file_ids <- grep("emergence", all_files)
+sim_files <- all_files[sim_file_ids]
+all_sims <- {}
+for(do_file in sim_files){
+  tmp_file <- paste0("../simulations/", do_file)
+  tmp <- readRDS(tmp_file)
+  all_sims <- bind_rows(all_sims, tmp)
+}
 
 
 # Calculate yearly average RE ---------------------------------------------
@@ -32,7 +39,8 @@ re_time_avg <- all_sims %>%
   summarise(time_mean_re = mean(mean_re)) %>%
   mutate(
     diff_one = 1 - time_mean_re
-  ) 
+  ) %>%
+  filter(time_mean_re < 2)
 
 re_one_year <- re_time_avg %>%
   ungroup() %>%
@@ -41,29 +49,42 @@ re_one_year <- re_time_avg %>%
   dplyr::select(city, year) %>%
   ungroup()
 
+max_years <- re_time_avg %>%
+  group_by(city) %>%
+  filter(year == max(year)) %>%
+  dplyr::select(city, year) %>%
+  dplyr::rename(maxyear = year)
+
+plot_sims <- all_sims %>% 
+  filter(sim < 51) %>%
+  left_join(max_years, by = "city") %>%
+  group_by(city) %>%
+  filter(round(time) <= maxyear)
+
 
 # Plot RE series ----------------------------------------------------------
 
 re_series <- ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
   geom_hline(aes(yintercept = 1), linetype = 2) +
-  geom_segment(
-    data = re_one_year, 
-    aes(x = year, xend = year, y = 0, yend = 1),
-    color = ptol_pal()(2)[2]
-  ) +
+  # geom_segment(
+  #   data = re_one_year,
+  #   aes(x = year, xend = year, y = 0, yend = 1),
+  #   color = ptol_pal()(2)[2]
+  # ) +
   geom_line(
-    data = all_sims, 
-    aes(x = time, y = RE_seas, group = sim), 
-    alpha = 0.05, 
+    data = plot_sims,
+    aes(x = time, y = RE_seas, group = sim),
+    alpha = 0.5,
     color = "grey"
   ) +
   geom_line(size = 0.4, color = ptol_pal()(2)[1]) +
   geom_point(size = 1, color = ptol_pal()(2)[1]) +
-  scale_x_continuous(breaks = 1995:2006) +
+  # scale_x_continuous(breaks = 1995:2006) +
   labs(x = "Date", y = expression(R[E](t))) +
-  facet_wrap(~city, ncol = 1) +
+  facet_wrap(~city, ncol = 1, scales = "free") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_cartesian(xlim = NULL, ylim = c(0,2))
 
 ggsave(
   filename = "../figures/re-simulated-series.pdf", 
