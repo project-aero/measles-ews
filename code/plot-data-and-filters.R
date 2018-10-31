@@ -107,3 +107,33 @@ the_series <- ggplot(pred_cases, aes(x = date)) +
 outplot <- plot_grid(the_map, the_series, ncol = 2, labels = "AUTO")
 
 ggsave(filename = "../figures/map-and-series.pdf", plot = outplot, height = 4, width = 8.5, units = "in")
+
+
+# Calculate model-data agreement ------------------------------------------
+
+r_squares <- pred_cases %>%
+  group_by(city_name) %>%
+  mutate(
+    mean_observations = mean(observed_cases),
+    error_numer = (mean_cases - observed_cases)^2,
+    error_denom = (mean_observations - observed_cases)^2
+  ) %>%
+  summarise(
+    summed_numer = sum(error_numer),
+    summed_denom = sum(error_denom)
+  ) %>%
+  mutate(
+    R2 = 1 - (summed_numer / summed_denom)
+  ) %>%
+  dplyr::select(city_name, R2)
+
+
+scatters <- ggplot(pred_cases, aes(x = log(observed_cases+1), y = log(mean_cases+1))) +
+  geom_point(color = ptol_pal()(1), size = 2, alpha = 0.3) +
+  geom_abline(aes(intercept = 0, slope = 1), linetype = 2, size = 1) +
+  geom_label(data = r_squares, aes(x = 1.7, y = 7.3, label = paste0("italic(R)^2 == ", round(R2,2))), label.size = NA, parse = TRUE) +
+  labs(y = "Expected log(cases + 1)", x = "Observed log(cases + 1)") +
+  facet_wrap(~city_name, nrow = 1) +
+  theme_minimal() +
+  theme(panel.spacing = unit(1, "lines"))
+ggsave(filename = "../figures/pred-obs-scatters.pdf", plot = scatters, width = 8.5, height = 2.5, units = "in")

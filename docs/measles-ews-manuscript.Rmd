@@ -30,11 +30,10 @@ urlcolor: black
 \raggedright
 \vspace*{0.2in}
 
-<!-- % Title must be 250 characters or less. -->
 \begin{centering}
 
 {\LARGE
-\textbf\newline{Early warning signals anticipate emergence\\of measles in empirically-based models} 
+\textbf\newline{Early warning signals anticipate emergence\\in empirically-based simulations of measles dyanmics} 
 }
 
 \vspace{2em}
@@ -153,30 +152,48 @@ y_t \sim \text{Negative Binomial} \left( \rho I_t, \tau \right).
 
 Table: Transitions in the SEIR model. We show the determinstic transmission rate for clarity, but our model uses the stochastic tranmission rate.
 
-<!-- \begin{table}[!ht] -->
-<!-- \centering -->
-<!-- \caption{Transitions in the SI model. We show the determinstic transmission rate for clarity, but our model uses the stochastic tranmission rate.} -->
-<!-- \begin{tabular}{lll} -->
-<!-- \toprule -->
-<!-- Transition & ($\Delta S$, $\Delta I$) & Propensity \\ -->
-<!-- \midrule -->
-<!-- birth & $(1, 0)$ & $N_t \mu$ \\ -->
-<!-- imported infections & $(0, 1)$ & $\psi_t$ \\ -->
-<!-- transmission (deterministic) & $(-1, 1)$ & $SI \beta_t / N_t$ \\ -->
-<!-- transmission (stochastic) & $(-k, k)$ & $\frac{S}{k}\sum^k_{j=0} \left(\begin{matrix}k\\j\end{matrix} \right) (-1)^{k-j+1} \tau_{\text{f}}^{-1} \text{ln}(1 + (\beta_tI/N_t)) \tau_{\text{f}} (S-j)$ \\ -->
-<!-- recovery & $(0, -1)$ & $I\gamma$ \\ -->
-<!-- \bottomrule -->
-<!-- \end{tabular} -->
-<!-- \label{table:model-trans} -->
-<!-- \end{table} -->
-
 ##  Model fitting and inference
+
+We fit the SEIR model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF) in the R package `pomp`.
+We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), mean transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the number of imported infections ($\psi$), reporting rate ($\rho$), one parameter accounting for process noise, and one parameter accounting for measurement noise.
+To ensure identifiability, and to make the model easier to fit, we assumed the infectious period was fixed at $1/\eta = 8$ days and the recovery period was fixed at $1/\gamma = 5$ days.
+
+
 
 ## Model simulations
 
+## Early warning signals
+
+We considered ten candidate early warning signals (EWS; Table 3).
+EWS were calculated using the function `spaero::get_stats()` (O'Dea 201x) in R (R Core Team 201x).
+
+| EWS | Estimator | Theoretical Correlation with $\mathcal{R}_E(t)$ |
+| -------------------- | ----------------------------------- | ------------------------ |
+| Mean | $\mu_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{X_s}{2b-1}$ | Positive |
+| Variance | $\sigma_t^2 = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^2}{2b-1}$ | Positive |
+| Coefficient of variation | $CV_t = \frac{\sigma_t}{\mu_t}$ | Null |
+| Index of dispersion | $ID_t = \frac{\sigma_t^2}{\mu_t}$ | Positive |
+| Skewness | $S_t = \frac{1}{\sigma^3_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^3}{2b-1}$ | Positive |
+| Kurtosis | $K_t = \frac{1}{\sigma^4_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^4}{2b-1}$ | Positive |
+| Autocovariance | $\text{ACov}_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)\left(X_{s-\delta} - \mu_{s-\delta}\right)}{2b-1}$ | Positive |
+| Autocorrelation | $\text{AC}_t = \frac{\text{ACov}_t}{\sigma_t \sigma_{t-\delta}}$ | Positive |
+| Decay time | $\overline{\tau}_t = -\delta / \text{ln}\left[\text{AC}_t(\delta)\right]$ | Positive |
+| First differenced variance | $\Delta\sigma_t^2 = \sigma_t^2 - \sigma_{t-\delta}^2$ | Positive |
+
+Table: List of candidate early warning signals and their estimating equations. Note that *b* denotes the bandwidth. See Brett et al. (2018) for details.
+
 # Results
 
-Stochastic simulations from sub-critical ($\mathcal{R}_{E(t)} \ll 0$) to near-critical dynamics ($\mathcal{R}_{E(t)} \approx 1$) differed among the four cities (Figure ~\ref{fig:re-sims}).
+The fitted models were able to adequately reproduce observed dynamics (Figure 1), with $R^2$s ranging from 0.54 to 0.89 (Figure \ref{fig:scatters}).
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\textwidth]{../figures/pred-obs-scatters.pdf}
+\caption{Comparison of in-sample model predictions and observations for each city. Expected cases are one-step-ahead predictions from the fitted models. The dashed line shows 1:1.}
+\label{fig:scatters}
+\end{figure}
+
+Stochastic simulations from sub-critical ($\mathcal{R}_{E(t)} \ll 0$) to near-critical dynamics ($\mathcal{R}_{E(t)} \approx 1$) differed among the four cities (Figure \ref{fig:re-sims}).
 
 \begin{figure}[!ht]
 \centering
@@ -188,7 +205,7 @@ Stochastic simulations from sub-critical ($\mathcal{R}_{E(t)} \ll 0$) to near-cr
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/sim-emergence-aucs.pdf}
-\caption{Performance of EWS calculated over two windows (far and near $\mathcal{R}_{E(t)} = 1$) from the time series of 500 simulated dynamics. The two windows were defined as equally-sized windows over the course of the time series up to $\mathcal{R}_{E(t)} = 1$ (red lines in Figure ~\ref{fig:re-sims})}
+\caption{Performance of EWS calculated over two windows (far from and near $\mathcal{R}_{E(t)} = 1$) from the time series of 500 simulated dynamics. The two windows were defined as equally-sized windows over the course of the time series up to $\mathcal{R}_{E(t)} = 1$ (red lines in Figure \ref{fig:re-sims})}
 \label{fig:aucs}
 \end{figure}
 
