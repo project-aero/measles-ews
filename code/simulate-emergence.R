@@ -16,7 +16,7 @@ library(spaero)
 
 
 all_sims <- tibble()
-DO_CITY = "Zinder"
+
 for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   # Load fitted parameters and pomp model -----------------------------------
@@ -219,7 +219,7 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   model_sims <- simulate(
     simulator_pomp,
-    nsim = 10,
+    nsim = 500,
     as.data.frame = TRUE,
     include.data = FALSE) %>%
     as_tibble()
