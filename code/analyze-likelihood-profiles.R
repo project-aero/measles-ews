@@ -49,28 +49,44 @@ library(ggthemes)
 
 # Load profile results ----------------------------------------------------
 
-all_profile_data <- read.csv("../results/loglik-profile-Niamey.csv") %>%
+profile_data <- read.csv("../results/loglik-profile-Niamey.csv") %>%
   slice(2:n()) %>%
-  filter(parameter != "iota")
+  drop_na()
 
-all_params <- all_profile_data$parameter
-counter = 1
-gout <- list()
-for(do_param in all_params){
-  profile_data <- filter(all_profile_data, parameter == do_param) %>% drop_na()
-  
-  test <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
-  
-  ggplot(test$fit, aes(x=parameter)) +
-    geom_point(data = profile_data, aes(x = value, y = loglik), size = 2, color = "grey50") +
-    geom_line(aes(y = smoothed), color = "coral", size = 1) +
-    geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
-    geom_vline(aes(xintercept = test$ci[1]), color = "coral") +
-    geom_vline(aes(xintercept = test$ci[2]), color = "coral") +
-    geom_hline(aes(yintercept = test$delta_line), color = "coral") +
-    labs(x = "parameter value", y = "profile log-likelihood") +
-    ggtitle(paste0(do_param," 95% CI: ", round(test$ci,2)[1], " - ", round(test$ci,2)[2]))
+do_param <- unique(profile_data$parameter)
+mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
 
-  counter = counter+1
-}
+ggplot(mcap_out$fit, aes(x=parameter)) +
+  geom_point(data = profile_data, aes(x = value, y = loglik), shape = 1, size = 2, color = "grey50") +
+  geom_line(aes(y = smoothed), color = "coral", size = 1) +
+  geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
+  geom_vline(aes(xintercept = mcap_out$ci[1]), color = "coral") +
+  geom_vline(aes(xintercept = mcap_out$ci[2]), color = "coral") +
+  geom_hline(aes(yintercept = mcap_out$delta_line), color = "coral") +
+  labs(x = expression(beta), y = "profile log-likelihood") +
+  coord_cartesian(xlim = c(50, 1000), ylim = c(-1500, -1450)) +
+  ggtitle(paste0("95% CI: ", round(mcap_out$ci,2)[1], " - ", round(mcap_out$ci,2)[2]))
+
+
+
+# all_params <- all_profile_data$parameter
+# counter = 1
+# gout <- list()
+# for(do_param in all_params){
+#   profile_data <- filter(all_profile_data, parameter == do_param) %>% drop_na()
+#   
+#   test <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
+#   
+#   ggplot(test$fit, aes(x=parameter)) +
+#     geom_point(data = profile_data, aes(x = value, y = loglik), size = 2, color = "grey50") +
+#     geom_line(aes(y = smoothed), color = "coral", size = 1) +
+#     geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
+#     geom_vline(aes(xintercept = test$ci[1]), color = "coral") +
+#     geom_vline(aes(xintercept = test$ci[2]), color = "coral") +
+#     geom_hline(aes(yintercept = test$delta_line), color = "coral") +
+#     labs(x = "parameter value", y = "profile log-likelihood") +
+#     ggtitle(paste0(do_param," 95% CI: ", round(test$ci,2)[1], " - ", round(test$ci,2)[2]))
+# 
+#   counter = counter+1
+# }
 

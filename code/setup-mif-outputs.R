@@ -65,5 +65,5 @@ outdf <- data.frame(
   parameter = NA
 ) 
 
-out_file <- "loglik-profile-Niamey.csv"
+out_file <- "loglik-profile.csv"
 write.table(outdf, out_file, sep = ",", col.names = T, append = T, row.names = FALSE)
