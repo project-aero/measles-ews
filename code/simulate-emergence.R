@@ -16,7 +16,7 @@ library(spaero)
 
 
 all_sims <- tibble()
-
+DO_CITY = "Zinder"
 for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   # Load fitted parameters and pomp model -----------------------------------
@@ -52,7 +52,7 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
     double gamma = 365/5;   // recovery rate (5 days infectious)
     double dW;              // white noise
     double seas;            // seasonality term
-    double dN0S, dN0I, dNSE, dNEI, dNIR;  // transitions
+    double dN0S, dN0I, dNSE, dNEI, dNIR, dNN0;  // transitions
     
     // Calculate force of infection
     seas = (1 + exp(dot_product(K, &xi1, &b1)));
@@ -73,7 +73,7 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
     reulermultinom(1, I, &rate[2], dt, &trans[2]);
     
     // Transitions
-    dNN0 = rpois(0.0138 * N * dt);  // deaths
+    dNN0 = rpois(nu * N * dt);  // deaths
     dN0S = rpois(0.3 * mu * N * dt);  // births
     dN0I = rpois(iota * dt);
     dNSE = trans[0];
@@ -168,70 +168,44 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   
   # Make data tables
-  do_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+  the_data <- tibble(
+    time = seq(0, 30, by = 1/365),
+    reports = NA
+  )
   
-  all_cities <- readRDS(do_file) %>%
-    pull(region) %>%
-    unique()
-  
-  measles_data <- readRDS(do_file) %>%
-    dplyr::filter(region == paste0(DO_CITY, " (City)"))
-  
-  obs_data <- measles_data %>%
-    dplyr::select(time, cases) %>%
-    dplyr::rename(
-      reports = cases
-    )
-  
-  if(DO_CITY == "Niamey"){
-    # REMOVE SUSPICIOUS DATA POINT AND REPLACE WITH MEAN OF NEIGHBORS #
-    obs_data$reports[276] <- round(mean(obs_data$reports[c(275,277)]))
-  }
-  
-  covar_table <- fitted_pomp@covar %>%
+  # Generate basis functions for seasonality
+  covar_table <- periodic.bspline.basis(
+    the_data$time,
+    nbasis = 6,
+    degree = 3,
+    period = 1,
+    names = "xi%d"
+  ) %>%
     as_tibble() %>%
     mutate(
-      time = fitted_pomp@tcovar,
-      beta_mu = mle_beta
+      time = the_data$time
     )
   
-  times_data <- tibble(
-    time = covar_table$time
-  ) %>%
-    mutate(
-      x = 1:n()
-    )
-  
-  newtimes <- predict(
-    lm(time~x, data = times_data), 
-    newdata = data.frame(x = (nrow(covar_table)+1):(nrow(covar_table)*10))
+  sfact <- 0.00001
+  N1 <- fitted_pomp@covar[1, "N"]
+  global_str <- paste0(
+    "int K = 6; double mu = 0.05; double nu = 0.014;", 
+    " double sfact = ", sfact, ";", 
+    " double N1 = ", N1, ";",
+    " double beta_mu = ", mle_beta, ";"
   )
-  
-  extended_covar <- bind_rows(
-    covar_table,
-    tibble(
-      time = newtimes
-    )
-  )
-  
-  report_times <- newtimes[seq(1, length(newtimes), 7)]
-  
-  extende_obs_data <- bind_rows(obs_data, tibble(time = report_times))
-  
-  sfact = 0.00001
-  global_str <- paste0("int K = 6; ", "double sfact = ", sfact, ";")
   
   simulator_pomp <- pomp(
-    data = extende_obs_data,
+    data = the_data,
     times = "time",
     covar = covar_table,
     tcovar = "time",
-    t0 = fitted_pomp@t0,
+    t0 = min(the_data$time),
     rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
     rmeasure = measles_rmeasure,
     dmeasure = measles_dmeasure,
     initializer = initial_values,
-    statenames = c("S", "E", "I", "cases", "W", "RE_seas"),
+    statenames = c("S", "E", "I", "N", "cases", "W", "RE_seas"),
     toEstimationScale = to_estimation,
     fromEstimationScale = from_estimation,
     paramnames = names(mles),
@@ -245,7 +219,7 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   model_sims <- simulate(
     simulator_pomp,
-    nsim = 500,
+    nsim = 10,
     as.data.frame = TRUE,
     include.data = FALSE) %>%
     as_tibble()
@@ -271,54 +245,8 @@ for(DO_CITY in c("Agadez", "Maradi", "Niamey", "Zinder")){
     nest(-city)
   
   all_sims <- bind_rows(all_sims, tmp_re_sims)
-}
-
-
-# Save the simulations ----------------------------------------------------
-
-for(do_city in all_sims$city){
+  
   outfile <- paste0("../simulations/emergence-simulations-", do_city, ".RDS")
   saveRDS(object = filter(all_sims, city == do_city) %>% unnest(), file = outfile)
 }
 
-
-
-
-
-
-#
-# 
-# 
-# # Calculate AUC -----------------------------------------------------------
-# 
-# cats <- tibble(
-#   half = c("first", "second"),
-#   cat = c(0, 1)
-# )
-# 
-# ews_long <- ews_long %>%
-#   left_join(cats, by = "half")
-# 
-# auc_tbl <- {}
-# for(do_metric in unique(ews_long$metric)){
-#   tmp <- filter(ews_long, metric == do_metric)
-#   roc_obj <- roc(tmp$cat, tmp$value)
-#   tmp_auc <- auc(roc_obj)
-#   plot(roc_obj, main = do_metric)
-#   tmp_tbl <- tibble(
-#     metric = do_metric,
-#     auc = as.numeric(tmp_auc)
-#   )
-#   
-#   auc_tbl <- bind_rows(auc_tbl, tmp_tbl)
-# }
-# 
-# plt_tbl <- auc_tbl %>%
-#   filter(metric %in% c("variance", "autocovariance", "autocorrelation", 
-#                        "decay_time", "mean"))
-#   
-# ggplot(plt_tbl, aes(x = metric, y = auc-0.5)) +
-#   geom_col() +
-#   coord_flip() +
-#   scale_y_continuous(limits = c(0,0.5)) +
-#   theme_minimal()
