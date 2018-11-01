@@ -70,7 +70,6 @@ highest_mles <- mles %>%
 params <- colnames(mles)[4:ncol(mles)]
 params <- params[which(!params %in% c("b1","b2","b3","b4","b5","b6","tau","E_0","I_0","beta_sd"))]
 
-large_profile_grid <- {}
 do_param <- "rho"
 
 if(do_param == "beta_mu"){
@@ -91,7 +90,7 @@ if(do_param == "beta_mu"){
     ) %>%
     bind_rows(replicate(4, ., simplify = FALSE))
   
-  large_profile_grid <- rbind(large_profile_grid, tmp_grid)
+  large_profile_grid <- tmp_grid
 }
 
 if(do_param == "rho"){
@@ -100,6 +99,8 @@ if(do_param == "rho"){
   mu_values <- mean(tmp_values)
   alpha <- (((1-mu_values)/(sd_values^2)) - (1/mu_values)) * mu_values^2
   beta <- alpha*((1/mu_values)-1)
+  
+  set.seed(1234572)  # make sure each worker simulates the same distribution
   tmp_profile <- rbeta(grid_search_size, shape1 = alpha, shape2 = beta)
   
   tmp_grid <- highest_mles %>%
@@ -114,14 +115,14 @@ if(do_param == "rho"){
     ) %>%
     bind_rows(replicate(4, ., simplify = FALSE))
   
-  large_profile_grid <- rbind(large_profile_grid, tmp_grid)
+  large_profile_grid <- tmp_grid
 }
 
 
 # Perform MIF -------------------------------------------------------------
 
-particles <- 10000
-mif_iters <- 100
+particles <- 100
+mif_iters <- 10
 
 profile_params <- large_profile_grid[do_grid, ]
 profile_over <- profile_params[ , "profiled_param"]
