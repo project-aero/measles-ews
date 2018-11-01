@@ -34,7 +34,7 @@ auc_plot <- ggplot(auc_tbl, aes(x = metric, y = abs(AUC-0.5), fill = AUC)) +
   scale_fill_viridis_c(limits = c(0,1), direction = -1, option = "C") +
   facet_grid(simulation~city) +
   theme_minimal() +
-  labs(x = NULL, y = "|AUC - 0.5|")+
+  labs(x = NULL, y = "| AUC - 0.5 |")+
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"))
 

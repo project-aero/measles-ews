@@ -33,7 +33,7 @@ urlcolor: black
 \begin{centering}
 
 {\LARGE
-\textbf\newline{Early warning signals anticipate emergence\\in empirically-based simulations of measles dyanmics} 
+\textbf\newline{Early warning signals anticipate critical transitions\\in empirically-based simulations of measles dynamics in Niger} 
 }
 
 \vspace{2em}
@@ -184,7 +184,7 @@ Table: List of candidate early warning signals and their estimating equations. N
 
 # Results
 
-The fitted models were able to adequately reproduce observed dynamics (Figure 1), with $R^2$s ranging from 0.54 to 0.89 (Figure \ref{fig:scatters}).
+The fitted models adequately reproduced observed dynamics (Figure 1), with $R^2$s ranging from 0.54 to 0.89 (Figure \ref{fig:scatters}).
 
 \begin{figure}[!ht]
 \centering
