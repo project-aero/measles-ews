@@ -70,13 +70,18 @@ highest_mles <- mles %>%
 params <- colnames(mles)[4:ncol(mles)]
 params <- params[which(!params %in% c("b1","b2","b3","b4","b5","b6","tau","E_0","I_0","beta_sd"))]
 
-do_param <- "rho"
+do_param <- "beta_mu"
 
 if(do_param == "beta_mu"){
   tmp_values <- pull(mles, var = do_param)
-  min_value <- as.numeric(quantile(tmp_values, 0.01))
-  max_value <- as.numeric(quantile(tmp_values, 0.99))
-  tmp_profile <- exp(seq(from = log(min_value), to = log(max_value), length.out = grid_search_size))
+  sd_values <- sd(log(tmp_values))*2
+  mu_values <- mean(log(tmp_values))
+  set.seed(1234572)  # make sure each worker simulates the same distribution
+  tmp_profile <- rlnorm(grid_search_size, mu_values, sd_values)
+  
+  # min_value <- as.numeric(quantile(tmp_values, 0.01))
+  # max_value <- as.numeric(quantile(tmp_values, 0.99))
+  # tmp_profile <- exp(seq(from = log(min_value), to = log(max_value), length.out = grid_search_size))
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
@@ -94,6 +99,53 @@ if(do_param == "beta_mu"){
 }
 
 if(do_param == "rho"){
+  tmp_values <- pull(mles, var = do_param)
+  sd_values <- sd(tmp_values)*2
+  mu_values <- mean(tmp_values)
+  alpha <- (((1-mu_values)/(sd_values^2)) - (1/mu_values)) * mu_values^2
+  beta <- alpha*((1/mu_values)-1)
+  
+  set.seed(1234572)  # make sure each worker simulates the same distribution
+  tmp_profile <- rbeta(grid_search_size, shape1 = alpha, shape2 = beta)
+  
+  tmp_grid <- highest_mles %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+  tmp_grid[ , do_param] <- tmp_profile
+  tmp_grid <- tmp_grid %>%
+    dplyr::select(
+      beta_mu,beta_sd,b1,b2,b3,b4,b5,b6,iota,rho,S_0,E_0,I_0,tau
+    ) %>%
+    mutate(
+      profiled_param = do_param
+    ) %>%
+    bind_rows(replicate(4, ., simplify = FALSE))
+  
+  large_profile_grid <- tmp_grid
+}
+
+if(do_param == "iota"){
+  tmp_values <- pull(mles, var = do_param)
+  sd_values <- sd(log(tmp_values))*2
+  mu_values <- mean(log(tmp_values))
+  set.seed(1234572)  # make sure each worker simulates the same distribution
+  tmp_profile <- rlnorm(grid_search_size, mu_values, sd_values)
+  
+  tmp_grid <- highest_mles %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+  tmp_grid[ , do_param] <- tmp_profile
+  tmp_grid <- tmp_grid %>%
+    dplyr::select(
+      beta_mu,beta_sd,b1,b2,b3,b4,b5,b6,iota,rho,S_0,E_0,I_0,tau
+    ) %>%
+    mutate(
+      profiled_param = do_param
+    ) %>%
+    bind_rows(replicate(4, ., simplify = FALSE))
+  
+  large_profile_grid <- tmp_grid
+}
+
+if(do_param == "S_0"){
   tmp_values <- pull(mles, var = do_param)
   sd_values <- sd(tmp_values)*2
   mu_values <- mean(tmp_values)
