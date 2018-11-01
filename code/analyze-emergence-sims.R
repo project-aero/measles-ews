@@ -295,18 +295,20 @@ for(do_city in unique(ews_long$city)){
   }
 }
 
+write.csv(x = auc_tbl, "../results/emergence-aucs.csv")
+
 
 # plt_tbl <- auc_tbl %>%
 #   filter(metric %in% c("Variance", "Autocovar.", "Autocorr.",
 #                        "Decay time", "Mean"))
 
-auc_plot <- ggplot(auc_tbl, aes(x = metric, y = AUC-0.5, fill = AUC)) +
-  geom_col(position = position_dodge()) +
-  scale_y_continuous(limits = c(0,0.5)) +
-  scale_fill_viridis_c(limits = c(0,1), direction = -1, option = "C") +
-  facet_wrap(~city, nrow = 1) +
-  theme_minimal() +
-  labs(x = NULL)+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(panel.spacing = unit(1, "lines"))
-ggsave(filename = "../figures/sim-emergence-aucs.pdf", plot = auc_plot, width = 8.5, height = 2.8, units = "in")
+# auc_plot <- ggplot(auc_tbl, aes(x = metric, y = AUC-0.5, fill = AUC)) +
+#   geom_col(position = position_dodge()) +
+#   scale_y_continuous(limits = c(0,0.5)) +
+#   scale_fill_viridis_c(limits = c(0,1), direction = -1, option = "C") +
+#   facet_wrap(~city, nrow = 1) +
+#   theme_minimal() +
+#   labs(x = NULL)+
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#   theme(panel.spacing = unit(1, "lines"))
+# ggsave(filename = "../figures/sim-emergence-aucs.pdf", plot = auc_plot, width = 8.5, height = 2.8, units = "in")

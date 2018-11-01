@@ -1,0 +1,37 @@
+"","city","metric","AUC"
+"1","Zinder","Variance",0.99026
+"2","Zinder","Autocovar.",0.982204
+"3","Zinder","Autocorr.",0.968632
+"4","Zinder","Decay time",0.968336
+"5","Zinder","Mean",0.992626
+"6","Zinder","Index of dis.",0.961028
+"7","Zinder","Coeff. var.",0.908262
+"8","Zinder","Skewness",0.617668
+"9","Zinder","Kurtosis",0.585484
+"10","Niamey","Variance",0.672714
+"11","Niamey","Autocovar.",0.71788
+"12","Niamey","Autocorr.",0.829404
+"13","Niamey","Decay time",0.829404
+"14","Niamey","Mean",0.869552
+"15","Niamey","Index of dis.",0.51318
+"16","Niamey","Coeff. var.",0.997808
+"17","Niamey","Skewness",0.999128
+"18","Niamey","Kurtosis",0.998316
+"19","Maradi","Variance",0.993684
+"20","Maradi","Autocovar.",0.988488
+"21","Maradi","Autocorr.",0.968304
+"22","Maradi","Decay time",0.968304
+"23","Maradi","Mean",0.998512
+"24","Maradi","Index of dis.",0.932382
+"25","Maradi","Coeff. var.",0.839894
+"26","Maradi","Skewness",0.574704
+"27","Maradi","Kurtosis",0.566792
+"28","Agadez","Variance",0.99641
+"29","Agadez","Autocovar.",0.995004
+"30","Agadez","Autocorr.",0.987584
+"31","Agadez","Decay time",0.987584
+"32","Agadez","Mean",0.998296
+"33","Agadez","Index of dis.",0.982362
+"34","Agadez","Coeff. var.",0.701264
+"35","Agadez","Skewness",0.639296
+"36","Agadez","Kurtosis",0.664304

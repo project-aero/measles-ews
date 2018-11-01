@@ -204,7 +204,7 @@ Stochastic simulations from sub-critical ($\mathcal{R}_{E(t)} \ll 0$) to near-cr
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth]{../figures/sim-emergence-aucs.pdf}
+\includegraphics[width=\textwidth]{../figures/simulation-aucs.pdf}
 \caption{Performance of EWS calculated over two windows (far from and near $\mathcal{R}_{E(t)} = 1$) from the time series of 500 simulated dynamics. The two windows were defined as equally-sized windows over the course of the time series up to $\mathcal{R}_{E(t)} = 1$ (red lines in Figure \ref{fig:re-sims})}
 \label{fig:aucs}
 \end{figure}
