@@ -71,94 +71,114 @@ for(do_city in cities){
     
     tmp_mean <- tmp_sim %>%
       mutate(year = trunc(time)) %>%
+      mutate(
+        above = ifelse(RE_seas >= 1, 1, 0)
+      ) %>%
       group_by(year) %>%
       summarise(
-        avg_re = mean(RE_seas),
-        above = ifelse(avg_re >= 1, TRUE, FALSE)
+        sum_re = sum(above)
+      ) %>%
+      mutate(
+        trunc_re = ifelse(sum_re > (52/2), 1, 0)
       )
     
-    group_vec <- get_groups(tmp_mean$avg_re)
+    group_vec <- get_groups(tmp_mean$trunc_re)
     
     year_groups <- tibble(
       year = tmp_mean$year,
       group_id = as.factor(group_vec),
-      above = tmp_mean$above
+      above = tmp_mean$trunc_re
     )
     
     tmp_sim <- tmp_sim %>%
       mutate(year = trunc(time)) %>%
       left_join(year_groups, by = "year") %>%
-      filter(above == FALSE)
+      filter(above == 0) %>%
+      ungroup() %>%
+      group_by(group_id) %>%
+      slice(105:n()) %>%
+      ungroup()
+    
+    # ggplot(filter(tmp_sim, time < 301), aes(x = time, y = reports, color = group_id)) +
+      # geom_line()
+    
     
     for(do_group in unique(tmp_sim$group_id)){
       tmp_grp <- tmp_sim %>%
         filter(group_id == do_group)
       
-      tmp_times <- tmp_grp %>%
-        pull(time) %>%
-        unique()
-      
-      if((length(tmp_times) %% 2) != 0){
-        tmp_times <- tmp_times[2:length(tmp_times)]
+      if(nrow(tmp_grp) > 104){
+        tmp_times <- tmp_grp %>%
+          pull(time) %>%
+          unique()
+        
+        if((length(tmp_times) %% 2) != 0){
+          tmp_times <- tmp_times[2:length(tmp_times)]
+        }
+        
+        ews_time_ids <- tibble(
+          time = tmp_times,
+          half = c(
+            rep("first", length(tmp_times)/2), 
+            rep("second", length(tmp_times)/2)
+          )
+        )
+        
+        window_bandwidth <- length(tmp_times)/2
+        
+        tmp_data <- tmp_grp %>%
+          dplyr::select(city, time, RE_seas, reports, sim) %>%
+          left_join(ews_time_ids, by = "time") %>%
+          filter(is.na(half) == FALSE)
+        
+        tmp_first <- spaero::get_stats(
+          x = pull(filter(tmp_data, half == "first"), reports),
+          center_trend = "local_constant",
+          center_kernel = "uniform",
+          center_bandwidth = window_bandwidth,
+          stat_trend = "local_constant",
+          stat_kernel = "uniform",
+          stat_bandwidth = window_bandwidth,
+          lag = 1,
+          backward_only = FALSE)$stats
+        
+        tmp_second <- spaero::get_stats(
+          x = pull(filter(tmp_data, half == "second"), reports),
+          center_trend = "local_constant",
+          center_kernel = "uniform",
+          center_bandwidth = window_bandwidth,
+          stat_trend = "local_constant",
+          stat_kernel = "uniform",
+          stat_bandwidth = window_bandwidth,
+          lag = 1,
+          backward_only = FALSE)$stats
+        
+        tmp_out1 <- as_tibble(tmp_first) %>%
+          summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
+          mutate(
+            half = "first",
+            sim = i,
+            group = do_group
+          )
+        
+        tmp_out2 <- as_tibble(tmp_second) %>%
+          summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
+          mutate(
+            half = "second",
+            sim = i,
+            group = do_group
+          )
+        
+        tmp_out <- bind_rows(tmp_out1, tmp_out2) %>%
+          mutate(city = do_city)
+        
+        ews_out <- bind_rows(ews_out, tmp_out)
       }
       
-      ews_time_ids <- tibble(
-        time = tmp_times,
-        half = c(
-          rep("first", length(tmp_times)/2), 
-          rep("second", length(tmp_times)/2)
-        )
-      )
+      # plot(tmp_grp$reports, type = "l")
+      # lines(tmp_grp$RE_seas*100, col = "red")
       
-      window_bandwidth <- length(tmp_times)/2
       
-      tmp_data <- tmp_grp %>%
-        dplyr::select(city, time, RE_seas, reports, sim) %>%
-        left_join(ews_time_ids, by = "time") %>%
-        filter(is.na(half) == FALSE)
-      
-      tmp_first <- spaero::get_stats(
-        x = pull(filter(tmp_data, half == "first"), reports),
-        center_trend = "local_constant",
-        center_kernel = "uniform",
-        center_bandwidth = window_bandwidth,
-        stat_trend = "local_constant",
-        stat_kernel = "uniform",
-        stat_bandwidth = window_bandwidth,
-        lag = 1,
-        backward_only = FALSE)$stats
-      
-      tmp_second <- spaero::get_stats(
-        x = pull(filter(tmp_data, half == "second"), reports),
-        center_trend = "local_constant",
-        center_kernel = "uniform",
-        center_bandwidth = window_bandwidth,
-        stat_trend = "local_constant",
-        stat_kernel = "uniform",
-        stat_bandwidth = window_bandwidth,
-        lag = 1,
-        backward_only = FALSE)$stats
-      
-      tmp_out1 <- as_tibble(tmp_first) %>%
-        summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
-        mutate(
-          half = "first",
-          sim = i,
-          group = do_group
-        )
-      
-      tmp_out2 <- as_tibble(tmp_second) %>%
-        summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
-        mutate(
-          half = "second",
-          sim = i,
-          group = do_group
-        )
-      
-      tmp_out <- bind_rows(tmp_out1, tmp_out2) %>%
-        mutate(city = do_city)
-      
-      ews_out <- bind_rows(ews_out, tmp_out)
     }  # next group
     print(i)
   }  # next sim, i
@@ -184,6 +204,17 @@ ews_long <- ews_out %>%
     metric = ifelse(metric == "skewness", "Skewness", metric),
     metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
   )
+
+ggplot(filter(ews_long, city == "Niamey"), aes(fill = half, x = value)) +
+  geom_histogram(bins = 20) +
+  facet_wrap(~metric, scales = "free", nrow = 1) +
+  scale_fill_manual(values = ggthemes::ptol_pal()(2)) +
+  theme_minimal(base_size = 8) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Count", x = "") +
+  ggtitle(do_city)
+
+
 
 cats <- tibble(
   half = c("first", "second"),

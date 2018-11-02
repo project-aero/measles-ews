@@ -21,6 +21,7 @@ do_grid <- as.numeric(myargument)
 # Set city to model -------------------------------------------------------
 
 DO_CITY <- "Niamey"  # which city to model
+do_param <- "rho"
 
 
 # Load libraries ----------------------------------------------------------
@@ -56,12 +57,13 @@ mle_file <- paste0("initial-mif-lls-", DO_CITY, ".csv")
 mles <- read.csv(mle_file) %>%
   slice(2:n()) %>%
   na.omit() %>%
-  arrange(-loglik)
+  arrange(-loglik) %>%
+  slice(1:4000)  # leave out really out there values
 
 
 # Make grid for profile ---------------------------------------------------
 
-grid_search_size <- 100
+grid_search_size <- 200
 
 highest_mles <- mles %>%
   filter(loglik == max(loglik)) %>%
@@ -70,14 +72,14 @@ highest_mles <- mles %>%
 params <- colnames(mles)[4:ncol(mles)]
 params <- params[which(!params %in% c("b1","b2","b3","b4","b5","b6","tau","E_0","I_0","beta_sd"))]
 
-do_param <- "beta_mu"
-
 if(do_param == "beta_mu"){
   tmp_values <- pull(mles, var = do_param)
-  sd_values <- sd(log(tmp_values))*2
-  mu_values <- mean(log(tmp_values))
+  sd_values <- sd(tmp_values)*1.5
+  mu_values <- mean(tmp_values)
+  alpha <- mu_values^2 / sd_values^2
+  beta <- mu_values / sd_values^2
   set.seed(1234572)  # make sure each worker simulates the same distribution
-  tmp_profile <- rlnorm(grid_search_size, mu_values, sd_values)
+  tmp_profile <- rgamma(grid_search_size, alpha, beta)
   
   # min_value <- as.numeric(quantile(tmp_values, 0.01))
   # max_value <- as.numeric(quantile(tmp_values, 0.99))
@@ -100,7 +102,7 @@ if(do_param == "beta_mu"){
 
 if(do_param == "rho"){
   tmp_values <- pull(mles, var = do_param)
-  sd_values <- sd(tmp_values)*2
+  sd_values <- sd(tmp_values)*1.5
   mu_values <- mean(tmp_values)
   alpha <- (((1-mu_values)/(sd_values^2)) - (1/mu_values)) * mu_values^2
   beta <- alpha*((1/mu_values)-1)
@@ -125,10 +127,13 @@ if(do_param == "rho"){
 
 if(do_param == "iota"){
   tmp_values <- pull(mles, var = do_param)
-  sd_values <- sd(log(tmp_values))*2
-  mu_values <- mean(log(tmp_values))
+  tmp_values <- tmp_values[which(tmp_values < max(tmp_values))]
+  sd_values <- sd(tmp_values)*1.5
+  mu_values <- mean(tmp_values)
+  alpha <- mu_values^2 / sd_values^2
+  beta <- mu_values / sd_values^2
   set.seed(1234572)  # make sure each worker simulates the same distribution
-  tmp_profile <- rlnorm(grid_search_size, mu_values, sd_values)
+  tmp_profile <- rgamma(grid_search_size, alpha, beta)
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
@@ -147,7 +152,7 @@ if(do_param == "iota"){
 
 if(do_param == "S_0"){
   tmp_values <- pull(mles, var = do_param)
-  sd_values <- sd(tmp_values)*2
+  sd_values <- sd(tmp_values)*1.5
   mu_values <- mean(tmp_values)
   alpha <- (((1-mu_values)/(sd_values^2)) - (1/mu_values)) * mu_values^2
   beta <- alpha*((1/mu_values)-1)
@@ -173,8 +178,8 @@ if(do_param == "S_0"){
 
 # Perform MIF -------------------------------------------------------------
 
-particles <- 100
-mif_iters <- 10
+particles <- 10000
+mif_iters <- 100
 
 profile_params <- large_profile_grid[do_grid, ]
 profile_over <- profile_params[ , "profiled_param"]

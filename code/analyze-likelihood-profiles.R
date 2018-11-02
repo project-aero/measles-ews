@@ -49,7 +49,6 @@ library(ggthemes)
 
 
 # Niamey, beta profile ----------------------------------------------------
-
 profile_data <- read.csv("../results/loglik-profile-beta-Niamey.csv") %>%
   slice(2:n()) %>%
   drop_na()
@@ -58,14 +57,14 @@ do_param <- unique(profile_data$parameter)
 mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
 
 ggplot(mcap_out$fit, aes(x=parameter)) +
-  geom_point(data = profile_data, aes(x = value, y = loglik), shape = 1, size = 2, color = "grey50") +
-  geom_line(aes(y = smoothed), color = "coral", size = 1) +
-  geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
-  geom_vline(aes(xintercept = mcap_out$ci[1]), color = "coral") +
-  geom_vline(aes(xintercept = mcap_out$ci[2]), color = "coral") +
-  geom_hline(aes(yintercept = mcap_out$delta_line), color = "coral") +
+  geom_point(data = profile_data, aes(x = value, y = loglik), shape = 19, size = 2, color = "grey50", alpha = 0.1) +
+  geom_line(aes(y = smoothed), color = ptol_pal()(2)[2], size = 1) +
+  geom_line(aes(y = quadratic), color = ptol_pal()(2)[1], linetype = 2, size = 1) +
+  geom_vline(aes(xintercept = mcap_out$ci[1]), color = ptol_pal()(2)[2]) +
+  geom_vline(aes(xintercept = mcap_out$ci[2]), color = ptol_pal()(2)[2]) +
+  geom_hline(aes(yintercept = mcap_out$delta_line), color = ptol_pal()(2)[2]) +
   labs(x = expression(beta), y = "profile log-likelihood") +
-  coord_cartesian(xlim = c(50, 1000), ylim = c(-1500, -1450)) +
+  # coord_cartesian(xlim = c(50, 1000), ylim = c(-1500, -1450)) +
   ggtitle(paste0("95% CI: ", round(mcap_out$ci,2)[1], " - ", round(mcap_out$ci,2)[2]))
 
 

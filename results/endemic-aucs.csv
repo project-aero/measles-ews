@@ -1,37 +1,37 @@
 "","city","metric","AUC"
-"1","Agadez","Variance",0.964009518143962
-"2","Agadez","Autocovar.",0.959845330160619
-"3","Agadez","Autocorr.",0.802349791790601
-"4","Agadez","Decay time",0.802349791790601
-"5","Agadez","Mean",0.975163593099346
-"6","Agadez","Index of dis.",0.944378346222487
-"7","Agadez","Coeff. var.",0.631320642474717
-"8","Agadez","Skewness",0.577186198691255
-"9","Agadez","Kurtosis",0.558744794765021
-"10","Maradi","Variance",0.959325396825397
-"11","Maradi","Autocovar.",0.956916099773243
-"12","Maradi","Autocorr.",0.793331916099773
-"13","Maradi","Decay time",0.793331916099773
-"14","Maradi","Mean",0.978528911564626
-"15","Maradi","Index of dis.",0.927331349206349
-"16","Maradi","Coeff. var.",0.639703798185941
-"17","Maradi","Skewness",0.54343820861678
-"18","Maradi","Kurtosis",0.508857709750567
-"19","Niamey","Variance",0.974420805225726
-"20","Niamey","Autocovar.",0.974329232929398
-"21","Niamey","Autocorr.",0.798693568572388
-"22","Niamey","Decay time",0.798693568572388
-"23","Niamey","Mean",0.985073715698544
-"24","Niamey","Index of dis.",0.94755959830286
-"25","Niamey","Coeff. var.",0.660572021611062
-"26","Niamey","Skewness",0.578645340496322
-"27","Niamey","Kurtosis",0.554653398858399
-"28","Zinder","Variance",0.985349037632864
-"29","Zinder","Autocovar.",0.984056305659293
-"30","Zinder","Autocorr.",0.856650387819592
-"31","Zinder","Decay time",0.856650387819592
-"32","Zinder","Mean",0.993608158575122
-"33","Zinder","Index of dis.",0.965886239586326
-"34","Zinder","Coeff. var.",0.595877621373169
-"35","Zinder","Skewness",0.534472852628555
-"36","Zinder","Kurtosis",0.488509049123815
+"1","Agadez","Variance",0.561176040905771
+"2","Agadez","Autocovar.",0.553140978816654
+"3","Agadez","Autocorr.",0.579072315558802
+"4","Agadez","Decay time",0.579072315558802
+"5","Agadez","Mean",0.561084733382031
+"6","Agadez","Index of dis.",0.553688823959094
+"7","Agadez","Coeff. var.",0.522644265887509
+"8","Agadez","Skewness",0.495617238860482
+"9","Agadez","Kurtosis",0.496165084002922
+"10","Maradi","Variance",0.519266010802469
+"11","Maradi","Autocovar.",0.480444637345679
+"12","Maradi","Autocorr.",0.476152584876543
+"13","Maradi","Decay time",0.475887345679012
+"14","Maradi","Mean",0.512490354938272
+"15","Maradi","Index of dis.",0.479962384259259
+"16","Maradi","Coeff. var.",0.569468557098765
+"17","Maradi","Skewness",0.50147087191358
+"18","Maradi","Kurtosis",0.492259837962963
+"19","Niamey","Variance",0.674047807974608
+"20","Niamey","Autocovar.",0.660409640944257
+"21","Niamey","Autocorr.",0.652003570720095
+"22","Niamey","Decay time",0.65349137075977
+"23","Niamey","Mean",0.677122594723269
+"24","Niamey","Index of dis.",0.668493354493156
+"25","Niamey","Coeff. var.",0.493032136480857
+"26","Niamey","Skewness",0.511406466970839
+"27","Niamey","Kurtosis",0.5
+"28","Zinder","Variance",0.514013605442177
+"29","Zinder","Autocovar.",0.507392290249433
+"30","Zinder","Autocorr.",0.504036281179138
+"31","Zinder","Decay time",0.504399092970522
+"32","Zinder","Mean",0.508571428571429
+"33","Zinder","Index of dis.",0.512743764172336
+"34","Zinder","Coeff. var.",0.523718820861678
+"35","Zinder","Skewness",0.491972789115646
+"36","Zinder","Kurtosis",0.495328798185941
