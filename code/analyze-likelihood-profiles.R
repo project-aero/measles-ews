@@ -2,7 +2,7 @@
 
 mcap <- function(lp,parameter,confidence=0.95,lambda=0.75,Ngrid=1000)
 {
-  smooth_fit <- loess(lp ~ parameter,span=lambda)
+  smooth_fit <- loess(lp ~ parameter, span=lambda)
   parameter_grid <- seq(min(parameter), max(parameter), length.out = Ngrid)
   smoothed_loglik <- predict(smooth_fit,newdata=parameter_grid)
   smooth_arg_max <- parameter_grid[which.max(smoothed_loglik)]
@@ -12,8 +12,7 @@ mcap <- function(lp,parameter,confidence=0.95,lambda=0.75,Ngrid=1000)
   weight <- rep(0,length(parameter))
   weight[included] <- (1-(dist[included]/maxdist)^3)^3
   quadratic_fit <- lm(lp ~ a + b, weight=weight,
-                      data = data.frame(lp=lp,b=parameter,a=-parameter^2)
-  )
+                      data = data.frame(lp=lp,b=parameter,a=-parameter^2))
   b <- unname(coef(quadratic_fit)["b"] )
   a <- unname(coef(quadratic_fit)["a"] )
   m <- vcov(quadratic_fit)
@@ -51,12 +50,12 @@ library(ggthemes)
 # Niamey, beta profile ----------------------------------------------------
 profile_data <- read.csv("../results/loglik-profile-beta-Niamey.csv") %>%
   slice(2:n()) %>%
-  drop_na()
+  drop_na() 
 
 do_param <- unique(profile_data$parameter)
 mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
 
-ggplot(mcap_out$fit, aes(x=parameter)) +
+ggplot(mcap_out$fit, aes(x=parameter, shape )) +
   geom_point(data = profile_data, aes(x = value, y = loglik), shape = 19, size = 2, color = "grey50", alpha = 0.1) +
   geom_line(aes(y = smoothed), color = ptol_pal()(2)[2], size = 1) +
   geom_line(aes(y = quadratic), color = ptol_pal()(2)[1], linetype = 2, size = 1) +
@@ -72,7 +71,11 @@ ggplot(mcap_out$fit, aes(x=parameter)) +
 
 profile_data <- read.csv("../results/loglik-profile-rho-Niamey.csv") %>%
   slice(2:n()) %>%
-  drop_na()
+  drop_na() %>%
+  group_by(value) %>%
+  summarise(
+    loglik = logmeanexp(loglik)
+  )
 
 do_param <- unique(profile_data$parameter)
 mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
@@ -89,25 +92,26 @@ ggplot(mcap_out$fit, aes(x=parameter)) +
   ggtitle(paste0("95% CI: ", round(mcap_out$ci,2)[1], " - ", round(mcap_out$ci,2)[2]))
 
 
+# Niamey, iota profile ----------------------------------------------------
 
-# all_params <- all_profile_data$parameter
-# counter = 1
-# gout <- list()
-# for(do_param in all_params){
-#   profile_data <- filter(all_profile_data, parameter == do_param) %>% drop_na()
-#   
-#   test <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
-#   
-#   ggplot(test$fit, aes(x=parameter)) +
-#     geom_point(data = profile_data, aes(x = value, y = loglik), size = 2, color = "grey50") +
-#     geom_line(aes(y = smoothed), color = "coral", size = 1) +
-#     geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
-#     geom_vline(aes(xintercept = test$ci[1]), color = "coral") +
-#     geom_vline(aes(xintercept = test$ci[2]), color = "coral") +
-#     geom_hline(aes(yintercept = test$delta_line), color = "coral") +
-#     labs(x = "parameter value", y = "profile log-likelihood") +
-#     ggtitle(paste0(do_param," 95% CI: ", round(test$ci,2)[1], " - ", round(test$ci,2)[2]))
-# 
-#   counter = counter+1
-# }
+profile_data <- read.csv("../results/loglik-profile-iota-Niamey.csv") %>%
+  slice(2:n()) %>%
+  drop_na()
+
+do_param <- unique(profile_data$parameter)
+mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
+
+ggplot(mcap_out$fit, aes(x=parameter)) +
+  geom_point(data = profile_data, aes(x = value, y = loglik), shape = 1, size = 2, color = "grey50") +
+  geom_line(aes(y = smoothed), color = "coral", size = 1) +
+  geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
+  geom_vline(aes(xintercept = mcap_out$ci[1]), color = "coral") +
+  geom_vline(aes(xintercept = mcap_out$ci[2]), color = "coral") +
+  geom_hline(aes(yintercept = mcap_out$delta_line), color = "coral") +
+  labs(x = expression(rho), y = "profile log-likelihood") +
+  # coord_cartesian(ylim = c(-5000, -1450)) +
+  ggtitle(paste0("95% CI: ", round(mcap_out$ci,2)[1], " - ", round(mcap_out$ci,2)[2]))
+
+
+
 

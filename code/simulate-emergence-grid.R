@@ -15,8 +15,10 @@ discount_grid <- c(0.0001, seq(0.1, 1, length.out = 10))
 
 library(tidyverse)
 library(pomp)
-library(spaero)
 library(foreach)
+library(doParallel)  # functions for parallel computing
+
+registerDoParallel()
 source("make-pomp-simulator-function.R")
 
 
@@ -42,7 +44,8 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   # Simulate from the new pomp object ---------------------------------------
   
-  outsims <- foreach(i = discount_grid, .packages = c("pomp", "tidyverse", "dplyr"), .combine = "rbind"){
+  outsims <- foreach(i = discount_grid, .packages = c("pomp", "tidyverse", "dplyr"), .combine = "rbind") %dopar%
+  {
     simulator_pomp <- make_pomp_simulator(
       do_city, 
       mles, 
@@ -63,11 +66,10 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       mutate(
         city = do_city,
         susc_discount = i
-      ) %>%
-      nest(-city)
+      )
+    
+    outfile <- paste0("../simulations/emergence-simulations-grid-", do_city, "-", i, ".RDS")
+    saveRDS(object = tmp_re_sims, file = outfile)
   }
-
-  outfile <- paste0("../simulations/emergence-simulations-", do_city, ".RDS")
-  saveRDS(object = filter(all_sims, city == do_city) %>% unnest(), file = outfile)
+  
 }
-

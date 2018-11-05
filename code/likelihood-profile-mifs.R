@@ -21,7 +21,7 @@ do_grid <- as.numeric(myargument)
 # Set city to model -------------------------------------------------------
 
 DO_CITY <- "Niamey"  # which city to model
-do_param <- "iota"
+do_param <- "beta_mu"
 
 
 # Load libraries ----------------------------------------------------------
@@ -178,6 +178,7 @@ if(do_param == "S_0"){
 
 # Perform MIF -------------------------------------------------------------
 
+set.seed(NULL)
 particles <- 10000
 mif_iters <- 100
 

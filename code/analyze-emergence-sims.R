@@ -16,12 +16,13 @@ library(spaero)
 # Load simulations --------------------------------------------------------
 
 all_files <- list.files("../simulations/")
-sim_file_ids <- grep("emergence", all_files)
+sim_file_ids <- grep("emergence-simulations-grid", all_files)
 sim_files <- all_files[sim_file_ids]
 all_sims <- {}
 for(do_file in sim_files){
   tmp_file <- paste0("../simulations/", do_file)
-  tmp <- readRDS(tmp_file)
+  tmp <- readRDS(tmp_file) %>%
+    filter(time > 0 & susc_discount < 0.6)
   all_sims <- bind_rows(all_sims, tmp)
 }
 
@@ -29,19 +30,19 @@ for(do_file in sim_files){
 # Calculate yearly average RE ---------------------------------------------
 
 re_time_avg <- all_sims %>%
-  group_by(city, time) %>%
+  group_by(city, time, susc_discount) %>%
   summarise(mean_re = mean(RE_seas)) %>%
   mutate(
     year = round(time)
   ) %>%
   ungroup() %>%
-  group_by(city, year) %>%
+  group_by(city, year, susc_discount) %>%
   summarise(time_mean_re = mean(mean_re)) %>%
   filter(year <= 20)
 
 re_one_year <- re_time_avg %>%
   ungroup() %>%
-  group_by(city) %>%
+  group_by(city, susc_discount) %>%
   filter(round(time_mean_re,1) >= 1) %>%
   dplyr::select(city, year) %>%
   filter(year == min(year)) %>%
@@ -69,7 +70,7 @@ re_series <- ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
   geom_line(size = 0.4, color = ptol_pal()(2)[1]) +
   geom_point(size = 1, color = ptol_pal()(2)[1]) +
   labs(x = "Simulation year", y = expression(R[E](t))) +
-  facet_wrap(~city, ncol = 1) +
+  facet_grid(susc_discount~city) +
   theme_minimal() 
 
 ggsave(
@@ -89,45 +90,48 @@ data_for_ews <- tibble()
 bws <- tibble()
 
 for(do_city in unique(all_sims$city)){
-  tmpsims <- all_sims %>%
-    filter(city == do_city)
-  
-  tmpyear <- re_one_year %>%
-    filter(city == do_city) %>%
-    pull(year)
-  
-  tmptimes <- tmpsims %>%
-    filter(round(time) < tmpyear) %>%
-    pull(time) %>%
-    unique()
-  
-  if((length(tmptimes) %% 2) != 0){
-    tmptimes <- tmptimes[2:length(tmptimes)]
-  }
-  
-  ews_time_ids <- tibble(
-    time = tmptimes,
-    half = c(
-      rep("first", length(tmptimes)/2), 
-      rep("second", length(tmptimes)/2)
+  for(do_discount in unique(all_sims$susc_discount)){
+    tmpsims <- all_sims %>%
+      filter(city == do_city & susc_discount == do_discount)
+    
+    tmpyear <- re_one_year %>%
+      filter(city == do_city & susc_discount == do_discount) %>%
+      pull(year)
+    
+    tmptimes <- tmpsims %>%
+      filter(round(time) < tmpyear) %>%
+      pull(time) %>%
+      unique()
+    
+    if((length(tmptimes) %% 2) != 0){
+      tmptimes <- tmptimes[2:length(tmptimes)]
+    }
+    
+    ews_time_ids <- tibble(
+      time = tmptimes,
+      half = c(
+        rep("first", length(tmptimes)/2), 
+        rep("second", length(tmptimes)/2)
       )
-  )
-  
-  window_bandwidth <- length(tmptimes)/2
-  
-  tmp_ews_data <- tmpsims %>%
-    dplyr::select(city, time, reports, sim) %>%
-    left_join(ews_time_ids, by = "time") %>%
-    filter(is.na(half) == FALSE)
-  
-  data_for_ews <- bind_rows(tmp_ews_data, data_for_ews)
-  bws <- bind_rows(
-    bws, 
-    tibble(
-      city = do_city,
-      bandwidth = window_bandwidth
     )
-  )
+    
+    window_bandwidth <- length(tmptimes)/2
+    
+    tmp_ews_data <- tmpsims %>%
+      dplyr::select(city, time, reports, sim) %>%
+      left_join(ews_time_ids, by = "time") %>%
+      filter(is.na(half) == FALSE)
+    
+    data_for_ews <- bind_rows(tmp_ews_data, data_for_ews)
+    bws <- bind_rows(
+      bws, 
+      tibble(
+        city = do_city,
+        susc_discount = do_discount,
+        bandwidth = window_bandwidth
+      )
+    )
+  }
 }
 
 
