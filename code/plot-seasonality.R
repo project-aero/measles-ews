@@ -79,12 +79,16 @@ for(do_city in unique(b_splines$city)){
   seasonal_beta <- bind_rows(seasonal_beta, seasonal_tmp)
 }
 
+seasonal_beta <- seasonal_beta %>%
+  mutate(
+    date = as.Date(day, origin = "2016-12-31",tz = "UTC")
+  )
 
-
-ggplot(seasonal_beta, aes(x = day, y = beta, color = city)) +
+ggplot(seasonal_beta, aes(x = date, y = beta, color = city)) +
   geom_line(size = 1) +
-  labs(x = "Day of year", y = expression(paste("Tranmission rate, ",beta, " (", yr^-1, ")"))) +
+  labs(x = "Date", y = expression(paste("Tranmission rate, ",beta, " (", yr^-1, ")"))) +
   scale_color_manual(values = ggthemes::ptol_pal()(4), name = NULL) +
+  scale_x_date(date_labels = "%b", date_breaks = "2 months") +
   theme_minimal() +
   theme(legend.position = c(0.7, 0.8), legend.box.background = element_rect(color = "white"))
 

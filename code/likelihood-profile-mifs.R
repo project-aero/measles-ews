@@ -102,7 +102,7 @@ if(do_param == "beta_mu"){
 
 if(do_param == "rho"){
   tmp_values <- pull(mles, var = do_param)
-  sd_values <- sd(tmp_values)*1.5
+  sd_values <- sd(tmp_values)*3
   mu_values <- mean(tmp_values)
   alpha <- (((1-mu_values)/(sd_values^2)) - (1/mu_values)) * mu_values^2
   beta <- alpha*((1/mu_values)-1)
