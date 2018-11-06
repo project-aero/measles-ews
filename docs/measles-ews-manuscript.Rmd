@@ -39,9 +39,9 @@ urlcolor: black
 \vspace{2em}
 
 Andrew T. Tredennick\textsuperscript{1,2}\footnote[1]{Corresponding author: atredenn@gmail.com},
-Pejman Rohani\textsuperscript{1,2},
 Eamon O'Dea\textsuperscript{1,2},
 Tobias Brett\textsuperscript{1,2},
+Pejman Rohani\textsuperscript{1,2},
 \& John M. Drake\textsuperscript{1,2}
 \\
 \bigskip
@@ -194,6 +194,49 @@ The fitted models adequately reproduced observed dynamics (Figure 1), with $R^2$
 \end{figure}
 
 Stochastic simulations from sub-critical ($\mathcal{R}_{E(t)} \ll 0$) to near-critical dynamics ($\mathcal{R}_{E(t)} \approx 1$) differed among the four cities (Figure \ref{fig:re-sims}).
+
+```{r mles, warning=FALSE, message=FALSE, results='asis', echo=FALSE}
+library(tidyverse)
+library(dplyr)
+library(xtable)
+
+options(xtable.comment = FALSE)
+
+result_files <- list.files("../results/")
+mle_files <- result_files[grep("initial-mif-lls", result_files)]
+
+mles <- tibble()
+for(do_file in mle_files){
+  tmp <- read.csv(paste0("../results/", do_file)) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(loglik, loglik_se, beta_mu, beta_sd, iota, rho, S_0) %>%
+    gather() %>%
+    mutate(city = str_sub(do_file, 17, (nchar(do_file)-4)))
+  
+  mles <- bind_rows(mles, tmp)
+}
+
+mles_table <- mles %>%
+  spread(key = key, value = value) %>%
+  arrange(city) %>%
+  mutate(
+    loglik_and_se = paste0(round(loglik,2), " (", round(loglik_se,2), ")")
+  ) %>%
+  dplyr::select(city, loglik_and_se, beta_mu, beta_sd, iota, rho, S_0) %>%
+  dplyr::rename(
+    City = city,
+    `Log likelihood (S.E.)` = loglik_and_se,
+    `$\\beta$` = beta_mu,
+    `$\\sigma$` = beta_sd,
+    `$\\psi$` = iota,
+    `$\\rho$` = rho,
+    `$\\textsl{S}_{t=0}$` = S_0
+  )
+
+print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estimates for select epidemiological parameters."), caption.placement = "top", include.rownames = F, sanitize.colnames.function = identity)
+
+```
 
 \begin{figure}[!ht]
 \centering
