@@ -21,7 +21,7 @@ do_grid <- as.numeric(myargument)
 # Set city to model -------------------------------------------------------
 
 DO_CITY <- "Niamey"  # which city to model
-do_param <- "beta_mu"
+do_param <- "rho"
 
 
 # Load libraries ----------------------------------------------------------

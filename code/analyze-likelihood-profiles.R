@@ -50,7 +50,8 @@ library(ggthemes)
 # Niamey, beta profile ----------------------------------------------------
 profile_data <- read.csv("../results/loglik-profile-beta-Niamey.csv") %>%
   slice(2:n()) %>%
-  drop_na() 
+  drop_na() %>%
+  arrange(value)
 
 do_param <- unique(profile_data$parameter)
 mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
