@@ -84,13 +84,14 @@ seasonal_beta <- seasonal_beta %>%
     date = as.Date(day, origin = "2016-12-31",tz = "UTC")
   )
 
-ggplot(seasonal_beta, aes(x = date, y = beta, color = city)) +
+season_plot <- ggplot(seasonal_beta, aes(x = date, y = beta, color = city)) +
   geom_line(size = 1) +
   labs(x = "Date", y = expression(paste("Tranmission rate, ",beta, " (", yr^-1, ")"))) +
   scale_color_manual(values = ggthemes::ptol_pal()(4), name = NULL) +
   scale_x_date(date_labels = "%b", date_breaks = "2 months") +
   theme_minimal() +
   theme(legend.position = c(0.7, 0.8), legend.box.background = element_rect(color = "white"))
+ggsave(filename = "../figures/seasonal-transmission-all-cities.pdf", plot = season_plot, width = 4, height = 4, units = "in")
 
 seasonal_beta %>%
   group_by(city) %>%

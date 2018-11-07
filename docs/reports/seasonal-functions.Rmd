@@ -96,3 +96,37 @@ ggplot(seasonal_betas, aes(x = day, y = beta)) +
   facet_wrap(~city) +
   viridis::scale_color_viridis(direction = 1, option = "B")
 ```
+
+##  Tranmission rate versus reporting fraction
+
+```{r plot-beta-rho}
+mles_with_diffs <- mles %>%
+  filter(mle_rank < 31) %>%
+  group_by(city) %>%
+  mutate(
+    loglik_diff = loglik - max(loglik)
+  )
+
+ggplot(filter(mles_with_diffs, city == "Agadez"), aes(x = beta_mu, y = rho)) +
+  # geom_point(aes(color = loglik_diff)) +
+  geom_text(aes(label = round(loglik_diff,2), color = mle_rank)) +
+  facet_wrap(~city) +
+  viridis::scale_color_viridis(direction = -1, option = "B")
+```
+
+##  Transmission rate versus imports
+
+```{r plot-beta-iota}
+mles_with_diffs <- mles %>%
+  filter(mle_rank < 31) %>%
+  group_by(city) %>%
+  mutate(
+    loglik_diff = loglik - max(loglik)
+  )
+
+ggplot(filter(mles_with_diffs, city == "Agadez"), aes(x = beta_mu, y = iota)) +
+  # geom_point(aes(color = loglik_diff)) +
+  geom_text(aes(label = round(loglik_diff,2), color = mle_rank)) +
+  facet_wrap(~city) +
+  viridis::scale_color_viridis(direction = -1, option = "B")
+```
