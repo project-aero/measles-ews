@@ -120,9 +120,8 @@ season <- bases %>%
 mles <- mif_finals %>%
   filter(loglik < 0) %>%
   # filter(loglik == max(loglik, na.rm = T)) %>%
-  # filter(do_grid == 667) %>%
+  filter(do_grid == 4304) %>%
   arrange(-loglik) %>%
-  slice(3)
   dplyr::select(-do_grid, -loglik, -loglik_se)
 
 qis <- mles %>%

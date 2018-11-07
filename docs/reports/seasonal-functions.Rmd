@@ -1,0 +1,98 @@
+---
+title: "A couple seasonal transmission functions"
+output: html_document
+---
+
+```{r read-files}
+library(tidyverse)
+library(dplyr)
+library(pomp)
+
+all_files <- list.files("../../results/")
+mle_ids <- grep("initial-mif-lls", all_files)
+mle_files <- all_files[mle_ids]
+
+mles <- tibble()
+for(do_file in mle_files){
+  city_name <- str_sub(do_file, 17, nchar(do_file)-4)
+  city_mles <- read.csv(paste0("../../results/", do_file)) %>%
+    drop_na() %>%
+    arrange(-loglik) %>%
+    slice(1:100) %>%
+    dplyr::select(-do_grid, -loglik_se) %>%
+    mutate(
+      city = city_name,
+      mle_rank = 1:n()
+    )
+  
+  mles <- bind_rows(mles, city_mles)
+}
+```
+
+## MLEs for each city
+
+```{r print-mles}
+max_mles <- mles %>%
+  group_by(city) %>%
+  filter(loglik == max(loglik)) %>%
+  dplyr::select(-mle_rank)
+
+knitr::kable(max_mles)
+```
+
+##  Seasonal transmission functions
+
+```{r plot-seasons}
+exemplar_pomp <- readRDS("../../code/measles-pomp-object-Agadez.RDS")
+
+bases <- as_tibble(exemplar_pomp@covar) %>%
+  dplyr::select(starts_with("x")) %>%
+  dplyr::slice(1:365) %>%
+  mutate(
+    day = 1:365
+  ) %>%
+  gather(key = base, value = value, -day) %>%
+  spread(key = base, value = value) %>%
+  dplyr::select(-day) %>%
+  as.matrix()
+
+seasonal_betas <- tibble()
+for(do_city in unique(mles$city)){
+  city_mles <- mles %>%
+    filter(city == do_city) %>%
+    slice(1:50)
+  
+  for(do_beta in unique(city_mles$beta_mu)){
+    qis <- city_mles %>%
+      filter(beta_mu == as.numeric(do_beta)) %>%
+      dplyr::select(starts_with("b")) %>%
+      dplyr::select(-beta_mu, -beta_sd) %>%
+      t()
+    
+    ll <- city_mles %>%
+      filter(beta_mu == as.numeric(do_beta)) %>%
+      pull(loglik)
+    
+    seasonal_tmp <- tibble(
+      beta = as.numeric((1+exp(bases %*% qis)) * as.numeric(do_beta)),
+      day = 1:365,
+      beta_mu = as.numeric(do_beta),
+      city = do_city,
+      loglik = ll
+      )
+    
+    seasonal_betas <- bind_rows(seasonal_betas, seasonal_tmp)
+  }
+}
+
+seasonal_betas <- seasonal_betas %>%
+  group_by(city) %>%
+  mutate(
+    loglik_diff = loglik - max(loglik)
+  )
+
+ggplot(seasonal_betas, aes(x = day, y = beta)) +
+  geom_line(aes(color = loglik_diff, group = beta_mu), alpha = 0.5) +
+  facet_wrap(~city) +
+  viridis::scale_color_viridis(direction = 1, option = "B")
+```
