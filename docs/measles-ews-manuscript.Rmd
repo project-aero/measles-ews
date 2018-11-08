@@ -1,4 +1,5 @@
 ---
+csl: ecology.csl
 fontsize: 11pt
 geometry: margin=1in
 header-includes:
@@ -25,6 +26,7 @@ output:
     fig_caption: yes
     keep_tex: no
 urlcolor: black
+bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 ---
 \renewcommand{\thefootnote}{\fnsymbol{footnote}}
 \raggedright
@@ -61,18 +63,18 @@ Forecasting the trajectory of infectious disease outbreaks over time is a fundam
 
 Theory shows that epidemic transitions can be anticipated by trends in the statistical properties of disease time series (AERO papers).
 The existence of statistical trends in the data that precede critical transitions, so-called 'early warning signals' (EWS), imply that we may be able to anticipate disease emergence and outbreaks.
-The end goal is a model-independent detection system, where statistical properties of disease surveilence data can trigger warnings of impending outbreaks without the need to fit mechanistic models of disease transmission (Han and Drake 2017).
+The end goal is a model-independent detection system, where statistical properties of disease surveilence data can trigger warnings of impending outbreaks without the need to fit mechanistic models of disease transmission [@Han2016].
 
 However, there is currently a gap between the theoretical work, which has relied on knowing the underlying disease dynamics, and the eventual goal of applying EWS in real-world situations where the underlying disease dynamics may be unknown.
-Theoretical development of EWS has focused on anticipating when the population becomes supercritical, when $\mathcal{R}_0 > 1$, after which an outbreak is inevitable, perhaps with some bifurcation delay (Dibble et al. 2016).
-Knowing the value of $\mathcal{R}_0$ through time makes it possible to test the accuracy of EWS that are estimated from state variables alone.
-Empirical application of EWS does not require knowing the value of $\mathcal{R}_0$ through time, meaning that "tests" require making assumptions about when critical transitions occur.
+Theoretical development of EWS has focused on anticipating when the population becomes supercritical, when $R_0 > 1$, after which an outbreak is inevitable, perhaps with some bifurcation delay [@Dibble2016].
+Knowing the value of $R_0$ through time makes it possible to test the accuracy of EWS that are estimated from state variables alone.
+Empirical application of EWS does not require knowing the value of $R_0$ through time, meaning that "tests" require making assumptions about when critical transitions occur.
 Whether EWS track and/or anticipate underlying dynamics of real disease time series remains unknown, and is a critical knowledge gap that must be filled before EWS can confidently be deployed.
 
 To fill this gap we will fit a mechanistic model to incidence data of measles in Niger to estimate the temporal epidemiology of the disease, yielding the very same parameters that are known in data-free modeling studies.
-In particular, we are interested in the correlation between EWS and the time-varying repreoductive ratio, known as the effective reprodutive ratio $\left(\mathcal{R}_E\right)$.
-If EWS and $\mathcal{R}_E$ are significantly and positively correlated, then we have empirical evidence that EWS are applicable in real-world settings.
-If EWS and $\mathcal{R}_E$ are negatively correlated or not significantly posivitely correlated, then we have evidence that EWS may not be applicable in certain settings.
+In particular, we are interested in the correlation between EWS and the time-varying repreoductive ratio, known as the effective reprodutive ratio $\left(R_E\right)$.
+If EWS and $R_E$ are significantly and positively correlated, then we have empirical evidence that EWS are applicable in real-world settings.
+If EWS and $R_E$ are negatively correlated or not significantly posivitely correlated, then we have evidence that EWS may not be applicable in certain settings.
 
 # Materials and Methods
 
@@ -127,13 +129,13 @@ We model rate of transmission as:
 
 $\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
-The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as a gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ (Bretó and Ionides 2011).
+The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as a gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
 
 We do not include a death process in the model because the rate of infection is much faster than the rate of death.
 Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
 We model demographic stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
 Transitions in the model are shown in Table 1.
-In this model, the effective reproductive ratio at time *t* is: $\mathcal{R}_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
+In this model, the effective reproductive ratio at time *t* is: $R_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
 
 We assume observed case reports ($\textbf{y}$) are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
 
@@ -154,20 +156,37 @@ Table: Transitions in the SEIR model. We show the determinstic transmission rate
 
 ##  Model fitting and inference
 
-We fit the SEIR model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF) in the R package `pomp`.
-We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), mean transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the number of imported infections ($\psi$), reporting rate ($\rho$), one parameter accounting for process noise, and one parameter accounting for measurement noise.
+We fit the SEIR model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF).
+We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), mean transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the number of imported infections ($\psi$), reporting fraction ($\rho$), one parameter accounting for process noise ($\sigma$), and one parameter accounting for measurement noise ($\tau$).
 To ensure identifiability, and to make the model easier to fit, we assumed the infectious period was fixed at $1/\eta = 8$ days and the recovery period was fixed at $1/\gamma = 5$ days.
+The birth rate ($\mu_t$) was multiplied by 0.3 to account for the reported 70\% vaccination coverage [@Ferrari2008].
 
+MIF relies on particle filtering, which estimates the likelihood of fixed parameters by integrating state variables of a stochastic system.
+To narrow in on the maximum likelihood estimates, MIF lets parameters take a random walk during the filtering process and selectively propagates forward parameter sets (i.e., particles) with the highest likelihood.
+The variance of the random walk decreases at each iteration of MIF, where a MIF iteration means one filtering pass through the time series.
+This procedure converges toward the maximimum likelihood estimates (MLEs), in theory.
 
+We used the IF2 algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` [@King2016; @King2018] to conduct the MIF procedure.
+To initialize MIF, we generated 5000 parameter sets using Latin Hypercube Sampling over large ranges of the parameter values.
+We then performed two rounds of MIF, each for 100 iterations, with 10000 particles, and geometric cooling.
+For the first round of MIF we set `cooling.facter = 1`.
+For the second round, which was initialized using the collection of parameter sets from the end of the first round, we set `cooling.factor = 0.9`.
+We computed the log likelihood of 5000 final MIF parameter sets (i.e., parameter sets collected after 200 MIF iterations) as the log of the mean likelihoods of 50 replicate particle filters with 10000 particles each.
+At this stage, we assume the parameter set with highest log likelihood is the MLE.
+
+We used profiling to estimate 95\% confidence intervals for four parameters of interest: mean transmission rate ($\beta$), the initial fraction of susceptible individuals $\left(S_{(t=0)}\right)$, the number of imported infections ($\psi$), and reporting fraction ($\rho$).
+For each parameter, we profiled over a range of 100 values using the same MIF and likelihood estimate procedure as described above for finding the MLEs.
+We replicated the profiling procedure 10 times for each unique value of the focal parameter and then took the log of the mean of those 10 profiled likelihoods.
+These values were used to estimate 95\% confidence intervals using the Monte Carlo-adjusted profile algorithm described by @Ionides2017.
 
 ## Model simulations
 
 ## Early warning signals
 
 We considered ten candidate early warning signals (EWS; Table 3).
-EWS were calculated using the function `spaero::get_stats()` (O'Dea 201x) in R (R Core Team 201x).
+EWS were calculated using the function `spaero::get_stats()` [@ODea2018] in R [@R2017].
 
-| EWS | Estimator | Theoretical Correlation with $\mathcal{R}_E(t)$ |
+| EWS | Estimator | Theoretical Correlation with $R_E(t)$ |
 | -------------------- | ----------------------------------- | ------------------------ |
 | Mean | $\mu_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{X_s}{2b-1}$ | Positive |
 | Variance | $\sigma_t^2 = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^2}{2b-1}$ | Positive |
@@ -180,7 +199,7 @@ EWS were calculated using the function `spaero::get_stats()` (O'Dea 201x) in R (
 | Decay time | $\overline{\tau}_t = -\delta / \text{ln}\left[\text{AC}_t(\delta)\right]$ | Positive |
 | First differenced variance | $\Delta\sigma_t^2 = \sigma_t^2 - \sigma_{t-\delta}^2$ | Positive |
 
-Table: List of candidate early warning signals and their estimating equations. Note that *b* denotes the bandwidth. See Brett et al. (2018) for details.
+Table: List of candidate early warning signals and their estimating equations. Note that *b* denotes the bandwidth. See @Brett2018 for details.
 
 # Results
 
@@ -193,7 +212,7 @@ The fitted models adequately reproduced observed dynamics (Figure 1), with $R^2$
 \label{fig:scatters}
 \end{figure}
 
-Stochastic simulations from sub-critical ($\mathcal{R}_{E(t)} \ll 0$) to near-critical dynamics ($\mathcal{R}_{E(t)} \approx 1$) differed among the four cities (Figure \ref{fig:re-sims}).
+Stochastic simulations from sub-critical ($R_E(t) \ll 1$) to critical dynamics ($R_E(t) = 1$) differed among the four cities (Figure \ref{fig:re-sims}).
 
 ```{r mles, warning=FALSE, message=FALSE, results='asis', echo=FALSE}
 library(tidyverse)
@@ -241,14 +260,14 @@ print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estim
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/re-simulated-series-grid.pdf}
-\caption{Yearly average $\mathcal{R}_{E(t)}$ (blue lines) across 500 models simulations at the MLE parameters and 20 representations simulations (grey lines) for each city. The horizontal dashed line shows where $\mathcal{R}_{E(t)} = 1$. The vertical solid red lines show the time point at which yearly average $\mathcal{R}_{E(t)} \ge 1$. The time periods before the red line for each city were used for testing early warning signals.}
+\caption{Yearly average $R_E(t)$ (blue lines) across 500 models simulations at the MLE parameters and 20 representations simulations (grey lines) for each city. The horizontal dashed line shows where $R_E(t) = 1$. The vertical solid red lines show the time point at which yearly average $R_E(t) \ge 1$. The time periods before the red line for each city were used for testing early warning signals.}
 \label{fig:re-sims}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/simulation-grid-aucs.pdf}
-\caption{Performance of EWS calculated over two windows (far from and near $\mathcal{R}_{E(t)} = 1$) from the time series of 500 simulated dynamics. The two windows were defined as equally-sized windows over the course of the time series up to $\mathcal{R}_{E(t)} = 1$ (red lines in Figure \ref{fig:re-sims})}
+\caption{Performance of EWS calculated over two windows (far from and near $R_E(t) = 1$) from the time series of 500 simulated dynamics, shown as a heatmap of AUC values minus 0.5. The two windows were defined as equally-sized windows over the course of the time series up to $R_E(t) = 1$ (red lines in Figure \ref{fig:re-sims}). The asterisks (*) in the heatmap for Niamey note EWS with high AUC, but for the wrong reason: skewness and kurtosis \emph{decrease} as $R_E(t)$ approaches 1 rather than increase. This occurs because of the negative binomial sampling in the measurement component of our SEIR model.}
 \label{fig:aucs}
 \end{figure}
 
@@ -260,3 +279,4 @@ This research was funded by the National Institute of General Medical Sciences o
 The funders had no role in study design, data collection and analysis, decision to publish, or preparation of the manuscript.
 This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
 
+# References

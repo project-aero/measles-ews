@@ -15,9 +15,15 @@ library(tidyverse)
 # Load results ------------------------------------------------------------
 
 aucs <- read.csv("../results/emergence-grid-aucs.csv")
+star_tbl <- tibble(
+  city = "Niamey",
+  x = as.factor(rep(1e-04, 2)),
+  y = c(5.7, 7.7)
+)
 
-auc_plot <- ggplot(aucs, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
-  geom_tile() +
+auc_plot <- ggplot() +
+  geom_tile(data = aucs, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
+  geom_text(data = star_tbl, aes(x = x, y = y, label = "*"), color = "white", size = 6) +
   scale_fill_viridis_c(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
   facet_wrap(~city, nrow = 1) +
   labs(x = "Level of susceptible depletion", y = NULL) +

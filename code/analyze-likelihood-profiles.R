@@ -1,5 +1,10 @@
 # analyze-likelihood-profiles.R
 
+
+# MCAP function -----------------------------------------------------------
+#  From Ionides and King, Royal Society Interface 2017
+#  DOI: 10.1098/rsif.2017.0126
+
 mcap <- function(lp,parameter,confidence=0.95,lambda=0.75,Ngrid=1000)
 {
   smooth_fit <- loess(lp ~ parameter, family = "s", span=lambda)
@@ -40,93 +45,77 @@ mcap <- function(lp,parameter,confidence=0.95,lambda=0.75,Ngrid=1000)
 }
 
 
+# Function for plotting results -------------------------------------------
+
+plot_ci <- function(full_profile, mcap_profile, mcap_out, xlab, line_color = "steelblue", lambda_num = 0.75){
+  smooth_fit <- mcap_out$fit[,c(1,2)]
+  quad_fit <- mcap_out$fit[,c(1,3)] %>%
+    filter(quadratic >= min(full_profile$loglik))
+  
+  ggplot() +
+    geom_point(data = full_profile, aes(x = value, y = loglik), shape = 1, size = 1, color = "grey50", alpha = 0.5) +
+    geom_point(data = mcap_profile, aes(x = value, y = loglik), shape = 19, size = 1, alpha = 1) +
+    geom_line(data = smooth_fit, aes(x = parameter, y = smoothed), color = line_color) +
+    geom_line(data = quad_fit, aes(x = parameter, y = quadratic), color = line_color, linetype = 2) +
+    geom_vline(aes(xintercept = mcap_out$ci[1]), color = line_color) +
+    geom_vline(aes(xintercept = mcap_out$ci[2]), color = line_color) +
+    geom_hline(aes(yintercept = mcap_out$delta_line), color = line_color) +
+    labs(x = xlab, y = "profile log-likelihood") +
+    ggtitle(paste0("95% C.I. = (", round(mcap_out$ci,2)[1], ", ", round(mcap_out$ci,2)[2], "); span = ", lambda_num)) +
+    theme(plot.title = element_text(size = 10))
+}
+
+
+# Function for running MCAP given profile file ----------------------------
+
+run_mcap <- function(file_name, lambda = 0.75){
+  profile_data <- read.csv(file_name) %>%
+    slice(2:n()) %>%
+    drop_na()
+  
+  mcap_data <- profile_data %>%
+    group_by(value, parameter) %>%
+    summarise(loglik = pomp::logmeanexp(loglik))
+    
+  
+  do_param <- unique(mcap_data$parameter)
+  mcap_out <- mcap(lp = mcap_data$loglik, parameter = mcap_data$value, lambda = lambda, confidence = 0.99)
+  
+  return(list(profile_data, mcap_data, mcap_out))
+}
+
+
 # Load packages -----------------------------------------------------------
 
 library(tidyverse)
 library(ggthemes)
 
 
-
 # Niamey, beta profile ----------------------------------------------------
-profile_data <- read.csv("../results/loglik-profile-beta-Niamey.csv") %>%
-  slice(2:n()) %>%
-  drop_na() %>%
-  group_by(value, parameter) %>%
-  summarise(loglik = pomp::logmeanexp(loglik))
 
-do_param <- unique(profile_data$parameter)
-mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value, lambda = 0.5)
-
-ggplot(mcap_out$fit, aes(x=parameter, shape )) +
-  geom_point(data = profile_data, aes(x = value, y = loglik), shape = 19, size = 2, color = "grey50", alpha = 0.1) +
-  geom_line(aes(y = smoothed), color = ptol_pal()(2)[2], size = 1) +
-  geom_line(aes(y = quadratic), color = ptol_pal()(2)[1], linetype = 2, size = 1) +
-  geom_vline(aes(xintercept = mcap_out$ci[1]), color = ptol_pal()(2)[2]) +
-  geom_vline(aes(xintercept = mcap_out$ci[2]), color = ptol_pal()(2)[2]) +
-  geom_hline(aes(yintercept = mcap_out$delta_line), color = ptol_pal()(2)[2]) +
-  labs(x = expression(beta), y = "profile log-likelihood") +
-  # coord_cartesian(xlim = c(50, 1000), ylim = c(-1500, -1450)) +
-  ggtitle(paste0("95% CI: ", round(mcap_out$ci,2)[1], " - ", round(mcap_out$ci,2)[2]))
+fname <- ("../results/loglik-profile-beta-Niamey.csv")
+mcap_all <- run_mcap(fname)
+beta_plot <- plot_ci(
+  full_profile = mcap_all[[1]], 
+  mcap_profile = mcap_all[[2]], 
+  mcap_out = mcap_all[[3]], 
+  xlab = expression(beta)
+)
 
 
 # Niamey, rho profile -----------------------------------------------------
 
-profile_data <- read.csv("../results/loglik-profile-rho-Niamey.csv") %>%
-  slice(2:n()) %>%
-  # drop_na() %>%
-  group_by(value, parameter) %>%
-  summarise(loglik = pomp::logmeanexp(loglik)) %>%
-  ungroup() %>%
-  mutate(lik_diff = max(loglik) - loglik) %>%
-  filter(value > 0.01)
-  # filter(lik_diff < 100)
-
-do_param <- unique(profile_data$parameter)
-mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value, lambda = 0.5)
-
-plot(profile_data$value, profile_data$loglik)
-abline(v = 0.26)
-smooth_fit <- loess(formula = loglik~value, data = profile_data, span = 0.2)
-parameter_grid <- seq(min(profile_data$value), max(profile_data$value), length.out = 1000)
-smoothed_loglik <- predict(smooth_fit,newdata=parameter_grid)
-delta <- qchisq(0.99, df = 1)
-loglik_diff <- max(smoothed_loglik) - smoothed_loglik
-ci <- range(parameter_grid[loglik_diff < delta])
-lines(parameter_grid, smoothed_loglik, col = "red")
+fname <- ("../results/loglik-profile-rho-Niamey.csv")
+mcap_all <- run_mcap(fname, lambda = 0.2)
+rho_plot <- plot_ci(
+  full_profile = mcap_all[[1]], 
+  mcap_profile = mcap_all[[2]], 
+  mcap_out = mcap_all[[3]], 
+  xlab = expression(rho),
+  lambda = 0.2
+)
 
 
-ggplot(mcap_out$fit, aes(x=parameter)) +
-  geom_point(data = profile_data, aes(x = value, y = loglik), shape = 1, size = 2, color = "grey50") +
-  geom_line(aes(y = smoothed), color = "coral", size = 1) +
-  # geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
-  geom_vline(aes(xintercept = mcap_out$ci[1]), color = "coral") +
-  geom_vline(aes(xintercept = mcap_out$ci[2]), color = "coral") +
-  geom_hline(aes(yintercept = mcap_out$delta_line), color = "coral") +
-  labs(x = expression(rho), y = "profile log-likelihood") +
-  coord_cartesian(ylim = c(-4000, -1450)) +
-  ggtitle(paste0("95% CI: ", round(mcap_out$ci,2)[1], " - ", round(mcap_out$ci,2)[2]))
+# Combine Niamey ----------------------------------------------------------
 
-
-# Niamey, iota profile ----------------------------------------------------
-
-profile_data <- read.csv("../results/loglik-profile-iota-Niamey.csv") %>%
-  slice(2:n()) %>%
-  drop_na()
-
-do_param <- unique(profile_data$parameter)
-mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
-
-ggplot(mcap_out$fit, aes(x=parameter)) +
-  geom_point(data = profile_data, aes(x = value, y = loglik), shape = 1, size = 2, color = "grey50") +
-  geom_line(aes(y = smoothed), color = "coral", size = 1) +
-  geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
-  geom_vline(aes(xintercept = mcap_out$ci[1]), color = "coral") +
-  geom_vline(aes(xintercept = mcap_out$ci[2]), color = "coral") +
-  geom_hline(aes(yintercept = mcap_out$delta_line), color = "coral") +
-  labs(x = expression(rho), y = "profile log-likelihood") +
-  # coord_cartesian(ylim = c(-5000, -1450)) +
-  ggtitle(paste0("95% CI: ", round(mcap_out$ci,2)[1], " - ", round(mcap_out$ci,2)[2]))
-
-
-
-
+cowplot::plot_grid(beta_plot, rho_plot, ncol = 2)

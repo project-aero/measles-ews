@@ -21,7 +21,7 @@ do_grid <- as.numeric(myargument)
 # Set city to model -------------------------------------------------------
 
 DO_CITY <- "Niamey"  # which city to model
-do_param <- "rho"
+do_param <- "iota"
 
 
 # Load libraries ----------------------------------------------------------
@@ -129,12 +129,13 @@ if(do_param == "rho"){
 if(do_param == "iota"){
   tmp_values <- pull(mles, var = do_param)
   tmp_values <- tmp_values[which(tmp_values < max(tmp_values))]
-  sd_values <- sd(tmp_values)*1.5
+  sd_values <- sd(tmp_values)*2
   mu_values <- mean(tmp_values)
   alpha <- mu_values^2 / sd_values^2
   beta <- mu_values / sd_values^2
   set.seed(1234572)  # make sure each worker simulates the same distribution
   tmp_profile <- rgamma(grid_search_size, alpha, beta)
+  tmp_profile <- seq(quantile(tmp_profile, 0.025), quantile(tmp_profile, 0.975), length.out = grid_search_size)
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
