@@ -2,7 +2,7 @@
 
 mcap <- function(lp,parameter,confidence=0.95,lambda=0.75,Ngrid=1000)
 {
-  smooth_fit <- loess(lp ~ parameter, span=lambda)
+  smooth_fit <- loess(lp ~ parameter, family = "s", span=lambda)
   parameter_grid <- seq(min(parameter), max(parameter), length.out = Ngrid)
   smoothed_loglik <- predict(smooth_fit,newdata=parameter_grid)
   smooth_arg_max <- parameter_grid[which.max(smoothed_loglik)]
@@ -51,10 +51,11 @@ library(ggthemes)
 profile_data <- read.csv("../results/loglik-profile-beta-Niamey.csv") %>%
   slice(2:n()) %>%
   drop_na() %>%
-  arrange(value)
+  group_by(value, parameter) %>%
+  summarise(loglik = pomp::logmeanexp(loglik))
 
 do_param <- unique(profile_data$parameter)
-mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
+mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value, lambda = 0.5)
 
 ggplot(mcap_out$fit, aes(x=parameter, shape )) +
   geom_point(data = profile_data, aes(x = value, y = loglik), shape = 19, size = 2, color = "grey50", alpha = 0.1) +
@@ -72,17 +73,32 @@ ggplot(mcap_out$fit, aes(x=parameter, shape )) +
 
 profile_data <- read.csv("../results/loglik-profile-rho-Niamey.csv") %>%
   slice(2:n()) %>%
-  drop_na() %>%
+  # drop_na() %>%
   group_by(value, parameter) %>%
-  summarise(loglik = mean(loglik))
+  summarise(loglik = pomp::logmeanexp(loglik)) %>%
+  ungroup() %>%
+  mutate(lik_diff = max(loglik) - loglik) %>%
+  filter(value > 0.01)
+  # filter(lik_diff < 100)
 
 do_param <- unique(profile_data$parameter)
-mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value, lambda = 0.1)
+mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value, lambda = 0.5)
+
+plot(profile_data$value, profile_data$loglik)
+abline(v = 0.26)
+smooth_fit <- loess(formula = loglik~value, data = profile_data, span = 0.2)
+parameter_grid <- seq(min(profile_data$value), max(profile_data$value), length.out = 1000)
+smoothed_loglik <- predict(smooth_fit,newdata=parameter_grid)
+delta <- qchisq(0.99, df = 1)
+loglik_diff <- max(smoothed_loglik) - smoothed_loglik
+ci <- range(parameter_grid[loglik_diff < delta])
+lines(parameter_grid, smoothed_loglik, col = "red")
+
 
 ggplot(mcap_out$fit, aes(x=parameter)) +
   geom_point(data = profile_data, aes(x = value, y = loglik), shape = 1, size = 2, color = "grey50") +
   geom_line(aes(y = smoothed), color = "coral", size = 1) +
-  geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
+  # geom_line(aes(y = quadratic), color = "steelblue", linetype = 2, size = 1) +
   geom_vline(aes(xintercept = mcap_out$ci[1]), color = "coral") +
   geom_vline(aes(xintercept = mcap_out$ci[2]), color = "coral") +
   geom_hline(aes(yintercept = mcap_out$delta_line), color = "coral") +

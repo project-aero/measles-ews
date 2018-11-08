@@ -37,7 +37,7 @@ max_mles <- mles %>%
   filter(loglik == max(loglik)) %>%
   dplyr::select(-mle_rank)
 
-knitr::kable(max_mles)
+knitr::kable(max_mles, digits = 2)
 ```
 
 ##  Seasonal transmission functions
