@@ -73,10 +73,11 @@ ggplot(mcap_out$fit, aes(x=parameter, shape )) +
 profile_data <- read.csv("../results/loglik-profile-rho-Niamey.csv") %>%
   slice(2:n()) %>%
   drop_na() %>%
-  slice(trunc(runif(50, 1, 999)))
+  group_by(value, parameter) %>%
+  summarise(loglik = mean(loglik))
 
 do_param <- unique(profile_data$parameter)
-mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value)
+mcap_out <- mcap(lp = profile_data$loglik, parameter = profile_data$value, lambda = 0.1)
 
 ggplot(mcap_out$fit, aes(x=parameter)) +
   geom_point(data = profile_data, aes(x = value, y = loglik), shape = 1, size = 2, color = "grey50") +
@@ -86,7 +87,7 @@ ggplot(mcap_out$fit, aes(x=parameter)) +
   geom_vline(aes(xintercept = mcap_out$ci[2]), color = "coral") +
   geom_hline(aes(yintercept = mcap_out$delta_line), color = "coral") +
   labs(x = expression(rho), y = "profile log-likelihood") +
-  # coord_cartesian(ylim = c(-4000, -1450)) +
+  coord_cartesian(ylim = c(-4000, -1450)) +
   ggtitle(paste0("95% CI: ", round(mcap_out$ci,2)[1], " - ", round(mcap_out$ci,2)[2]))
 
 
