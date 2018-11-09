@@ -21,7 +21,7 @@ do_grid <- as.numeric(myargument)
 # Set city to model -------------------------------------------------------
 
 DO_CITY <- "Niamey"  # which city to model
-do_param <- "rho"
+do_param <- "iota"
 
 
 # Load libraries ----------------------------------------------------------
@@ -63,7 +63,7 @@ mles <- read.csv(mle_file) %>%
 
 # Make grid for profile ---------------------------------------------------
 
-grid_search_size <- 200
+grid_search_size <- 100
 
 highest_mles <- mles %>%
   filter(loglik == max(loglik)) %>%
@@ -102,13 +102,14 @@ if(do_param == "beta_mu"){
 
 if(do_param == "rho"){
   tmp_values <- pull(mles, var = do_param)
-  sd_values <- sd(tmp_values)*3
+  sd_values <- sd(tmp_values)*2
   mu_values <- mean(tmp_values)
   alpha <- (((1-mu_values)/(sd_values^2)) - (1/mu_values)) * mu_values^2
   beta <- alpha*((1/mu_values)-1)
   
   set.seed(1234572)  # make sure each worker simulates the same distribution
   tmp_profile <- rbeta(grid_search_size, shape1 = alpha, shape2 = beta)
+  tmp_profile <- seq(quantile(tmp_profile, 0.025), quantile(tmp_profile, 0.975), length.out = grid_search_size)
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
@@ -120,7 +121,7 @@ if(do_param == "rho"){
     mutate(
       profiled_param = do_param
     ) %>%
-    bind_rows(replicate(4, ., simplify = FALSE))
+    bind_rows(replicate(9, ., simplify = FALSE))
   
   large_profile_grid <- tmp_grid
 }
@@ -128,12 +129,13 @@ if(do_param == "rho"){
 if(do_param == "iota"){
   tmp_values <- pull(mles, var = do_param)
   tmp_values <- tmp_values[which(tmp_values < max(tmp_values))]
-  sd_values <- sd(tmp_values)*1.5
+  sd_values <- sd(tmp_values)*2
   mu_values <- mean(tmp_values)
   alpha <- mu_values^2 / sd_values^2
   beta <- mu_values / sd_values^2
   set.seed(1234572)  # make sure each worker simulates the same distribution
   tmp_profile <- rgamma(grid_search_size, alpha, beta)
+  tmp_profile <- seq(quantile(tmp_profile, 0.025), quantile(tmp_profile, 0.975), length.out = grid_search_size)
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
