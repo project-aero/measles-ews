@@ -204,7 +204,7 @@ We calculated EWS over null and test intervals separately, as described next.
 ## Early warning signals
 
 We considered ten candidate early warning signals.
-We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table 3.
+We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table 2.
 All EWS except the coefficient of variation are expected to increase as $R_E(t)$ approaches 1 [@Brett2018].
 However, we still inlcude the coefficient of variation becuase it is often used EWS in other applications.
 
@@ -236,11 +236,11 @@ Table: List of candidate early warning signals and their estimating equations. N
 
 # Results
 
-## Model fit
+## Model fit and simulations
 
-The fitted models adequately reproduced observed dynamics (Figure 1), with in-sample $R^2$s ranging from 0.54 for Agadez to 0.89 for Maradi (Figure \ref{fig:scatters}).
+The fitted models adequately reproduce observed dynamics (Figure 1), with in-sample $R^2$s from one-step-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Figure \ref{fig:scatters}).
 Stochastic simulations of the models displayed dynamics typical of each city (Figure Sx), including the decline in seasonality amplitude as population size decreases [Figure Sx; @Ferrari2008].
-Our model for Agadez performs poor
+Our model for Agadez performs poorly relative to the other cities.
 
 \begin{figure}[!ht]
 \centering
@@ -251,6 +251,8 @@ Our model for Agadez performs poor
 \end{figure}
 
 Stochastic simulations from sub-critical ($R_E(t) \ll 1$) to critical dynamics ($R_E(t) = 1$) differed among the four cities (Figure \ref{fig:re-sims}).
+The differences in the rate at which $R_E(t)$ approaches one is a combination of population size, mean transmission rate, and seasonality (Table 3).
+For example, the dynamics of Niamey reach $R_E(t) = 1$ much faster than the other cities that have smaller populations, lower transmission rates (generally), and lower seasonal amplitude.
 
 ```{r mles, warning=FALSE, message=FALSE, results='asis', echo=FALSE}
 library(tidyverse)
@@ -295,6 +297,22 @@ print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estim
 
 ```
 
+
+## Performance of EWS
+
+The EWS generally perform as expected, with Niamey being an exception (Figure \ref{fig:aucs}).
+Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities except Niamey.
+For Niamey, it appears these metrics perform well at the highest levels of susceptible depletion (i.e., low discounting factors).
+In fact, the high AUC values for Niamey result from exceptionally poor performance: they are all higher in the null interval rather than the test interval, contrary to theoretical expectations (Table 2).
+Thus, these metrics are unreliable.
+
+For the other cities, variance, mean, index of dispersion, decay time, autocovariance, and autocorrelation all perform equally well (Figure \ref{fig:aucs}).
+Their performance declines as the amount of susceptible depletion decreases.
+This is expected because more rapid returns to $R_E(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise.
+Likewise, as the total time to reach $R_E(t)=1$ decreases, the null and test intervals start to behave more similarly.
+In part, this is because susceptible replenishment is linear in our model.
+Nonlinear increases in the susceptible pool would lead to different dynamics.
+
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/re-simulated-series-grid.pdf}
@@ -309,6 +327,7 @@ print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estim
 \label{fig:aucs}
 \end{figure}
 
+# Discussion
 
 \nolinenumbers
 
