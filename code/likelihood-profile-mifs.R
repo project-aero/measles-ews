@@ -95,7 +95,7 @@ if(do_param == "beta_mu"){
     mutate(
       profiled_param = do_param
     ) %>%
-    bind_rows(replicate(4, ., simplify = FALSE))
+    bind_rows(replicate(9, ., simplify = FALSE))
   
   large_profile_grid <- tmp_grid
 }
@@ -127,15 +127,16 @@ if(do_param == "rho"){
 }
 
 if(do_param == "iota"){
-  tmp_values <- pull(mles, var = do_param)
-  tmp_values <- tmp_values[which(tmp_values < max(tmp_values))]
-  sd_values <- sd(tmp_values)*2
-  mu_values <- mean(tmp_values)
-  alpha <- mu_values^2 / sd_values^2
-  beta <- mu_values / sd_values^2
-  set.seed(1234572)  # make sure each worker simulates the same distribution
-  tmp_profile <- rgamma(grid_search_size, alpha, beta)
-  tmp_profile <- seq(quantile(tmp_profile, 0.025), quantile(tmp_profile, 0.975), length.out = grid_search_size)
+  # tmp_values <- pull(mles, var = do_param)
+  # tmp_values <- tmp_values[which(tmp_values < max(tmp_values))]
+  # sd_values <- sd(tmp_values)*4
+  # mu_values <- mean(tmp_values)
+  # alpha <- mu_values^2 / sd_values^2
+  # beta <- mu_values / sd_values^2
+  # set.seed(1234572)  # make sure each worker simulates the same distribution
+  # tmp_profile <- rgamma(grid_search_size, alpha, beta)
+  # tmp_profile <- seq(quantile(tmp_profile, 0.01), quantile(tmp_profile, 0.99), length.out = grid_search_size)
+  tmp_profile <- seq(1e-5, 200, length.out = grid_search_size)
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
@@ -147,7 +148,7 @@ if(do_param == "iota"){
     mutate(
       profiled_param = do_param
     ) %>%
-    bind_rows(replicate(4, ., simplify = FALSE))
+    bind_rows(replicate(9, ., simplify = FALSE))
   
   large_profile_grid <- tmp_grid
 }
