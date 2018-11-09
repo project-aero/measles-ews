@@ -236,7 +236,11 @@ Table: List of candidate early warning signals and their estimating equations. N
 
 # Results
 
-The fitted models adequately reproduced observed dynamics (Figure 1), with $R^2$s ranging from 0.54 to 0.89 (Figure \ref{fig:scatters}).
+## Model fit
+
+The fitted models adequately reproduced observed dynamics (Figure 1), with in-sample $R^2$s ranging from 0.54 for Agadez to 0.89 for Maradi (Figure \ref{fig:scatters}).
+Stochastic simulations of the models displayed dynamics typical of each city (Figure Sx), including the decline in seasonality amplitude as population size decreases [Figure Sx; @Ferrari2008].
+Our model for Agadez performs poor
 
 \begin{figure}[!ht]
 \centering
