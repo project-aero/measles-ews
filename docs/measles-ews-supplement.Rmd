@@ -1,0 +1,188 @@
+---
+csl: ecology.csl
+fontsize: 11pt
+geometry: margin=1in
+header-includes:
+ - \usepackage{amsmath,amssymb}
+ - \usepackage{changepage}
+ - \usepackage{textcomp,marvosym}
+ - \usepackage{cite}
+ - \usepackage{nameref,hyperref}
+ - \usepackage[left]{lineno}
+ - \usepackage{microtype}
+ - \DisableLigatures[f]{encoding = *, family = * }
+ - \usepackage[table]{xcolor}
+ - \usepackage{array}
+ - \usepackage[font=small,labelfont=bf]{caption}
+ - \usepackage{lastpage,fancyhdr,graphicx}
+ - \usepackage{epstopdf}
+ - \usepackage{mathptmx} 
+ - \usepackage{longtable,booktabs}
+ - \usepackage[symbol]{footmisc}
+layout: 11pt
+linkcolor: black
+output:
+  pdf_document:
+    fig_caption: yes
+    keep_tex: no
+urlcolor: black
+bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
+---
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\raggedright
+\vspace*{0.2in}
+
+\begin{centering}
+
+{\LARGE
+\textbf\newline{SUPPLEMENTAL INFORMATION FOR:\\Early warning signals anticipate critical transitions\\in empirically-based simulations of measles dynamics in Niger} 
+}
+
+\vspace{2em}
+
+Andrew T. Tredennick\textsuperscript{1,2}\footnote[1]{Corresponding author: atredenn@gmail.com},
+Eamon O'Dea\textsuperscript{1,2},
+Tobias Brett\textsuperscript{1,2},
+Pejman Rohani\textsuperscript{1,2},
+\& John M. Drake\textsuperscript{1,2}
+\\
+\bigskip
+\textsuperscript{1} \small\emph{Odum School of Ecology, University of Georgia, Athens, GA, USA} \\
+\textsuperscript{2} \small\emph{Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA, USA}
+
+\end{centering}
+
+
+# Stochastic simulations from the fitted models
+
+Here we show stochastic simulations from the fitted models.
+Simulations are all initialized from the same initial conditions, which were estimated as part of model fitting.
+
+```{r stoch-sims, message=FALSE, warning=FALSE, echo = FALSE}
+library(tidyverse)
+library(stringr)
+library(dplyr)
+library(pomp)
+
+code_files <- list.files("../code/")
+pomp_ids <- grep("measles-pomp-object", code_files)
+pomp_files <- code_files[pomp_ids]
+
+results_files <- list.files("../results/")
+mle_ids <- grep("mif-lls", results_files)
+mle_files <- results_files[mle_ids]
+
+all_sims <- tibble()
+for(do_file in pomp_files){
+  tmp_city <- str_sub(do_file, start = 21, end = nchar(do_file)-4)
+  tmp_pomp <- readRDS(paste0("../code/", do_file))
+  
+  city_mle_ids <- grep(tmp_city, mle_files)
+  tmp_mles <- read.csv(paste0("../results/", mle_files[city_mle_ids])) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik))
+  
+  tmp_sim <- simulate(
+    tmp_pomp,
+    params = unlist(tmp_mles),
+    nsim = 10,
+    as.data.frame = TRUE,
+    include.data = TRUE
+  ) %>%
+    dplyr::select(time, sim, reports, S) %>%
+    mutate(city = tmp_city) %>%
+    filter(time >= 1995)
+  
+  all_sims <- bind_rows(all_sims, tmp_sim)
+}
+
+ggplot() +
+  geom_line(data = filter(all_sims, sim != "data"), aes(x = time, y = reports, color = sim), alpha = 0.25) +
+  geom_line(data = filter(all_sims, sim == "data"), aes(x = time, y = reports)) +
+  guides(color = FALSE) +
+  facet_wrap(~city, scales = "free_y") +
+  scale_y_sqrt() +
+  theme_minimal()
+```
+
+# Seasonality of transmission
+
+```{r seasonal, echo=FALSE, message=FALSE, warning=FALSE}
+result_files <- list.files("../results/")
+mle_files <- result_files[grep("initial-mif-lls", result_files)]
+
+b_splines <- tibble()
+betas <- tibble()
+for(do_file in mle_files){
+  tmp <- read.csv(paste0("../results/", do_file)) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(b1, b2, b3, b4, b5, b6) %>%
+    gather() %>%
+    mutate(city = str_sub(do_file, 17, (nchar(do_file)-4)))
+  
+  b_splines <- bind_rows(b_splines, tmp)
+  
+  tmp2 <- read.csv(paste0("../results/", do_file)) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(beta_mu) %>%
+    gather() %>%
+    mutate(city = str_sub(do_file, 17, (nchar(do_file)-4)))
+  
+  betas <- bind_rows(betas, tmp2)
+}
+
+
+# Load exemplar bases from pomp model -------------------------------------
+
+measles_pomp <- readRDS("../code/measles-pomp-object-Agadez.RDS")
+
+bases <- as_tibble(measles_pomp@covar) %>%
+  dplyr::select(starts_with("x")) %>%
+  dplyr::slice(1:365) %>%
+  mutate(
+    day = 1:365
+  ) %>%
+  gather(key = base, value = value, -day)
+
+
+# Calculate seasonality function ------------------------------------------
+
+season <- bases %>%
+  spread(key = base, value = value) %>%
+  dplyr::select(-day) %>%
+  as.matrix()
+
+seasonal_beta <- tibble()
+for(do_city in unique(b_splines$city)){
+  qis <- b_splines %>%
+    filter(city == do_city) %>%
+    pull(value) 
+  
+  beta_tmp <- betas %>%
+    filter(city == do_city) %>%
+    pull(value)
+  
+  seasonal_tmp <- tibble(
+    beta = as.numeric((1+exp(season %*% qis)) * beta_tmp),
+    day = 1:365,
+    city = do_city
+  )
+  
+  seasonal_beta <- bind_rows(seasonal_beta, seasonal_tmp)
+}
+
+seasonal_beta <- seasonal_beta %>%
+  mutate(
+    date = as.Date(day, origin = "2016-12-31",tz = "UTC")
+  )
+
+ggplot(seasonal_beta, aes(x = date, y = beta, color = city)) +
+  geom_line(size = 1) +
+  labs(x = "Date", y = expression(paste("Tranmission rate, ",beta, " (", yr^-1, ")"))) +
+  scale_color_manual(values = ggthemes::ptol_pal()(4), name = NULL) +
+  scale_x_date(date_labels = "%b", date_breaks = "2 months") +
+  theme_minimal() +
+  theme(legend.position = c(0.7, 0.8), legend.box.background = element_rect(color = "white"))
+```

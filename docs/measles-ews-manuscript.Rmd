@@ -181,10 +181,43 @@ These values were used to estimate 95\% confidence intervals using the Monte Car
 
 ## Model simulations
 
+We used the MLE parameter sets to make one-step-ahead predictions, to estimate any trend in transmission rate through time, and to test the ability of early warning signals to anticipate the critical transition at $R_E(t) = 1$.
+To make one-step-ahead predictions, we used particle filtering with 50000 particles and retained the mean and standard deviation of all latent across all particles before they were filtered at each time step.
+To estimate a trend in tranmission rate, we allowed mean transmission to take a random walk throughout the filter and retained the filtered distribution of particles for mean transmission and $R_E(t$).
+
+We manipulated the initial size of the susceptible pool to simulate an increase from low $R_E(t)$ to high $R_E(t)$.
+Doing so allows us to test whether EWS can distinguish between windows of time when $R_E(t)$ is far from a critical transition and when $R_E(t)$ is near a critical transition.
+We reduced the initial fraction of susceptible individuals by multplying the MLE for $S_{(t=0)}$ by six discounting factors: 1e-4, 0.1, 0.2, 0.3, 0.4, and 0.5.
+These discounting factors represent situations of susceptible depletion after outbreaks of various size.
+We then simulated the model forward for thirty years using mean birth and death rates for the entire country.
+Thirty years was long enough for yearly average $R_E(t)$ to reach 1 for each city.
+Because the model is stochastic, we repeated these simulations 500 times for each city-susceptible discount combination.
+
+Next, we split each simulated time series into null and test intervals.
+First, across all simulations for a city-susceptible discount combination, we found the simulation year in which yearly average $R_E(t)$ reached 1, and excluded years past that time.
+We split the remaining time series into two windows of equal length.
+The null interval is the first window, where $R_E(t)$ is increasing but far from 1.
+The test interval is the second window, where $R_E(t)$ is increasing and approaching 1.
+We did this for each city and for each level of susceptible depletion.
+We calculated EWS over null and test intervals separately, as described next.
+
 ## Early warning signals
 
-We considered ten candidate early warning signals (EWS; Table 3).
-EWS were calculated using the function `spaero::get_stats()` [@ODea2018] in R [@R2017].
+We considered ten candidate early warning signals.
+We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table 2.
+All EWS except the coefficient of variation are expected to increase as $R_E(t)$ approaches 1 [@Brett2018].
+However, we still inlcude the coefficient of variation becuase it is often used EWS in other applications.
+
+For each simulation of each city-susceptible discount combination, we calculated each EWS for the time series of expected cases in the null and test intervals.
+This yields a distrbution of EWS over the 500 null and test intervals.
+The bandwidth for EWS calculation varied because we set $b$ to be one-half the length of the interval.
+That is, we do not use a moving window and if, for example, the length of the interval is 10 years, then $b = 0.5\times 10 = 5$.
+
+We assessed the performance of each EWS using the Area Under the Curve (AUC) statistic.
+Specifically, we use AUC to calculate the amount of overlap between the distributions of each EWS from the null and test intervals.
+Higher values of AUC indicate a greater degree of separation and thus better performance of a particular EWS in terms of classifying whether $R_E(t)$ is approaching a critical transition.
+We used the `pROC:auc()` function [@Robin2011] in R to calculate AUC values.
+
 
 | EWS | Estimator | Theoretical Correlation with $R_E(t)$ |
 | -------------------- | ----------------------------------- | ------------------------ |
@@ -203,7 +236,11 @@ Table: List of candidate early warning signals and their estimating equations. N
 
 # Results
 
-The fitted models adequately reproduced observed dynamics (Figure 1), with $R^2$s ranging from 0.54 to 0.89 (Figure \ref{fig:scatters}).
+## Model fit and simulations
+
+The fitted models adequately reproduce observed dynamics (Figure 1), with in-sample $R^2$s from one-step-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Figure \ref{fig:scatters}).
+Stochastic simulations of the models displayed dynamics typical of each city (Figure Sx), including the decline in seasonality amplitude as population size decreases [Figure Sx; @Ferrari2008].
+Our model for Agadez performs poorly relative to the other cities.
 
 \begin{figure}[!ht]
 \centering
@@ -212,7 +249,13 @@ The fitted models adequately reproduced observed dynamics (Figure 1), with $R^2$
 \label{fig:scatters}
 \end{figure}
 
+We found no evidence of a directional trend in the rate of tranmission over the course of the time series (Figure Sx).
+Seasonal fluctuations in all cities cause $R_E(t)$ to go above and below 1 throughout the course of a year (Figure Sx).
+This results in the observed outbreak cycles in low population cities and the more unpredictable outbreaks in larger cities (Figure 1).
+
 Stochastic simulations from sub-critical ($R_E(t) \ll 1$) to critical dynamics ($R_E(t) = 1$) differed among the four cities (Figure \ref{fig:re-sims}).
+The differences in the rate at which $R_E(t)$ approaches one is a combination of population size, mean transmission rate, and seasonality (Table 3).
+For example, the dynamics of Niamey reach $R_E(t) = 1$ much faster than the other cities that have smaller populations, lower transmission rates (generally), and lower seasonal amplitude.
 
 ```{r mles, warning=FALSE, message=FALSE, results='asis', echo=FALSE}
 library(tidyverse)
@@ -257,10 +300,26 @@ print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estim
 
 ```
 
+
+## Performance of EWS
+
+The EWS generally perform as expected, with Niamey being an exception (Figure \ref{fig:aucs}).
+Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities except Niamey.
+For Niamey, it appears these metrics perform well at the highest levels of susceptible depletion (i.e., low discounting factors).
+In fact, the high AUC values for Niamey result from exceptionally poor performance: they are all higher in the null interval rather than the test interval, contrary to theoretical expectations (Table 2).
+Thus, these metrics are unreliable.
+
+For the other cities, variance, mean, index of dispersion, decay time, autocovariance, and autocorrelation all perform equally well (Figure \ref{fig:aucs}).
+Their performance declines as the amount of susceptible depletion decreases.
+This is expected because more rapid returns to $R_E(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise.
+Likewise, as the total time to reach $R_E(t)=1$ decreases, the null and test intervals start to behave more similarly.
+In part, this is because susceptible replenishment is linear in our model.
+Nonlinear increases in the susceptible pool would lead to different dynamics.
+
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/re-simulated-series-grid.pdf}
-\caption{Yearly average $R_E(t)$ (blue lines) across 500 models simulations at the MLE parameters and 20 representations simulations (grey lines) for each city. The horizontal dashed line shows where $R_E(t) = 1$. The vertical solid red lines show the time point at which yearly average $R_E(t) \ge 1$. The time periods before the red line for each city were used for testing early warning signals.}
+\caption{Yearly average $R_E(t)$ (blue lines) across 500 model simulations at the MLE parameters and 20 representations simulations (grey lines) for each city. The horizontal dashed line shows where $R_E(t) = 1$. The vertical solid red lines show the time point at which yearly average $R_E(t) \ge 1$. The time periods before the red line for each city were used for testing early warning signals.}
 \label{fig:re-sims}
 \end{figure}
 
@@ -271,6 +330,10 @@ print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estim
 \label{fig:aucs}
 \end{figure}
 
+# Discussion
+
+
+\newpage{}
 
 \nolinenumbers
 
