@@ -55,7 +55,6 @@ Pejman Rohani\textsuperscript{1,2},
 
 
 # Abstract
-Forecasting the trajectory of infectious disease outbreaks over time is a fundamental challenge facing society.
 
 \linenumbers
 
@@ -69,12 +68,21 @@ However, there is currently a gap between the theoretical work, which has relied
 Theoretical development of EWS has focused on anticipating when the population becomes supercritical, when $R_0 > 1$, after which an outbreak is inevitable, perhaps with some bifurcation delay [@Dibble2016].
 Knowing the value of $R_0$ through time makes it possible to test the accuracy of EWS that are estimated from state variables alone.
 Empirical application of EWS does not require knowing the value of $R_0$ through time, meaning that "tests" require making assumptions about when critical transitions occur.
-Whether EWS track and/or anticipate underlying dynamics of real disease time series remains unknown, and is a critical knowledge gap that must be filled before EWS can confidently be deployed.
+Whether EWS anticipate critical transitions in real disease time series remains unknown, and is a critical knowledge gap that must be filled before EWS can confidently be deployed.
 
-To fill this gap we will fit a mechanistic model to incidence data of measles in Niger to estimate the temporal epidemiology of the disease, yielding the very same parameters that are known in data-free modeling studies.
-In particular, we are interested in the correlation between EWS and the time-varying repreoductive ratio, known as the effective reprodutive ratio $\left(R_E\right)$.
-If EWS and $R_E$ are significantly and positively correlated, then we have empirical evidence that EWS are applicable in real-world settings.
-If EWS and $R_E$ are negatively correlated or not significantly posivitely correlated, then we have evidence that EWS may not be applicable in certain settings.
+Here, we use empirically-based model simulations of measles dynamics to test whether EWS anticipate critical transitions in realistic disease dynamics.
+Our focus is on the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa.
+We seek to answer two related questions.
+First, can EWS distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
+If so, then EWS can anticipate disease re-emergence and large outbreaks.
+Second, how does the distance to and the rate of approaching the epidemic threshold impact the performance of EWS?
+It may be that some EWS perform well when disease re-emergence is slow, while others perform well when the epidemic threshold is rapidly reached.
+
+To answer these questions, we fit mechanistic models of disease transmission to time series of measles incidence in four Nigerien cities: Agadez, Maradi, Niamey, and Zinder.
+We then use the fitted models to perform model experiments designed to test the performance of EWS at anticipating critical transitions after susceptible depletion.
+Our results confirm theoretical expectations about several EWS.
+In particular, we show that several EWS anticipate critical transitions in realistic scenarios, and they do so using much shorter time series than used in theoretical studies.
+However, our study also highlights the limitations of EWS in situations where disease re-emergence occurs rapidly.
 
 # Materials and Methods
 
@@ -211,7 +219,7 @@ However, we still inlcude the coefficient of variation becuase it is often used 
 For each simulation of each city-susceptible discount combination, we calculated each EWS for the time series of expected cases in the null and test intervals.
 This yields a distrbution of EWS over the 500 null and test intervals.
 The bandwidth for EWS calculation varied because we set $b$ to be one-half the length of the interval.
-That is, we do not use a moving window and if, for example, the length of the interval is 10 years, then $b = 0.5\times 10 = 5$.
+That is, we do not use a moving window and if, for example, the length of the interval is 520 weeks (10 years), then $b = 0.5\times 520 = 260$.
 
 We assessed the performance of each EWS using the Area Under the Curve (AUC) statistic.
 Specifically, we use AUC to calculate the amount of overlap between the distributions of each EWS from the null and test intervals.
@@ -319,7 +327,7 @@ Nonlinear increases in the susceptible pool would lead to different dynamics.
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/re-simulated-series-grid.pdf}
-\caption{Yearly average $R_E(t)$ (blue lines) across 500 model simulations at the MLE parameters and 20 representations simulations (grey lines) for each city. The horizontal dashed line shows where $R_E(t) = 1$. The vertical solid red lines show the time point at which yearly average $R_E(t) \ge 1$. The time periods before the red line for each city were used for testing early warning signals.}
+\caption{Yearly average $R_E(t)$ (blue lines) across 500 model simulations at the MLE parameters and 20 representations simulations (grey lines) for each city. Each row of panels is for one level of susceptible depletion, indicated by the value on the right-most edge of the plots. The horizontal dashed line shows where $R_E(t) = 1$. The vertical solid red lines show the time point at which yearly average $R_E(t) \ge 1$. The time periods before the red line for each city were used for testing early warning signals.}
 \label{fig:re-sims}
 \end{figure}
 
