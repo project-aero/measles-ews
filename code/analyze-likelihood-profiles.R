@@ -59,7 +59,7 @@ plot_ci <- function(full_profile, mcap_profile, mcap_out, xlab, line_color = "st
     filter(quadratic >= min(full_profile$loglik))
   
   ggplot() +
-    geom_point(data = full_profile, aes(x = value, y = loglik), shape = 1, size = 1, color = "grey50", alpha = 0.5) +
+    geom_point(data = full_profile, aes(x = value, y = loglik), shape = 1, size = 1, color = "grey50", alpha = 0.3) +
     geom_point(data = mcap_profile, aes(x = value, y = loglik), shape = 19, size = 1, alpha = 1) +
     geom_line(data = smooth_fit, aes(x = parameter, y = smoothed), color = line_color) +
     geom_line(data = quad_fit, aes(x = parameter, y = quadratic), color = line_color, linetype = 2) +
@@ -119,7 +119,7 @@ rho_plot <- plot_ci(
 # Niamey, iota profile ----------------------------------------------------
 
 fname <- ("../results/loglik-profile-iota-Niamey.csv")
-mcap_all <- run_mcap(fname)
+mcap_all <- run_mcap(fname, lambda = 0.75)
 iota_plot <- plot_ci(
   full_profile = mcap_all[[1]], 
   mcap_profile = mcap_all[[2]], 
