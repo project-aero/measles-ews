@@ -182,8 +182,8 @@ if(do_param == "S_0"){
 # Perform MIF -------------------------------------------------------------
 
 set.seed(NULL)
-particles <- 10000
-mif_iters <- 100
+particles <- 30000
+mif_iters <- 150
 
 profile_params <- large_profile_grid[do_grid, ]
 profile_over <- profile_params[ , "profiled_param"]
@@ -237,7 +237,7 @@ mf <- measles_pomp %>%
     rw.sd = rw_sd_setup
   )
 
-ll <- logmeanexp(replicate(50, logLik(pfilter(mf, Np = particles))), se=TRUE)
+ll <- logmeanexp(replicate(10, logLik(pfilter(mf, Np = particles))), se=TRUE)
 
 outdf <- data.frame(
   do_grid = do_grid,
