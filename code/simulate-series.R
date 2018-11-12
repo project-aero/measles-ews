@@ -54,7 +54,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     as_tibble()
   
   tmp_re_sims <- model_sims %>%
-    dplyr::select(sim, time, RE_seas, reports) %>%
+    dplyr::select(sim, time, RE_seas, reports, S) %>%
     mutate(city = do_city) %>%
     nest(-city)
   

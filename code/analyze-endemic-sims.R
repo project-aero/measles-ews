@@ -58,6 +58,8 @@ cities <- all_sims$city
 
 ews_out <- tibble()
 
+out_depletions <- tibble()
+
 for(do_city in cities){
   tmp_city <- all_sims %>%
     filter(city == do_city) %>%
@@ -67,122 +69,171 @@ for(do_city in cities){
   
   for(i in 1:1){
     tmp_sim <- tmp_city %>%
-      filter(sim == i)
+      filter(sim == 1)
     
-    tmp_mean <- tmp_sim %>%
+    ggplot(filter(tmp_sim, time < 21), aes(x = time, y = reports)) +
+      geom_line()
+    
+    tmp_annual <- tmp_sim %>%
       mutate(year = trunc(time)) %>%
-      mutate(
-        above = ifelse(RE_seas >= 1, 1, 0)
-      ) %>%
       group_by(year) %>%
-      summarise(
-        sum_re = sum(above)
-      ) %>%
-      mutate(
-        trunc_re = ifelse(sum_re > (52/2), 1, 0)
-      )
+      summarise(annual_cases = sum(reports)) %>%
+      ungroup() %>%
+      mutate(outbreak_year = ifelse(annual_cases > max(annual_cases)*0.2, TRUE, FALSE))
     
-    group_vec <- get_groups(tmp_mean$trunc_re)
-    
-    year_groups <- tibble(
-      year = tmp_mean$year,
-      group_id = as.factor(group_vec),
-      above = tmp_mean$trunc_re
-    )
+    threshold <- max(tmp_annual$annual_cases)*0.2
+  
+    ggplot(filter(tmp_annual, year < 51), aes(year, annual_cases, fill = outbreak_year)) + geom_col(width = 0.2) + geom_hline(aes(yintercept = threshold))
     
     tmp_sim <- tmp_sim %>%
       mutate(year = trunc(time)) %>%
-      left_join(year_groups, by = "year") %>%
-      filter(above == 0) %>%
-      ungroup() %>%
-      group_by(group_id) %>%
-      slice(105:n()) %>%
-      ungroup()
+      left_join(tmp_annual)
     
-    # ggplot(filter(tmp_sim, time < 301), aes(x = time, y = reports, color = group_id)) +
-      # geom_line()
+    ggplot(filter(tmp_sim), aes(x = time, y = reports, color = outbreak_year, group = outbreak_year)) +
+      geom_line()
     
+    years_after_outbreak <- tmp_sim %>%
+      filter(outbreak_year == TRUE) %>%
+      mutate(year = year+1) %>%
+      pull(year) %>%
+      unique()
     
-    for(do_group in unique(tmp_sim$group_id)){
-      tmp_grp <- tmp_sim %>%
-        filter(group_id == do_group)
-      
-      if(nrow(tmp_grp) > 104){
-        tmp_times <- tmp_grp %>%
-          pull(time) %>%
-          unique()
-        
-        if((length(tmp_times) %% 2) != 0){
-          tmp_times <- tmp_times[2:length(tmp_times)]
-        }
-        
-        ews_time_ids <- tibble(
-          time = tmp_times,
-          half = c(
-            rep("first", length(tmp_times)/2), 
-            rep("second", length(tmp_times)/2)
-          )
-        )
-        
-        window_bandwidth <- length(tmp_times)/2
-        
-        tmp_data <- tmp_grp %>%
-          dplyr::select(city, time, RE_seas, reports, sim) %>%
-          left_join(ews_time_ids, by = "time") %>%
-          filter(is.na(half) == FALSE)
-        
-        tmp_first <- spaero::get_stats(
-          x = pull(filter(tmp_data, half == "first"), reports),
-          center_trend = "local_constant",
-          center_kernel = "uniform",
-          center_bandwidth = window_bandwidth,
-          stat_trend = "local_constant",
-          stat_kernel = "uniform",
-          stat_bandwidth = window_bandwidth,
-          lag = 1,
-          backward_only = FALSE)$stats
-        
-        tmp_second <- spaero::get_stats(
-          x = pull(filter(tmp_data, half == "second"), reports),
-          center_trend = "local_constant",
-          center_kernel = "uniform",
-          center_bandwidth = window_bandwidth,
-          stat_trend = "local_constant",
-          stat_kernel = "uniform",
-          stat_bandwidth = window_bandwidth,
-          lag = 1,
-          backward_only = FALSE)$stats
-        
-        tmp_out1 <- as_tibble(tmp_first) %>%
-          summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
-          mutate(
-            half = "first",
-            sim = i,
-            group = do_group
-          )
-        
-        tmp_out2 <- as_tibble(tmp_second) %>%
-          summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
-          mutate(
-            half = "second",
-            sim = i,
-            group = do_group
-          )
-        
-        tmp_out <- bind_rows(tmp_out1, tmp_out2) %>%
-          mutate(city = do_city)
-        
-        ews_out <- bind_rows(ews_out, tmp_out)
-      }
+    susc_depletion_levels <- tmp_sim %>%
+      group_by(year) %>%
+      filter(time %in% c(min(time),max(time))) %>%
+      filter(outbreak_year == TRUE) %>%
+      mutate(year_id = ifelse(time == min(time), "start", "end")) %>%
+      ungroup() %>% 
+      dplyr::select(year, year_id, S) %>%
+      spread(year_id, S) %>%
+      mutate(prop_drop = end / start)
+    
+    tmp_out <- tibble(
+      prop_drop = susc_depletion_levels$prop_drop,
+      city = do_city
+    )
+    
+    out_depletions <- bind_rows(out_depletions, tmp_out)
+    
+    # tmp_mean <- tmp_sim %>%
+    #   mutate(year = trunc(time)) %>%
+    #   mutate(
+    #     above = ifelse(RE_seas >= 1, 1, 0)
+    #   ) %>%
+    #   group_by(year) %>%
+    #   summarise(
+    #     sum_re = sum(above)
+    #   ) %>%
+    #   mutate(
+    #     trunc_re = ifelse(sum_re > (52/2), 1, 0)
+    #   )
+    # 
+    # group_vec <- get_groups(tmp_mean$trunc_re)
+    # 
+    # year_groups <- tibble(
+    #   year = tmp_mean$year,
+    #   group_id = as.factor(group_vec),
+    #   above = tmp_mean$trunc_re
+    # )
+    # 
+    # tmp_sim <- tmp_sim %>%
+    #   mutate(year = trunc(time)) %>%
+    #   left_join(year_groups, by = "year") %>%
+    #   filter(above == 0) %>%
+    #   ungroup() %>%
+    #   group_by(group_id) %>%
+    #   slice(105:n()) %>%
+    #   ungroup()
+    # 
+    # # ggplot(filter(tmp_sim, time < 301), aes(x = time, y = reports, color = group_id)) +
+    #   # geom_line()
+    # 
+    # 
+    # for(do_group in unique(tmp_sim$group_id)){
+    #   tmp_grp <- tmp_sim %>%
+    #     filter(group_id == do_group)
+    #   
+    #   if(nrow(tmp_grp) > 104){
+    #     tmp_times <- tmp_grp %>%
+    #       pull(time) %>%
+    #       unique()
+    #     
+    #     if((length(tmp_times) %% 2) != 0){
+    #       tmp_times <- tmp_times[2:length(tmp_times)]
+    #     }
+    #     
+    #     ews_time_ids <- tibble(
+    #       time = tmp_times,
+    #       half = c(
+    #         rep("first", length(tmp_times)/2), 
+    #         rep("second", length(tmp_times)/2)
+    #       )
+    #     )
+    #     
+    #     window_bandwidth <- length(tmp_times)/2
+    #     
+    #     tmp_data <- tmp_grp %>%
+    #       dplyr::select(city, time, RE_seas, reports, sim) %>%
+    #       left_join(ews_time_ids, by = "time") %>%
+    #       filter(is.na(half) == FALSE)
+    #     
+    #     tmp_first <- spaero::get_stats(
+    #       x = pull(filter(tmp_data, half == "first"), reports),
+    #       center_trend = "local_constant",
+    #       center_kernel = "uniform",
+    #       center_bandwidth = window_bandwidth,
+    #       stat_trend = "local_constant",
+    #       stat_kernel = "uniform",
+    #       stat_bandwidth = window_bandwidth,
+    #       lag = 1,
+    #       backward_only = FALSE)$stats
+    #     
+    #     tmp_second <- spaero::get_stats(
+    #       x = pull(filter(tmp_data, half == "second"), reports),
+    #       center_trend = "local_constant",
+    #       center_kernel = "uniform",
+    #       center_bandwidth = window_bandwidth,
+    #       stat_trend = "local_constant",
+    #       stat_kernel = "uniform",
+    #       stat_bandwidth = window_bandwidth,
+    #       lag = 1,
+    #       backward_only = FALSE)$stats
+    #     
+    #     tmp_out1 <- as_tibble(tmp_first) %>%
+    #       summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
+    #       mutate(
+    #         half = "first",
+    #         sim = i,
+    #         group = do_group
+    #       )
+    #     
+    #     tmp_out2 <- as_tibble(tmp_second) %>%
+    #       summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
+    #       mutate(
+    #         half = "second",
+    #         sim = i,
+    #         group = do_group
+    #       )
+    #     
+    #     tmp_out <- bind_rows(tmp_out1, tmp_out2) %>%
+    #       mutate(city = do_city)
+    #     
+    #     ews_out <- bind_rows(ews_out, tmp_out)
+    #   }
       
       # plot(tmp_grp$reports, type = "l")
       # lines(tmp_grp$RE_seas*100, col = "red")
       
       
-    }  # next group
+    # }  # next group
     print(i)
   }  # next sim, i
 }  # next city, do_city
+
+
+ggplot(out_depletions, aes(x = prop_drop)) +
+  geom_histogram() +
+  facet_wrap(~city, nrow = 1)
 
 
 
