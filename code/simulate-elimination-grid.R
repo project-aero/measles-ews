@@ -96,8 +96,13 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
 
     plot_sim <- model_sims %>%
-      filter(sim == 1)
+      filter(sim == 1 & time > 0)
     weekly_vacc <- vacc_coverage_ts[seq(1, length(vacc_coverage_ts), 7)]
+    
+    plot(plot_sim$time, plot_sim$RE_seas, type = "l", col = "grey")
+    lines(plot_sim$time, predict(loess(RE_seas~time, data = plot_sim, span = 0.05)), col = "red")
+    abline(h = 1)
+    abline(v = 5)
     
     par(mar = c(5, 4, 4, 4) + 0.1)
     plot(plot_sim$time, plot_sim$reports, type = "l", xlab = "Time (years)", ylab = "Reported infections")
