@@ -127,16 +127,16 @@ if(do_param == "rho"){
 }
 
 if(do_param == "iota"){
-  # tmp_values <- pull(mles, var = do_param)
-  # tmp_values <- tmp_values[which(tmp_values < max(tmp_values))]
-  # sd_values <- sd(tmp_values)*4
-  # mu_values <- mean(tmp_values)
-  # alpha <- mu_values^2 / sd_values^2
-  # beta <- mu_values / sd_values^2
-  # set.seed(1234572)  # make sure each worker simulates the same distribution
-  # tmp_profile <- rgamma(grid_search_size, alpha, beta)
-  # tmp_profile <- seq(quantile(tmp_profile, 0.01), quantile(tmp_profile, 0.99), length.out = grid_search_size)
-  tmp_profile <- seq(1e-5, 200, length.out = grid_search_size)
+  tmp_values <- pull(mles, var = do_param)
+  tmp_values <- tmp_values[which(tmp_values < max(tmp_values))]
+  sd_values <- sd(tmp_values)*4
+  mu_values <- mean(tmp_values)
+  alpha <- mu_values^2 / sd_values^2
+  beta <- mu_values / sd_values^2
+  set.seed(1234572)  # make sure each worker simulates the same distribution
+  tmp_profile <- rgamma(grid_search_size, alpha, beta)
+  tmp_profile <- seq(quantile(tmp_profile, 0.01), quantile(tmp_profile, 0.99), length.out = grid_search_size)
+  # tmp_profile <- seq(1e-5, 200, length.out = grid_search_size)
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
@@ -183,7 +183,7 @@ if(do_param == "S_0"){
 
 set.seed(NULL)
 particles <- 30000
-mif_iters <- 150
+mif_iters <- 100
 
 profile_params <- large_profile_grid[do_grid, ]
 profile_over <- profile_params[ , "profiled_param"]
@@ -228,7 +228,6 @@ mf <- measles_pomp %>%
     rw.sd = rw_sd_setup
   ) %>%
   mif2(
-    start = unlist(profile_params),
     Nmif = mif_iters,
     Np = particles,
     transform = TRUE,
