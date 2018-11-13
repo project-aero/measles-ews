@@ -6,7 +6,8 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 make_pomp_simulator <- function(do_city, mles, years_to_sim = 30, 
-                                initial_population_size, susc_discount = 1)
+                                initial_population_size, susc_discount = 1,
+                                vacc_coverage_ts = NULL)
 {
   library(tidyverse)
   library(pomp)
@@ -47,7 +48,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     
     // Transitions
     dNN0 = rpois(nu * N * dt);  // deaths
-    dN0S = rpois(0.3 * mu * N * dt);  // births
+    dN0S = rpois(vacc_discount * mu * N * dt);  // births
     dN0I = rpois(iota * dt);
     dNSE = trans[0];
     dNEI = trans[1];
@@ -160,6 +161,13 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     mutate(
       time = all_times
     )
+  
+  if(is.null(vacc_coverage_ts) == FALSE){
+    covar_table <- covar_table %>%
+      mutate(
+        vacc_discount = 1 - vacc_coverage_ts
+      )
+  }
   
   sfact <- susc_discount
   N1 <- initial_population_size

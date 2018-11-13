@@ -18,7 +18,7 @@ library(pROC)
 
 # Outbreaks defined as: an annual case count exceeding x% of the maximum
 # annual case count for a region, where x is the threshold set below.
-threshold <- 0.2  # 20% of max == outbreak
+threshold <- 0.1  # 20% of max == outbreak
 
 
 # Define function for grouping time series based on outbreak status -------
@@ -71,7 +71,8 @@ for(do_city in cities){
     unnest() %>%
     ungroup() %>%
     filter(time != 0) %>%
-    mutate(year = trunc(time))  # new column for year id
+    mutate(year = trunc(time)) %>%  # new column for year id
+    filter(year <= 100)
  
   # Calculate annual case numbers and the outbreak threshold,
   # define each year as outbreak (TRUE) or not (FALSE)
@@ -93,7 +94,7 @@ for(do_city in cities){
     group_id = get_groups(unique(non_outbreak_sims$year))
   ) 
   
-  # Only groups with at least 2 years 
+  # Only groups with at least 3 years 
   groups_to_keep <- year_groups %>%
     group_by(group_id) %>%
     count() %>%
