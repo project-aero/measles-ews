@@ -21,7 +21,7 @@ do_grid <- as.numeric(myargument)
 # Set city to model -------------------------------------------------------
 
 DO_CITY <- "Niamey"  # which city to model
-do_param <- "iota"
+do_param <- "rho"
 
 
 # Load libraries ----------------------------------------------------------
@@ -109,7 +109,8 @@ if(do_param == "rho"){
   
   set.seed(1234572)  # make sure each worker simulates the same distribution
   tmp_profile <- rbeta(grid_search_size, shape1 = alpha, shape2 = beta)
-  tmp_profile <- seq(quantile(tmp_profile, 0.025), quantile(tmp_profile, 0.975), length.out = grid_search_size)
+  tmp_profile <- seq(min(tmp_profile), max(tmp_profile), length.out = grid_search_size)
+  tmp_profile <- round(tmp_profile, 3)
   
   tmp_grid <- highest_mles %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
@@ -135,7 +136,7 @@ if(do_param == "iota"){
   beta <- mu_values / sd_values^2
   set.seed(1234572)  # make sure each worker simulates the same distribution
   tmp_profile <- rgamma(grid_search_size, alpha, beta)
-  tmp_profile <- seq(quantile(tmp_profile, 0.01), quantile(tmp_profile, 0.99), length.out = grid_search_size)
+  tmp_profile <- seq(min(tmp_profile), max(tmp_profile), length.out = grid_search_size)
   # tmp_profile <- seq(1e-5, 200, length.out = grid_search_size)
   
   tmp_grid <- highest_mles %>%
@@ -183,7 +184,7 @@ if(do_param == "S_0"){
 
 set.seed(NULL)
 particles <- 30000
-mif_iters <- 100
+mif_iters <- 200
 
 profile_params <- large_profile_grid[do_grid, ]
 profile_over <- profile_params[ , "profiled_param"]

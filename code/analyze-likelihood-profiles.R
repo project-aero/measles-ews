@@ -67,7 +67,7 @@ plot_ci <- function(full_profile, mcap_profile, mcap_out, xlab, line_color = "st
     geom_vline(aes(xintercept = mcap_out$ci[2]), color = line_color) +
     geom_hline(aes(yintercept = mcap_out$delta_line), color = line_color) +
     labs(x = xlab, y = "profile log-likelihood") +
-    # coord_cartesian(ylim=c(-1420, -1520)) +
+    coord_cartesian(ylim=c(-1420, -1520)) +
     ggtitle(paste0("95% C.I. = (", round(mcap_out$ci,2)[1], ", ", round(mcap_out$ci,2)[2], "); span = ", lambda_num)) +
     theme(plot.title = element_text(size = 10))
 }
