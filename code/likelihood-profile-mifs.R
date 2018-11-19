@@ -218,26 +218,34 @@ if(profile_over == "S_0"){
                        S_0 = ivp(0), tau = 0.02)
 }
 
-mf <- measles_pomp %>% 
-  mif2(
-    start = unlist(profile_params),
-    Nmif = mif_iters,
-    Np = particles,
-    transform = TRUE,
-    cooling.fraction.50 = 1,
-    cooling.type = "geometric",
-    rw.sd = rw_sd_setup
-  ) %>%
-  mif2(
-    Nmif = mif_iters,
-    Np = particles,
-    transform = TRUE,
-    cooling.fraction.50 = 0.9,
-    cooling.type = "geometric",
-    rw.sd = rw_sd_setup
-  )
+profile_params <- highest_mles %>%
+  slice(1) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
 
-ll <- logmeanexp(replicate(10, logLik(pfilter(mf, Np = particles))), se=TRUE)
+suppressWarnings(
+  mf <- measles_pomp %>% 
+    mif2(
+      start = unlist(profile_params),
+      Nmif = mif_iters,
+      Np = particles,
+      transform = TRUE,
+      cooling.fraction.50 = 1,
+      cooling.type = "geometric",
+      rw.sd = rw_sd_setup
+    ) %>%
+    mif2(
+      Nmif = mif_iters,
+      Np = particles,
+      transform = TRUE,
+      cooling.fraction.50 = 0.9,
+      cooling.type = "geometric",
+      rw.sd = rw_sd_setup
+    )
+)
+
+suppressWarnings(
+  ll <- logmeanexp(replicate(10, logLik(pfilter(mf, Np = particles))), se=TRUE)
+)
 
 outdf <- data.frame(
   do_grid = do_grid,
@@ -246,7 +254,7 @@ outdf <- data.frame(
   value = profile_params[profile_over],
   parameter = profile_over
 ) 
-
-out_file <- paste0("loglik-profile.csv")
+saveRDS(object = mf, file = "mf-test.RDS")
+out_file <- "loglik-profile.csv"
 write.table(outdf, out_file, sep = ",", col.names = F, append = T, row.names = FALSE)
 
