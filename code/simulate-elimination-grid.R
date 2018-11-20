@@ -23,13 +23,13 @@ rho_curve_ramp <- function(t, start = 52*4, speed = -0.015){
 # Make example plot of vaccination curve ----------------------------------
 
 test <- sapply(0:520, FUN = rho_curve_ramp)
-pdf(file = "../figures/vaccination-coverage-example.pdf", width = 6, height = 4.5)
+# pdf(file = "../figures/vaccination-coverage-example.pdf", width = 6, height = 4.5)
 plot(test, type = "l", xlab = "Time (weeks)", ylab = "Vaccination coverage", col = "dodgerblue4", lwd = 2)
 abline(h = 0.7, lty = 2)
 abline(h = 0.95, lty = 3)
 text(120, 0.65, labels = "Current vaccination coverage in Niger", cex = 0.7)
 text(125, 0.9, labels = "Vaccination coverage for herd immunity", cex = 0.7)
-dev.off()
+# dev.off()
 
 
 # Set up grid of vaccination roll out speeds ------------------------------
@@ -75,8 +75,8 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     years <- 100
     weeks <- years*52
     days <- years*365
-    vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, start = 5*365, speed = i)
-    vacc_coverage_ts[vacc_coverage_ts < 0.7] <- 0.7
+    vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, start = 50*365, speed = i)
+    # vacc_coverage_ts[vacc_coverage_ts < 0.7] <- 0.7
     
     simulator_pomp <- make_pomp_simulator(
       do_city, 
@@ -94,40 +94,58 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       include.data = FALSE) %>%
       as_tibble()
     
-
-    plot_sim <- model_sims %>%
-      filter(sim == 1 & time > 0)
-    weekly_vacc <- vacc_coverage_ts[seq(1, length(vacc_coverage_ts), 7)]
-    
-    plot(plot_sim$time, plot_sim$RE_seas, type = "l", col = "grey")
-    lines(plot_sim$time, predict(loess(RE_seas~time, data = plot_sim, span = 0.05)), col = "red")
-    abline(h = 1)
-    abline(v = 5)
-    
-    par(mar = c(5, 4, 4, 4) + 0.1)
-    plot(plot_sim$time, plot_sim$reports, type = "l", xlab = "Time (years)", ylab = "Reported infections")
-    par(new = TRUE)
-    plot(plot_sim$time, weekly_vacc, xlab = "", ylab = "", xlim = par("usr")[1:2], xaxs = "i",
-         ylim = c(0.7, 1), type = "l", lwd = 1, axes = FALSE, col = "red")
-    axis(4)
-    mtext("Vaccination coverage", side = 4, line = 2.8)
-    
-    summ <- model_sims %>%
-      mutate(year = trunc(time)) %>%
-      group_by(year) %>%
-      summarise(avg_re = max(RE_seas))
-    
-    plot(summ$avg_re, type = "l")
+    # summ <- model_sims %>%
+    #   filter(time > 0) %>%
+    #   mutate(year = trunc(time)) %>%
+    #   group_by(year) %>%
+    #   summarise(avg_re = mean(RE_seas))
+    # 
+    # par(mfrow = c(1, 2))
+    # plot(model_sims$reports, type = "l", xlab = "day", ylab = "reports")
+    # abline(v = 50*365/7, col = "dodgerblue4", lty = 2, lwd = 2)
+    # plot(summ$avg_re, type = "l", col = "grey35", xlab = "year", ylab = expression(R[E]))
+    # abline(h = 1, col = "red", lty = 2, lwd = 2)
+    # abline(v = 50, col = "dodgerblue4", lty = 2, lwd = 2)
+    # 
+    # 
+    # plot_sim <- model_sims %>%
+    #   filter(sim == 1 & time > 0)
+    # weekly_vacc <- vacc_coverage_ts[seq(1, length(vacc_coverage_ts), 7)]
+    # 
+    # plot(plot_sim$time, plot_sim$RE_seas, type = "l", col = "grey")
+    # lines(plot_sim$time, predict(loess(RE_seas~time, data = plot_sim, span = 0.75)), col = "red")
+    # abline(h = 1)
+    # abline(v = 5)
+    # 
+    # par(mar = c(5, 4, 4, 4) + 0.1)
+    # plot(plot_sim$time, plot_sim$reports, type = "l", xlab = "Time (years)", ylab = "Reported infections")
+    # par(new = TRUE)
+    # plot(plot_sim$time, weekly_vacc[2:length(weekly_vacc)], xlab = "", ylab = "", xlim = par("usr")[1:2], xaxs = "i",
+    #      ylim = c(0.7, 1), type = "l", lwd = 1, axes = FALSE, col = "red")
+    # axis(4)
+    # mtext("Vaccination coverage", side = 4, line = 2.8)
     
     tmp_re_sims <- model_sims %>%
-      dplyr::select(sim, time, RE_seas, reports) %>%
+      dplyr::select(sim, time, RE_seas, reports, vacc_discount) %>%
       mutate(
-        city = do_city,
-        susc_discount = i
-      )
+        vacc_coverage = 1 - vacc_discount,
+        vacc_speed = i,
+        city = do_city
+      ) %>%
+      dplyr::select(-vacc_discount)
     
-    outfile <- paste0("../simulations/emergence-simulations-grid-", do_city, "-", i, ".RDS")
-    saveRDS(object = tmp_re_sims, file = outfile)
+    t_crit <- tmp_re_sims %>%
+      filter(vacc_coverage >= 0.95) %>%
+      slice(1) %>%
+      pull(time)
+    
+    ggplot(tmp_re_sims, aes(x = time, y = reports, color = sim)) +
+      geom_line() +
+      geom_vline(aes(xintercept = t_crit)) +
+      guides(color = FALSE)
+    
+    # outfile <- paste0("../simulations/elimination-simulations-grid-", do_city, "-", i, ".RDS")
+    # saveRDS(object = tmp_re_sims, file = outfile)
   }
   
 }
