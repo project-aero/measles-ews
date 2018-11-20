@@ -1,0 +1,55 @@
+"","city","vacc_speed","metric","AUC"
+"1","Zinder",-0.01,"Variance",1
+"2","Zinder",-0.01,"Autocovar.",1
+"3","Zinder",-0.01,"Autocorr.",0.528
+"4","Zinder",-0.01,"Decay time",0.528
+"5","Zinder",-0.01,"Mean",1
+"6","Zinder",-0.01,"Index of dis.",0.9712
+"7","Zinder",-0.01,"Coeff. var.",0.4868
+"8","Zinder",-0.01,"Skewness",0.5696
+"9","Zinder",-0.01,"Kurtosis",0.5732
+"10","Zinder",-0.0082,"Variance",1
+"11","Zinder",-0.0082,"Autocovar.",1
+"12","Zinder",-0.0082,"Autocorr.",0.538
+"13","Zinder",-0.0082,"Decay time",0.538
+"14","Zinder",-0.0082,"Mean",1
+"15","Zinder",-0.0082,"Index of dis.",0.9924
+"16","Zinder",-0.0082,"Coeff. var.",0.6844
+"17","Zinder",-0.0082,"Skewness",0.6184
+"18","Zinder",-0.0082,"Kurtosis",0.6008
+"19","Zinder",-0.0064,"Variance",1
+"20","Zinder",-0.0064,"Autocovar.",1
+"21","Zinder",-0.0064,"Autocorr.",0.5568
+"22","Zinder",-0.0064,"Decay time",0.5568
+"23","Zinder",-0.0064,"Mean",1
+"24","Zinder",-0.0064,"Index of dis.",0.9916
+"25","Zinder",-0.0064,"Coeff. var.",0.6588
+"26","Zinder",-0.0064,"Skewness",0.524
+"27","Zinder",-0.0064,"Kurtosis",0.4968
+"28","Zinder",-0.0046,"Variance",1
+"29","Zinder",-0.0046,"Autocovar.",1
+"30","Zinder",-0.0046,"Autocorr.",0.4976
+"31","Zinder",-0.0046,"Decay time",0.4976
+"32","Zinder",-0.0046,"Mean",1
+"33","Zinder",-0.0046,"Index of dis.",0.984
+"34","Zinder",-0.0046,"Coeff. var.",0.6552
+"35","Zinder",-0.0046,"Skewness",0.558
+"36","Zinder",-0.0046,"Kurtosis",0.5336
+"37","Zinder",-0.0028,"Variance",1
+"38","Zinder",-0.0028,"Autocovar.",1
+"39","Zinder",-0.0028,"Autocorr.",0.556
+"40","Zinder",-0.0028,"Decay time",0.556
+"41","Zinder",-0.0028,"Mean",1
+"42","Zinder",-0.0028,"Index of dis.",0.9832
+"43","Zinder",-0.0028,"Coeff. var.",0.5424
+"44","Zinder",-0.0028,"Skewness",0.5064
+"45","Zinder",-0.0028,"Kurtosis",0.5028
+"46","Zinder",-0.001,"Variance",1
+"47","Zinder",-0.001,"Autocovar.",1
+"48","Zinder",-0.001,"Autocorr.",0.508506616257089
+"49","Zinder",-0.001,"Decay time",0.508506616257089
+"50","Zinder",-0.001,"Mean",1
+"51","Zinder",-0.001,"Index of dis.",0.988657844990548
+"52","Zinder",-0.001,"Coeff. var.",0.75945179584121
+"53","Zinder",-0.001,"Skewness",0.61531190926276
+"54","Zinder",-0.001,"Kurtosis",0.593100189035917

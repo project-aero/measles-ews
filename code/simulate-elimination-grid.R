@@ -1,4 +1,4 @@
-# simulate-emergence.R
+# simulate-elimination-grid.R
 #  Script to simulate the elimination of measles in four Nigerien cities
 #  based on empirically-fitted parameter values. Simulations are driven by
 #  a slowing decreasing susceptible pool due to vaccination.
@@ -44,11 +44,13 @@ library(pomp)
 library(foreach)
 library(doParallel)  # functions for parallel computing
 
-registerDoParallel()
+if(parallel::detectCores() <= 4){
+  registerDoParallel(cores = 4)
+} else{
+  registerDoParallel()
+}
+
 source("make-pomp-simulator-function.R")
-
-
-all_sims <- tibble()
 
 for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
@@ -89,7 +91,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 10,
+      nsim = 50,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble()
@@ -139,13 +141,13 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       slice(1) %>%
       pull(time)
     
-    ggplot(tmp_re_sims, aes(x = time, y = reports, color = sim)) +
-      geom_line() +
-      geom_vline(aes(xintercept = t_crit)) +
-      guides(color = FALSE)
+    # ggplot(tmp_re_sims, aes(x = time, y = reports, color = sim)) +
+    #   geom_line() +
+    #   geom_vline(aes(xintercept = t_crit)) +
+    #   guides(color = FALSE)
     
-    # outfile <- paste0("../simulations/elimination-simulations-grid-", do_city, "-", i, ".RDS")
-    # saveRDS(object = tmp_re_sims, file = outfile)
+    outfile <- paste0("../simulations/elimination-simulations-grid-", do_city, "-", i, ".RDS")
+    saveRDS(object = tmp_re_sims, file = outfile)
   }
   
 }
