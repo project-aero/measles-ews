@@ -27,6 +27,17 @@ for(do_file in sim_files){
   all_sims <- bind_rows(all_sims, tmp)
 }
 
+tmp_for_plots <- all_sims %>%
+  filter(sim == 1 & vacc_speed == -0.001)
+
+ggplot(tmp_for_plots, aes(x = time, y = log(reports))) +
+  geom_line() +
+  stat_smooth(se =FALSE) +
+  facet_wrap(~city, scales = "free")
+
+ggplot(tmp_for_plots, aes(x = reports)) +
+  geom_histogram() +
+  facet_wrap(~city, scales = "free")
 
 # Drop time series past herd immunity -------------------------------------
 
@@ -43,32 +54,38 @@ bws <- tibble()
 for(do_city in unique(all_sims$city)){
   for(do_speed in unique(all_sims$vacc_speed)){
     tmpsims <- all_sims %>%
-      filter(city == do_city & vacc_speed == do_speed)
+      filter(city == do_city) %>%
+      filter(vacc_speed == do_speed)
     
     tmptimes <- tmpsims %>%
       pull(time) %>%
-      unique()
+      unique()  # returns unique observation times across simulations
     
     if((length(tmptimes) %% 2) != 0){
       tmptimes <- tmptimes[2:length(tmptimes)]
-    }
+    }  # makes tmptimes divisible by 2, if not already
     
     ews_time_ids <- tibble(
       time = tmptimes,
       half = c(
-        rep("first", length(tmptimes)/2), 
-        rep("second", length(tmptimes)/2)
+        rep("first", length(tmptimes)/2),  # label first half of time series
+        rep("second", length(tmptimes)/2)  # label second half of time series
       )
     )
     
+    # Bandwidth is the full window for each half
     window_bandwidth <- length(tmptimes)/2
     
+    # Merge in `time` and `half` information
     tmp_ews_data <- tmpsims %>%
       dplyr::select(city, time, reports, sim, vacc_speed) %>%
       left_join(ews_time_ids, by = "time") %>%
       filter(is.na(half) == FALSE)
     
-    data_for_ews <- bind_rows(tmp_ews_data, data_for_ews)
+    # Bind for time series storage
+    data_for_ews <- bind_rows(data_for_ews, tmp_ews_data)
+    
+    # Store bandwidths for each city and speed
     bws <- bind_rows(
       bws, 
       tibble(
@@ -77,8 +94,9 @@ for(do_city in unique(all_sims$city)){
         bandwidth = window_bandwidth
       )
     )
-  }
-}
+    
+  }  # end vaccine coverage speed loop
+}  # end city loop
 
 
 # Calculate EWS -----------------------------------------------------------
@@ -155,7 +173,7 @@ for(do_city in unique(data_for_ews$city)){
 }  # end city loop
 
 
-# Plot the results --------------------------------------------------------
+# Format results ----------------------------------------------------------
 
 scale_it <- function(x){
   (x-min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE)-min(x, na.rm = TRUE))
@@ -182,50 +200,6 @@ ews_long <- ews_out %>%
     metric = ifelse(metric == "skewness", "Skewness", metric),
     metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
   )
-
-
-
-# gout <- list()
-# for(do_city in sort(unique(ews_long$city))){
-#   if(do_city != "Zinder"){
-#     gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
-#       geom_histogram(bins = 20) +
-#       facet_wrap(~metric, scales = "free", nrow = 1) +
-#       scale_fill_manual(values = ptol_pal()(2)) +
-#       theme_minimal(base_size = 8) +
-#       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-#       guides(fill = FALSE) +
-#       labs(y = "Count", x = "") +
-#       ggtitle(do_city)
-#   }
-#   
-#   if(do_city == "Zinder"){
-#     gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
-#       geom_histogram(bins = 20) +
-#       facet_wrap(~metric, scales = "free", nrow = 1) +
-#       scale_fill_manual(values = ptol_pal()(2)) +
-#       theme_minimal(base_size = 8) +
-#       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-#       guides(fill = FALSE) +
-#       labs(y = "Count", x = "EWS value") +
-#       ggtitle(do_city)
-#   }
-#   
-# }
-# 
-# ews_hists <- cowplot::plot_grid(
-#   plotlist = gout, 
-#   align = "v", 
-#   nrow = 4, 
-#   labels = "AUTO"
-# )
-# ggsave(
-#   filename = "../figures/ews-histograms-simulation.pdf", 
-#   plot = ews_hists, 
-#   height = 5,
-#   width = 9, 
-#   units = "in"
-# )
 
 
 # Calculate AUC -----------------------------------------------------------
@@ -260,16 +234,60 @@ for(do_city in unique(ews_long$city)){
 write.csv(x = auc_tbl, "../results/elimination-grid-aucs.csv")
 
 
-# ggplot(auc_tbl, aes(x = as.factor(vacc_speed), y = metric, fill = abs(AUC-0.5))) +
-#   geom_tile() +
-#   viridis::scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
-#   facet_wrap(~city, nrow = 1) +
-#   labs(x = "Level of susceptible depletion", y = NULL) +
-#   theme_minimal() +
-#   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-#   theme(panel.spacing = unit(1, "lines"))
 
 
+# EXTRAS ------------------------------------------------------------------
+
+gout <- list()
+for(do_city in sort(unique(ews_long$city))){
+  if(do_city != "Zinder"){
+    gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = ptol_pal()(2)) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      guides(fill = FALSE) +
+      labs(y = "Count", x = "") +
+      ggtitle(do_city)
+  }
+
+  if(do_city == "Zinder"){
+    gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = ptol_pal()(2)) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(y = "Count", x = "EWS value") +
+      ggtitle(do_city)
+  }
+
+}
+
+ews_hists <- cowplot::plot_grid(
+  plotlist = gout,
+  align = "v",
+  nrow = 4,
+  labels = "AUTO"
+)
+# ggsave(
+#   filename = "../figures/ews-histograms-simulation.pdf", 
+#   plot = ews_hists, 
+#   height = 5,
+#   width = 9, 
+#   units = "in"
+# )
+
+
+ggplot(auc_tbl, aes(x = as.factor(vacc_speed), y = metric, fill = abs(AUC-0.5))) +
+  geom_tile() +
+  viridis::scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  facet_wrap(~city, nrow = 1) +
+  labs(x = "Level of susceptible depletion", y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"))
 
 # plt_tbl <- auc_tbl %>%
 #   filter(metric %in% c("Variance", "Autocovar.", "Autocorr.",

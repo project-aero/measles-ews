@@ -44,7 +44,7 @@ re_one_year <- re_time_avg %>%
   ungroup() %>%
   group_by(city, susc_discount) %>%
   filter(round(time_mean_re,1) >= 1) %>%
-  dplyr::select(city, year) %>%
+  dplyr::select(city, year, susc_discount) %>%
   filter(year == min(year)) %>%
   ungroup()
 
@@ -81,8 +81,6 @@ ggsave(
   height = 5, 
   units = "in"
 )
-
-
 
 
 # Format data for 2-window EWS --------------------------------------------
@@ -123,7 +121,7 @@ for(do_city in unique(all_sims$city)){
       left_join(ews_time_ids, by = "time") %>%
       filter(is.na(half) == FALSE)
     
-    data_for_ews <- bind_rows(tmp_ews_data, data_for_ews)
+    data_for_ews <- bind_rows(data_for_ews, tmp_ews_data)
     bws <- bind_rows(
       bws, 
       tibble(

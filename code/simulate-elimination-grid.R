@@ -7,7 +7,6 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
-
 # Define function for vaccination campaign --------------------------------
 
 rho_curve_ramp <- function(t, start = 52*4, speed = -0.015){
@@ -78,7 +77,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     weeks <- years*52
     days <- years*365
     vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, start = 50*365, speed = i)
-    # vacc_coverage_ts[vacc_coverage_ts < 0.7] <- 0.7
+    vacc_coverage_ts[vacc_coverage_ts < 0.7] <- 0.7
     
     simulator_pomp <- make_pomp_simulator(
       do_city, 
@@ -91,10 +90,10 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 50,
+      nsim = 1,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
-      as_tibble()
+      as_tibble() 
     
     # summ <- model_sims %>%
     #   filter(time > 0) %>%
@@ -103,8 +102,13 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     #   summarise(avg_re = mean(RE_seas))
     # 
     # par(mfrow = c(1, 2))
-    # plot(model_sims$reports, type = "l", xlab = "day", ylab = "reports")
-    # abline(v = 50*365/7, col = "dodgerblue4", lty = 2, lwd = 2)
+    vacc_start <- 50*365/7
+    tcrit <- which(vacc_coverage_ts >= 0.95)[1]/7
+    window_start <- vacc_start - (tcrit - vacc_start)
+    plot(model_sims$reports, type = "l", xlab = "day", ylab = "reports", col = "grey45")
+    abline(v = vacc_start, col = "red", lwd =2, lty = 2)
+    abline(v = tcrit, col = "dodgerblue4", lty = 2, lwd = 2)
+    abline(v = window_start, col = "dodgerblue4", lty = 2, lwd = 2)
     # plot(summ$avg_re, type = "l", col = "grey35", xlab = "year", ylab = expression(R[E]))
     # abline(h = 1, col = "red", lty = 2, lwd = 2)
     # abline(v = 50, col = "dodgerblue4", lty = 2, lwd = 2)
