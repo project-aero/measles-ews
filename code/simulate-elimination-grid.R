@@ -9,11 +9,12 @@
 
 # Define function for vaccination campaign --------------------------------
 
-rho_curve_ramp <- function(t, start = 52*4, speed = -0.015){
+rho_curve_ramp <- function(t, start = 52*4, speed = 0.0015){
   ifelse(
     t <= start,
-    rho <- 0,
-    rho <- 1 * (1 - exp((t - start) * speed))
+    rho <- 0.7,
+    # rho <- 0.3 * (1 - exp((t - start) * -0.015 speed)) + 0.7  # exponential
+    rho <- min(0.7 + (t - start)*speed, 1)  # linear
   )
   return(rho)
 }
@@ -23,17 +24,19 @@ rho_curve_ramp <- function(t, start = 52*4, speed = -0.015){
 
 test <- sapply(0:520, FUN = rho_curve_ramp)
 # pdf(file = "../figures/vaccination-coverage-example.pdf", width = 6, height = 4.5)
-plot(test, type = "l", xlab = "Time (weeks)", ylab = "Vaccination coverage", col = "dodgerblue4", lwd = 2)
+plot(test, type = "l", xlab = "Time (weeks)",
+     ylab = "Vaccination coverage", col = "dodgerblue4", lwd = 2)
 abline(h = 0.7, lty = 2)
 abline(h = 0.95, lty = 3)
-text(120, 0.65, labels = "Current vaccination coverage in Niger", cex = 0.7)
-text(125, 0.9, labels = "Vaccination coverage for herd immunity", cex = 0.7)
+text(420, 0.71, labels = "Current vaccination coverage in Niger", cex = 0.7)
+text(125, 0.94, labels = "Vaccination coverage for herd immunity", cex = 0.7)
 # dev.off()
 
 
 # Set up grid of vaccination roll out speeds ------------------------------
 
-speed_grid <- seq(-0.01, -0.001, length.out = 6)
+# speed_grid <- seq(-5e-04, -1e-04, length.out = 6)  # exponential
+speed_grid <- seq(0.000015, 0.0001, length.out = 6)  # linear
 
 
 # Load libraries ----------------------------------------------------------
@@ -71,12 +74,15 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   # Simulate from the new pomp object ---------------------------------------
   
-  outsims <- foreach(i = speed_grid, .packages = c("pomp", "tidyverse", "dplyr"), .combine = "rbind") %dopar%
+  outsims <- foreach(i = speed_grid,
+                     .packages = c("pomp", "tidyverse", "dplyr"), 
+                     .combine = "rbind") %dopar%
   {
     years <- 100
     weeks <- years*52
     days <- years*365
-    vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, start = 50*365, speed = i)
+    vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, 
+                               start = 50*365, speed = i)
     vacc_coverage_ts[vacc_coverage_ts < 0.7] <- 0.7
     
     simulator_pomp <- make_pomp_simulator(
@@ -90,7 +96,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 1,
+      nsim = 50,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble() 
@@ -102,13 +108,13 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     #   summarise(avg_re = mean(RE_seas))
     # 
     # par(mfrow = c(1, 2))
-    vacc_start <- 50*365/7
-    tcrit <- which(vacc_coverage_ts >= 0.95)[1]/7
-    window_start <- vacc_start - (tcrit - vacc_start)
-    plot(model_sims$reports, type = "l", xlab = "day", ylab = "reports", col = "grey45")
-    abline(v = vacc_start, col = "red", lwd =2, lty = 2)
-    abline(v = tcrit, col = "dodgerblue4", lty = 2, lwd = 2)
-    abline(v = window_start, col = "dodgerblue4", lty = 2, lwd = 2)
+    # vacc_start <- 50*365/7
+    # tcrit <- which(vacc_coverage_ts >= 0.95)[1]/7
+    # window_start <- vacc_start - (tcrit - vacc_start)
+    # plot(model_sims$reports, type = "l", xlab = "day", ylab = "reports", col = "grey45")
+    # abline(v = vacc_start, col = "red", lwd =2, lty = 2)
+    # abline(v = tcrit, col = "dodgerblue4", lty = 2, lwd = 2)
+    # abline(v = window_start, col = "dodgerblue4", lty = 2, lwd = 2)
     # plot(summ$avg_re, type = "l", col = "grey35", xlab = "year", ylab = expression(R[E]))
     # abline(h = 1, col = "red", lty = 2, lwd = 2)
     # abline(v = 50, col = "dodgerblue4", lty = 2, lwd = 2)
@@ -139,18 +145,9 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
         city = do_city
       ) %>%
       dplyr::select(-vacc_discount)
-    
-    t_crit <- tmp_re_sims %>%
-      filter(vacc_coverage >= 0.95) %>%
-      slice(1) %>%
-      pull(time)
-    
-    # ggplot(tmp_re_sims, aes(x = time, y = reports, color = sim)) +
-    #   geom_line() +
-    #   geom_vline(aes(xintercept = t_crit)) +
-    #   guides(color = FALSE)
-    
-    outfile <- paste0("../simulations/elimination-simulations-grid-", do_city, "-", i, ".RDS")
+
+    outfile <- paste0("../simulations/elimination-simulations-grid-",
+                      do_city, "-", i, ".RDS")
     saveRDS(object = tmp_re_sims, file = outfile)
   }
   

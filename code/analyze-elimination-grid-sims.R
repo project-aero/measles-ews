@@ -27,17 +27,6 @@ for(do_file in sim_files){
   all_sims <- bind_rows(all_sims, tmp)
 }
 
-tmp_for_plots <- all_sims %>%
-  filter(sim == 1 & vacc_speed == -0.001)
-
-ggplot(tmp_for_plots, aes(x = time, y = log(reports))) +
-  geom_line() +
-  stat_smooth(se =FALSE) +
-  facet_wrap(~city, scales = "free")
-
-ggplot(tmp_for_plots, aes(x = reports)) +
-  geom_histogram() +
-  facet_wrap(~city, scales = "free")
 
 # Drop time series past herd immunity -------------------------------------
 
@@ -57,24 +46,32 @@ for(do_city in unique(all_sims$city)){
       filter(city == do_city) %>%
       filter(vacc_speed == do_speed)
     
+    window_size <- tmpsims %>%
+      filter(vacc_coverage > 0.7 & sim == 1) %>%
+      nrow()  # returns number to times in window leading to tcritical
+    
     tmptimes <- tmpsims %>%
       pull(time) %>%
       unique()  # returns unique observation times across simulations
     
-    if((length(tmptimes) %% 2) != 0){
-      tmptimes <- tmptimes[2:length(tmptimes)]
-    }  # makes tmptimes divisible by 2, if not already
+    times_before_vaccine <- tmptimes[tmptimes < 50]
+    start_ts <- length(times_before_vaccine) - window_size + 1
+    times_before_vaccine <- times_before_vaccine[start_ts:length(times_before_vaccine)]
+    times_after_vaccine <- tmptimes[tmptimes >= 50]
+    
+    simtimes <- c(times_before_vaccine, times_after_vaccine)
     
     ews_time_ids <- tibble(
-      time = tmptimes,
-      half = c(
-        rep("first", length(tmptimes)/2),  # label first half of time series
-        rep("second", length(tmptimes)/2)  # label second half of time series
+      time = simtimes,
+      half = ifelse(
+        time < 50,
+        "first",
+        "second"
       )
     )
     
     # Bandwidth is the full window for each half
-    window_bandwidth <- length(tmptimes)/2
+    window_bandwidth <- length(simtimes)/2
     
     # Merge in `time` and `half` information
     tmp_ews_data <- tmpsims %>%
