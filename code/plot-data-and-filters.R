@@ -129,7 +129,7 @@ r_squares <- pred_cases %>%
 
 
 scatters <- ggplot(pred_cases, aes(x = log(observed_cases+1), y = log(mean_cases+1))) +
-  geom_point(color = ptol_pal()(1), size = 2, alpha = 0.3) +
+  geom_point(color = "dodgerblue4", size = 2, alpha = 0.3) +
   geom_abline(aes(intercept = 0, slope = 1), linetype = 2, size = 1) +
   geom_label(data = r_squares, aes(x = 1.7, y = 7.3, label = paste0("italic(R)^2 == ", round(R2,2))), label.size = NA, parse = TRUE) +
   labs(y = "Expected log(cases + 1)", x = "Observed log(cases + 1)") +

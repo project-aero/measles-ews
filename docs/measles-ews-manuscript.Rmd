@@ -35,20 +35,23 @@ bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 \begin{centering}
 
 {\LARGE
-\textbf\newline{Early warning signals anticipate critical transitions\\in empirically-based simulations of measles dynamics in Niger} 
+\textbf\newline{Critial slowing down anticipates emergence and elimination of measles in Niger} 
 }
 
 \vspace{2em}
 
 Andrew T. Tredennick\textsuperscript{1,2}\footnote[1]{Corresponding author: atredenn@gmail.com},
 Eamon O'Dea\textsuperscript{1,2},
+Andrew W. Park\textsuperscript{1,2},
 Tobias Brett\textsuperscript{1,2},
+Matthew J. Ferrari\textsuperscript{3},
 Pejman Rohani\textsuperscript{1,2},
 \& John M. Drake\textsuperscript{1,2}
 \\
 \bigskip
 \textsuperscript{1} \small\emph{Odum School of Ecology, University of Georgia, Athens, GA, USA} \\
-\textsuperscript{2} \small\emph{Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA, USA}
+\textsuperscript{2} \small\emph{Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA, USA} \\
+\textsuperscript{3} \small\emph{Department of Biology, Pennsylvania State University, State College, PA, USA}
 
 \end{centering}
 
@@ -94,7 +97,7 @@ The data come from [*somewhere/someone*], and used here with permission from [*s
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/map-and-series.pdf}
-\caption{(A) Locations and population sizes (in parantheses) of our four focal cities in Niger. (B) Time series of reported cases (yellow solid lines) and the 95\% prediction intervals for one-step-ahead forecasts from our fitted SEIR models for each city.}
+\caption{(A) Locations and population sizes (in parantheses) of our four focal cities in Niger. (B) Time series of reported cases (yellow solid lines) and the 95\% prediction intervals (black ribbons) for one-step-ahead forecasts from our fitted SEIR models for each city.}
 \label{fig:data}
 \end{figure}
 
