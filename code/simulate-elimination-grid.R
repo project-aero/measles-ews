@@ -96,7 +96,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 50,
+      nsim = 500,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble() 

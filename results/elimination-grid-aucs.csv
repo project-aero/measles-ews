@@ -1,217 +1,217 @@
 "","city","vacc_speed","metric","AUC"
-"1","Agadez",-0.001,"Variance",0.9984
-"2","Agadez",-0.001,"Autocovar.",0.9984
-"3","Agadez",-0.001,"Autocorr.",0.5244
-"4","Agadez",-0.001,"Decay time",0.5244
-"5","Agadez",-0.001,"Mean",1
-"6","Agadez",-0.001,"Index of dis.",0.946
-"7","Agadez",-0.001,"Coeff. var.",0.57
-"8","Agadez",-0.001,"Skewness",0.5124
-"9","Agadez",-0.001,"Kurtosis",0.486
-"10","Agadez",-0.0028,"Variance",0.9972
-"11","Agadez",-0.0028,"Autocovar.",0.9976
-"12","Agadez",-0.0028,"Autocorr.",0.5432
-"13","Agadez",-0.0028,"Decay time",0.5432
-"14","Agadez",-0.0028,"Mean",1
-"15","Agadez",-0.0028,"Index of dis.",0.9544
-"16","Agadez",-0.0028,"Coeff. var.",0.582
-"17","Agadez",-0.0028,"Skewness",0.5056
-"18","Agadez",-0.0028,"Kurtosis",0.512
-"19","Agadez",-0.0046,"Variance",0.996
-"20","Agadez",-0.0046,"Autocovar.",0.996
-"21","Agadez",-0.0046,"Autocorr.",0.5312
-"22","Agadez",-0.0046,"Decay time",0.5312
-"23","Agadez",-0.0046,"Mean",1
-"24","Agadez",-0.0046,"Index of dis.",0.946
-"25","Agadez",-0.0046,"Coeff. var.",0.5224
-"26","Agadez",-0.0046,"Skewness",0.5248
-"27","Agadez",-0.0046,"Kurtosis",0.5292
-"28","Agadez",-0.0064,"Variance",0.9944
-"29","Agadez",-0.0064,"Autocovar.",0.9944
-"30","Agadez",-0.0064,"Autocorr.",0.4996
-"31","Agadez",-0.0064,"Decay time",0.4996
-"32","Agadez",-0.0064,"Mean",1
-"33","Agadez",-0.0064,"Index of dis.",0.8992
-"34","Agadez",-0.0064,"Coeff. var.",0.4628
-"35","Agadez",-0.0064,"Skewness",0.5652
-"36","Agadez",-0.0064,"Kurtosis",0.564
-"37","Agadez",-0.0082,"Variance",0.9948
-"38","Agadez",-0.0082,"Autocovar.",0.9948
-"39","Agadez",-0.0082,"Autocorr.",0.4828
-"40","Agadez",-0.0082,"Decay time",0.4828
-"41","Agadez",-0.0082,"Mean",1
-"42","Agadez",-0.0082,"Index of dis.",0.9344
-"43","Agadez",-0.0082,"Coeff. var.",0.4844
-"44","Agadez",-0.0082,"Skewness",0.4888
-"45","Agadez",-0.0082,"Kurtosis",0.484
-"46","Agadez",-0.01,"Variance",0.998
-"47","Agadez",-0.01,"Autocovar.",0.998
-"48","Agadez",-0.01,"Autocorr.",0.5888
-"49","Agadez",-0.01,"Decay time",0.5888
-"50","Agadez",-0.01,"Mean",1
-"51","Agadez",-0.01,"Index of dis.",0.9388
-"52","Agadez",-0.01,"Coeff. var.",0.5392
-"53","Agadez",-0.01,"Skewness",0.5836
-"54","Agadez",-0.01,"Kurtosis",0.574
-"55","Maradi",-0.001,"Variance",1
-"56","Maradi",-0.001,"Autocovar.",1
-"57","Maradi",-0.001,"Autocorr.",0.5248
-"58","Maradi",-0.001,"Decay time",0.5248
-"59","Maradi",-0.001,"Mean",1
-"60","Maradi",-0.001,"Index of dis.",1
-"61","Maradi",-0.001,"Coeff. var.",0.7836
-"62","Maradi",-0.001,"Skewness",0.606
-"63","Maradi",-0.001,"Kurtosis",0.58
-"64","Maradi",-0.0028,"Variance",1
-"65","Maradi",-0.0028,"Autocovar.",1
-"66","Maradi",-0.0028,"Autocorr.",0.4536
-"67","Maradi",-0.0028,"Decay time",0.4536
-"68","Maradi",-0.0028,"Mean",1
-"69","Maradi",-0.0028,"Index of dis.",1
-"70","Maradi",-0.0028,"Coeff. var.",0.6888
-"71","Maradi",-0.0028,"Skewness",0.562
-"72","Maradi",-0.0028,"Kurtosis",0.5412
-"73","Maradi",-0.0046,"Variance",1
-"74","Maradi",-0.0046,"Autocovar.",1
-"75","Maradi",-0.0046,"Autocorr.",0.6004
-"76","Maradi",-0.0046,"Decay time",0.6004
-"77","Maradi",-0.0046,"Mean",1
-"78","Maradi",-0.0046,"Index of dis.",1
-"79","Maradi",-0.0046,"Coeff. var.",0.7256
-"80","Maradi",-0.0046,"Skewness",0.6528
-"81","Maradi",-0.0046,"Kurtosis",0.6268
-"82","Maradi",-0.0064,"Variance",1
-"83","Maradi",-0.0064,"Autocovar.",1
-"84","Maradi",-0.0064,"Autocorr.",0.5684
-"85","Maradi",-0.0064,"Decay time",0.5684
-"86","Maradi",-0.0064,"Mean",1
-"87","Maradi",-0.0064,"Index of dis.",0.9984
-"88","Maradi",-0.0064,"Coeff. var.",0.636
-"89","Maradi",-0.0064,"Skewness",0.5932
-"90","Maradi",-0.0064,"Kurtosis",0.5892
-"91","Maradi",-0.0082,"Variance",1
-"92","Maradi",-0.0082,"Autocovar.",1
-"93","Maradi",-0.0082,"Autocorr.",0.4416
-"94","Maradi",-0.0082,"Decay time",0.4416
-"95","Maradi",-0.0082,"Mean",1
-"96","Maradi",-0.0082,"Index of dis.",0.9964
-"97","Maradi",-0.0082,"Coeff. var.",0.5824
-"98","Maradi",-0.0082,"Skewness",0.5108
-"99","Maradi",-0.0082,"Kurtosis",0.4916
-"100","Maradi",-0.01,"Variance",1
-"101","Maradi",-0.01,"Autocovar.",1
-"102","Maradi",-0.01,"Autocorr.",0.6004
-"103","Maradi",-0.01,"Decay time",0.6004
-"104","Maradi",-0.01,"Mean",1
-"105","Maradi",-0.01,"Index of dis.",1
-"106","Maradi",-0.01,"Coeff. var.",0.6416
-"107","Maradi",-0.01,"Skewness",0.578
-"108","Maradi",-0.01,"Kurtosis",0.5748
-"109","Niamey",-0.001,"Variance",1
-"110","Niamey",-0.001,"Autocovar.",1
-"111","Niamey",-0.001,"Autocorr.",0.5088
-"112","Niamey",-0.001,"Decay time",0.5088
-"113","Niamey",-0.001,"Mean",1
-"114","Niamey",-0.001,"Index of dis.",1
-"115","Niamey",-0.001,"Coeff. var.",0.8404
-"116","Niamey",-0.001,"Skewness",0.7032
-"117","Niamey",-0.001,"Kurtosis",0.6652
-"118","Niamey",-0.0028,"Variance",1
-"119","Niamey",-0.0028,"Autocovar.",1
-"120","Niamey",-0.0028,"Autocorr.",0.5392
-"121","Niamey",-0.0028,"Decay time",0.5392
-"122","Niamey",-0.0028,"Mean",1
-"123","Niamey",-0.0028,"Index of dis.",1
-"124","Niamey",-0.0028,"Coeff. var.",0.7264
-"125","Niamey",-0.0028,"Skewness",0.5884
-"126","Niamey",-0.0028,"Kurtosis",0.5544
-"127","Niamey",-0.0046,"Variance",1
-"128","Niamey",-0.0046,"Autocovar.",1
-"129","Niamey",-0.0046,"Autocorr.",0.534
-"130","Niamey",-0.0046,"Decay time",0.534
-"131","Niamey",-0.0046,"Mean",1
-"132","Niamey",-0.0046,"Index of dis.",1
-"133","Niamey",-0.0046,"Coeff. var.",0.6028
-"134","Niamey",-0.0046,"Skewness",0.5764
-"135","Niamey",-0.0046,"Kurtosis",0.5596
-"136","Niamey",-0.0064,"Variance",1
-"137","Niamey",-0.0064,"Autocovar.",1
-"138","Niamey",-0.0064,"Autocorr.",0.4904
-"139","Niamey",-0.0064,"Decay time",0.4904
-"140","Niamey",-0.0064,"Mean",1
-"141","Niamey",-0.0064,"Index of dis.",1
-"142","Niamey",-0.0064,"Coeff. var.",0.6836
-"143","Niamey",-0.0064,"Skewness",0.6756
-"144","Niamey",-0.0064,"Kurtosis",0.6628
-"145","Niamey",-0.0082,"Variance",1
-"146","Niamey",-0.0082,"Autocovar.",1
-"147","Niamey",-0.0082,"Autocorr.",0.6348
-"148","Niamey",-0.0082,"Decay time",0.6348
-"149","Niamey",-0.0082,"Mean",1
-"150","Niamey",-0.0082,"Index of dis.",1
-"151","Niamey",-0.0082,"Coeff. var.",0.756
-"152","Niamey",-0.0082,"Skewness",0.6704
-"153","Niamey",-0.0082,"Kurtosis",0.6548
-"154","Niamey",-0.01,"Variance",1
-"155","Niamey",-0.01,"Autocovar.",1
-"156","Niamey",-0.01,"Autocorr.",0.4936
-"157","Niamey",-0.01,"Decay time",0.4936
-"158","Niamey",-0.01,"Mean",1
-"159","Niamey",-0.01,"Index of dis.",1
-"160","Niamey",-0.01,"Coeff. var.",0.67
-"161","Niamey",-0.01,"Skewness",0.6116
-"162","Niamey",-0.01,"Kurtosis",0.6096
-"163","Zinder",-0.001,"Variance",1
-"164","Zinder",-0.001,"Autocovar.",1
-"165","Zinder",-0.001,"Autocorr.",0.5144
-"166","Zinder",-0.001,"Decay time",0.5144
-"167","Zinder",-0.001,"Mean",1
-"168","Zinder",-0.001,"Index of dis.",0.9856
-"169","Zinder",-0.001,"Coeff. var.",0.7568
-"170","Zinder",-0.001,"Skewness",0.63
-"171","Zinder",-0.001,"Kurtosis",0.6104
-"172","Zinder",-0.0028,"Variance",1
-"173","Zinder",-0.0028,"Autocovar.",1
-"174","Zinder",-0.0028,"Autocorr.",0.556
-"175","Zinder",-0.0028,"Decay time",0.556
-"176","Zinder",-0.0028,"Mean",1
-"177","Zinder",-0.0028,"Index of dis.",0.9832
-"178","Zinder",-0.0028,"Coeff. var.",0.5424
-"179","Zinder",-0.0028,"Skewness",0.5064
-"180","Zinder",-0.0028,"Kurtosis",0.5028
-"181","Zinder",-0.0046,"Variance",1
-"182","Zinder",-0.0046,"Autocovar.",1
-"183","Zinder",-0.0046,"Autocorr.",0.4976
-"184","Zinder",-0.0046,"Decay time",0.4976
-"185","Zinder",-0.0046,"Mean",1
-"186","Zinder",-0.0046,"Index of dis.",0.984
-"187","Zinder",-0.0046,"Coeff. var.",0.6552
-"188","Zinder",-0.0046,"Skewness",0.558
-"189","Zinder",-0.0046,"Kurtosis",0.5336
-"190","Zinder",-0.0064,"Variance",1
-"191","Zinder",-0.0064,"Autocovar.",1
-"192","Zinder",-0.0064,"Autocorr.",0.5568
-"193","Zinder",-0.0064,"Decay time",0.5568
-"194","Zinder",-0.0064,"Mean",1
-"195","Zinder",-0.0064,"Index of dis.",0.9916
-"196","Zinder",-0.0064,"Coeff. var.",0.6588
-"197","Zinder",-0.0064,"Skewness",0.524
-"198","Zinder",-0.0064,"Kurtosis",0.4968
-"199","Zinder",-0.0082,"Variance",1
-"200","Zinder",-0.0082,"Autocovar.",1
-"201","Zinder",-0.0082,"Autocorr.",0.538
-"202","Zinder",-0.0082,"Decay time",0.538
-"203","Zinder",-0.0082,"Mean",1
-"204","Zinder",-0.0082,"Index of dis.",0.9924
-"205","Zinder",-0.0082,"Coeff. var.",0.6844
-"206","Zinder",-0.0082,"Skewness",0.6184
-"207","Zinder",-0.0082,"Kurtosis",0.6008
-"208","Zinder",-0.01,"Variance",1
-"209","Zinder",-0.01,"Autocovar.",1
-"210","Zinder",-0.01,"Autocorr.",0.528
-"211","Zinder",-0.01,"Decay time",0.528
-"212","Zinder",-0.01,"Mean",1
-"213","Zinder",-0.01,"Index of dis.",0.9712
-"214","Zinder",-0.01,"Coeff. var.",0.4868
-"215","Zinder",-0.01,"Skewness",0.5696
-"216","Zinder",-0.01,"Kurtosis",0.5732
+"1","Agadez",1.5e-05,"Variance",0.7796
+"2","Agadez",1.5e-05,"Autocovar.",0.7752
+"3","Agadez",1.5e-05,"Autocorr.",0.5932
+"4","Agadez",1.5e-05,"Decay time",0.5932
+"5","Agadez",1.5e-05,"Mean",0.9984
+"6","Agadez",1.5e-05,"Index of dis.",0.6136
+"7","Agadez",1.5e-05,"Coeff. var.",0.6368
+"8","Agadez",1.5e-05,"Skewness",0.642
+"9","Agadez",1.5e-05,"Kurtosis",0.6404
+"10","Agadez",1e-04,"Variance",0.5896
+"11","Agadez",1e-04,"Autocovar.",0.5876
+"12","Agadez",1e-04,"Autocorr.",0.5416
+"13","Agadez",1e-04,"Decay time",0.5416
+"14","Agadez",1e-04,"Mean",0.5996
+"15","Agadez",1e-04,"Index of dis.",0.5912
+"16","Agadez",1e-04,"Coeff. var.",0.4748
+"17","Agadez",1e-04,"Skewness",0.5284
+"18","Agadez",1e-04,"Kurtosis",0.4724
+"19","Agadez",3.2e-05,"Variance",0.6592
+"20","Agadez",3.2e-05,"Autocovar.",0.6596
+"21","Agadez",3.2e-05,"Autocorr.",0.4752
+"22","Agadez",3.2e-05,"Decay time",0.4752
+"23","Agadez",3.2e-05,"Mean",0.8
+"24","Agadez",3.2e-05,"Index of dis.",0.582
+"25","Agadez",3.2e-05,"Coeff. var.",0.5528
+"26","Agadez",3.2e-05,"Skewness",0.5032
+"27","Agadez",3.2e-05,"Kurtosis",0.5184
+"28","Agadez",4.9e-05,"Variance",0.6768
+"29","Agadez",4.9e-05,"Autocovar.",0.6768
+"30","Agadez",4.9e-05,"Autocorr.",0.5388
+"31","Agadez",4.9e-05,"Decay time",0.5388
+"32","Agadez",4.9e-05,"Mean",0.6984
+"33","Agadez",4.9e-05,"Index of dis.",0.6496
+"34","Agadez",4.9e-05,"Coeff. var.",0.602
+"35","Agadez",4.9e-05,"Skewness",0.5884
+"36","Agadez",4.9e-05,"Kurtosis",0.5764
+"37","Agadez",6.6e-05,"Variance",0.4904
+"38","Agadez",6.6e-05,"Autocovar.",0.4896
+"39","Agadez",6.6e-05,"Autocorr.",0.5032
+"40","Agadez",6.6e-05,"Decay time",0.5032
+"41","Agadez",6.6e-05,"Mean",0.494
+"42","Agadez",6.6e-05,"Index of dis.",0.4984
+"43","Agadez",6.6e-05,"Coeff. var.",0.4884
+"44","Agadez",6.6e-05,"Skewness",0.5424
+"45","Agadez",6.6e-05,"Kurtosis",0.544
+"46","Agadez",8.3e-05,"Variance",0.5868
+"47","Agadez",8.3e-05,"Autocovar.",0.594
+"48","Agadez",8.3e-05,"Autocorr.",0.624
+"49","Agadez",8.3e-05,"Decay time",0.624
+"50","Agadez",8.3e-05,"Mean",0.602
+"51","Agadez",8.3e-05,"Index of dis.",0.5824
+"52","Agadez",8.3e-05,"Coeff. var.",0.4732
+"53","Agadez",8.3e-05,"Skewness",0.4844
+"54","Agadez",8.3e-05,"Kurtosis",0.4884
+"55","Maradi",1.5e-05,"Variance",0.9744
+"56","Maradi",1.5e-05,"Autocovar.",0.9724
+"57","Maradi",1.5e-05,"Autocorr.",0.5056
+"58","Maradi",1.5e-05,"Decay time",0.5056
+"59","Maradi",1.5e-05,"Mean",1
+"60","Maradi",1.5e-05,"Index of dis.",0.7804
+"61","Maradi",1.5e-05,"Coeff. var.",0.6716
+"62","Maradi",1.5e-05,"Skewness",0.7472
+"63","Maradi",1.5e-05,"Kurtosis",0.7312
+"64","Maradi",1e-04,"Variance",0.7072
+"65","Maradi",1e-04,"Autocovar.",0.7076
+"66","Maradi",1e-04,"Autocorr.",0.5556
+"67","Maradi",1e-04,"Decay time",0.5556
+"68","Maradi",1e-04,"Mean",0.8212
+"69","Maradi",1e-04,"Index of dis.",0.606
+"70","Maradi",1e-04,"Coeff. var.",0.536
+"71","Maradi",1e-04,"Skewness",0.562
+"72","Maradi",1e-04,"Kurtosis",0.568
+"73","Maradi",3.2e-05,"Variance",0.9208
+"74","Maradi",3.2e-05,"Autocovar.",0.9212
+"75","Maradi",3.2e-05,"Autocorr.",0.5748
+"76","Maradi",3.2e-05,"Decay time",0.5748
+"77","Maradi",3.2e-05,"Mean",1
+"78","Maradi",3.2e-05,"Index of dis.",0.7412
+"79","Maradi",3.2e-05,"Coeff. var.",0.55
+"80","Maradi",3.2e-05,"Skewness",0.62
+"81","Maradi",3.2e-05,"Kurtosis",0.6188
+"82","Maradi",4.9e-05,"Variance",0.8264
+"83","Maradi",4.9e-05,"Autocovar.",0.8284
+"84","Maradi",4.9e-05,"Autocorr.",0.5892
+"85","Maradi",4.9e-05,"Decay time",0.5892
+"86","Maradi",4.9e-05,"Mean",0.9936
+"87","Maradi",4.9e-05,"Index of dis.",0.6736
+"88","Maradi",4.9e-05,"Coeff. var.",0.552
+"89","Maradi",4.9e-05,"Skewness",0.5192
+"90","Maradi",4.9e-05,"Kurtosis",0.5156
+"91","Maradi",6.6e-05,"Variance",0.8236
+"92","Maradi",6.6e-05,"Autocovar.",0.822
+"93","Maradi",6.6e-05,"Autocorr.",0.5384
+"94","Maradi",6.6e-05,"Decay time",0.5384
+"95","Maradi",6.6e-05,"Mean",0.9668
+"96","Maradi",6.6e-05,"Index of dis.",0.7116
+"97","Maradi",6.6e-05,"Coeff. var.",0.4988
+"98","Maradi",6.6e-05,"Skewness",0.5508
+"99","Maradi",6.6e-05,"Kurtosis",0.5572
+"100","Maradi",8.3e-05,"Variance",0.786
+"101","Maradi",8.3e-05,"Autocovar.",0.784
+"102","Maradi",8.3e-05,"Autocorr.",0.502
+"103","Maradi",8.3e-05,"Decay time",0.502
+"104","Maradi",8.3e-05,"Mean",0.9364
+"105","Maradi",8.3e-05,"Index of dis.",0.6568
+"106","Maradi",8.3e-05,"Coeff. var.",0.5812
+"107","Maradi",8.3e-05,"Skewness",0.5816
+"108","Maradi",8.3e-05,"Kurtosis",0.5732
+"109","Niamey",1.5e-05,"Variance",0.986
+"110","Niamey",1.5e-05,"Autocovar.",0.9864
+"111","Niamey",1.5e-05,"Autocorr.",0.6072
+"112","Niamey",1.5e-05,"Decay time",0.6072
+"113","Niamey",1.5e-05,"Mean",1
+"114","Niamey",1.5e-05,"Index of dis.",0.7312
+"115","Niamey",1.5e-05,"Coeff. var.",0.7856
+"116","Niamey",1.5e-05,"Skewness",0.7828
+"117","Niamey",1.5e-05,"Kurtosis",0.7612
+"118","Niamey",1e-04,"Variance",0.6308
+"119","Niamey",1e-04,"Autocovar.",0.6292
+"120","Niamey",1e-04,"Autocorr.",0.4696
+"121","Niamey",1e-04,"Decay time",0.4696
+"122","Niamey",1e-04,"Mean",0.804
+"123","Niamey",1e-04,"Index of dis.",0.5432
+"124","Niamey",1e-04,"Coeff. var.",0.59
+"125","Niamey",1e-04,"Skewness",0.5772
+"126","Niamey",1e-04,"Kurtosis",0.576
+"127","Niamey",3.2e-05,"Variance",0.8864
+"128","Niamey",3.2e-05,"Autocovar.",0.8872
+"129","Niamey",3.2e-05,"Autocorr.",0.5324
+"130","Niamey",3.2e-05,"Decay time",0.5324
+"131","Niamey",3.2e-05,"Mean",1
+"132","Niamey",3.2e-05,"Index of dis.",0.6836
+"133","Niamey",3.2e-05,"Coeff. var.",0.6336
+"134","Niamey",3.2e-05,"Skewness",0.7016
+"135","Niamey",3.2e-05,"Kurtosis",0.6932
+"136","Niamey",4.9e-05,"Variance",0.8236
+"137","Niamey",4.9e-05,"Autocovar.",0.8244
+"138","Niamey",4.9e-05,"Autocorr.",0.5324
+"139","Niamey",4.9e-05,"Decay time",0.5324
+"140","Niamey",4.9e-05,"Mean",0.9804
+"141","Niamey",4.9e-05,"Index of dis.",0.6272
+"142","Niamey",4.9e-05,"Coeff. var.",0.6552
+"143","Niamey",4.9e-05,"Skewness",0.6604
+"144","Niamey",4.9e-05,"Kurtosis",0.6616
+"145","Niamey",6.6e-05,"Variance",0.8132
+"146","Niamey",6.6e-05,"Autocovar.",0.8176
+"147","Niamey",6.6e-05,"Autocorr.",0.486
+"148","Niamey",6.6e-05,"Decay time",0.486
+"149","Niamey",6.6e-05,"Mean",0.904
+"150","Niamey",6.6e-05,"Index of dis.",0.6732
+"151","Niamey",6.6e-05,"Coeff. var.",0.5636
+"152","Niamey",6.6e-05,"Skewness",0.5604
+"153","Niamey",6.6e-05,"Kurtosis",0.5584
+"154","Niamey",8.3e-05,"Variance",0.7052
+"155","Niamey",8.3e-05,"Autocovar.",0.7072
+"156","Niamey",8.3e-05,"Autocorr.",0.5512
+"157","Niamey",8.3e-05,"Decay time",0.5512
+"158","Niamey",8.3e-05,"Mean",0.8332
+"159","Niamey",8.3e-05,"Index of dis.",0.6124
+"160","Niamey",8.3e-05,"Coeff. var.",0.5892
+"161","Niamey",8.3e-05,"Skewness",0.5912
+"162","Niamey",8.3e-05,"Kurtosis",0.5908
+"163","Zinder",1.5e-05,"Variance",0.7884
+"164","Zinder",1.5e-05,"Autocovar.",0.7852
+"165","Zinder",1.5e-05,"Autocorr.",0.5804
+"166","Zinder",1.5e-05,"Decay time",0.5804
+"167","Zinder",1.5e-05,"Mean",0.9988
+"168","Zinder",1.5e-05,"Index of dis.",0.6088
+"169","Zinder",1.5e-05,"Coeff. var.",0.6348
+"170","Zinder",1.5e-05,"Skewness",0.6032
+"171","Zinder",1.5e-05,"Kurtosis",0.584
+"172","Zinder",1e-04,"Variance",0.5756
+"173","Zinder",1e-04,"Autocovar.",0.574
+"174","Zinder",1e-04,"Autocorr.",0.5704
+"175","Zinder",1e-04,"Decay time",0.5704
+"176","Zinder",1e-04,"Mean",0.6094
+"177","Zinder",1e-04,"Index of dis.",0.5648
+"178","Zinder",1e-04,"Coeff. var.",0.4892
+"179","Zinder",1e-04,"Skewness",0.5424
+"180","Zinder",1e-04,"Kurtosis",0.556
+"181","Zinder",3.2e-05,"Variance",0.7168
+"182","Zinder",3.2e-05,"Autocovar.",0.7152
+"183","Zinder",3.2e-05,"Autocorr.",0.5364
+"184","Zinder",3.2e-05,"Decay time",0.5364
+"185","Zinder",3.2e-05,"Mean",0.9032
+"186","Zinder",3.2e-05,"Index of dis.",0.6104
+"187","Zinder",3.2e-05,"Coeff. var.",0.5524
+"188","Zinder",3.2e-05,"Skewness",0.5292
+"189","Zinder",3.2e-05,"Kurtosis",0.5224
+"190","Zinder",4.9e-05,"Variance",0.7276
+"191","Zinder",4.9e-05,"Autocovar.",0.726
+"192","Zinder",4.9e-05,"Autocorr.",0.5588
+"193","Zinder",4.9e-05,"Decay time",0.5588
+"194","Zinder",4.9e-05,"Mean",0.8292
+"195","Zinder",4.9e-05,"Index of dis.",0.6596
+"196","Zinder",4.9e-05,"Coeff. var.",0.5316
+"197","Zinder",4.9e-05,"Skewness",0.6108
+"198","Zinder",4.9e-05,"Kurtosis",0.6244
+"199","Zinder",6.6e-05,"Variance",0.6376
+"200","Zinder",6.6e-05,"Autocovar.",0.6388
+"201","Zinder",6.6e-05,"Autocorr.",0.5676
+"202","Zinder",6.6e-05,"Decay time",0.5676
+"203","Zinder",6.6e-05,"Mean",0.6432
+"204","Zinder",6.6e-05,"Index of dis.",0.612
+"205","Zinder",6.6e-05,"Coeff. var.",0.5516
+"206","Zinder",6.6e-05,"Skewness",0.4884
+"207","Zinder",6.6e-05,"Kurtosis",0.494
+"208","Zinder",8.3e-05,"Variance",0.5836
+"209","Zinder",8.3e-05,"Autocovar.",0.5836
+"210","Zinder",8.3e-05,"Autocorr.",0.5572
+"211","Zinder",8.3e-05,"Decay time",0.5572
+"212","Zinder",8.3e-05,"Mean",0.6236
+"213","Zinder",8.3e-05,"Index of dis.",0.5656
+"214","Zinder",8.3e-05,"Coeff. var.",0.498
+"215","Zinder",8.3e-05,"Skewness",0.5016
+"216","Zinder",8.3e-05,"Kurtosis",0.5112

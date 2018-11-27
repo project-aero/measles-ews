@@ -44,7 +44,8 @@ for(do_city in unique(all_sims$city)){
   for(do_speed in unique(all_sims$vacc_speed)){
     tmpsims <- all_sims %>%
       filter(city == do_city) %>%
-      filter(vacc_speed == do_speed)
+      filter(vacc_speed == do_speed) %>%
+      filter(vacc_coverage > 0.7)
     
     window_size <- tmpsims %>%
       filter(vacc_coverage > 0.7 & sim == 1) %>%
@@ -54,24 +55,38 @@ for(do_city in unique(all_sims$city)){
       pull(time) %>%
       unique()  # returns unique observation times across simulations
     
-    times_before_vaccine <- tmptimes[tmptimes < 50]
-    start_ts <- length(times_before_vaccine) - window_size + 1
-    times_before_vaccine <- times_before_vaccine[start_ts:length(times_before_vaccine)]
-    times_after_vaccine <- tmptimes[tmptimes >= 50]
-    
-    simtimes <- c(times_before_vaccine, times_after_vaccine)
+    if((length(tmptimes) %% 2) != 0){
+      tmptimes <- tmptimes[2:length(tmptimes)]
+    }
     
     ews_time_ids <- tibble(
-      time = simtimes,
-      half = ifelse(
-        time < 50,
-        "first",
-        "second"
+      time = tmptimes,
+      half = c(
+        rep("first", length(tmptimes)/2), 
+        rep("second", length(tmptimes)/2)
       )
     )
     
+    window_bandwidth <- length(tmptimes)/2
+    
+    # times_before_vaccine <- tmptimes[tmptimes < 50]
+    # start_ts <- length(times_before_vaccine) - window_size + 1
+    # times_before_vaccine <- times_before_vaccine[start_ts:length(times_before_vaccine)]
+    # times_after_vaccine <- tmptimes[tmptimes >= 50]
+    # 
+    # simtimes <- c(times_before_vaccine, times_after_vaccine)
+    # 
+    # ews_time_ids <- tibble(
+    #   time = simtimes,
+    #   half = ifelse(
+    #     time < 50,
+    #     "first",
+    #     "second"
+    #   )
+    # )
+    
     # Bandwidth is the full window for each half
-    window_bandwidth <- length(simtimes)/2
+    # window_bandwidth <- length(simtimes)/2
     
     # Merge in `time` and `half` information
     tmp_ews_data <- tmpsims %>%
@@ -268,20 +283,20 @@ ews_hists <- cowplot::plot_grid(
   nrow = 4,
   labels = "AUTO"
 )
-# ggsave(
-#   filename = "../figures/ews-histograms-simulation.pdf", 
-#   plot = ews_hists, 
-#   height = 5,
-#   width = 9, 
-#   units = "in"
-# )
+ggsave(
+  filename = "../figures/ews-histograms-elimination.pdf",
+  plot = ews_hists,
+  height = 5,
+  width = 9,
+  units = "in"
+)
 
 
 ggplot(auc_tbl, aes(x = as.factor(vacc_speed), y = metric, fill = abs(AUC-0.5))) +
   geom_tile() +
   viridis::scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = "Level of susceptible depletion", y = NULL) +
+  labs(x = "Speed of vaccination campaign", y = NULL) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"))
