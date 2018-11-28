@@ -39,23 +39,30 @@ bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 }
 
 \vspace{2em}
-
-Andrew T. Tredennick\textsuperscript{1,2}\footnote[1]{Corresponding author: atredenn@gmail.com},
-Eamon O'Dea\textsuperscript{1,2},
-Andrew W. Park\textsuperscript{1,2},
-Tobias Brett\textsuperscript{1,2},
-Matthew J. Ferrari\textsuperscript{3},
-Pejman Rohani\textsuperscript{1,2},
-\& John M. Drake\textsuperscript{1,2}
-\\
-\bigskip
-\textsuperscript{1} \small\emph{Odum School of Ecology, University of Georgia, Athens, GA, USA} \\
-\textsuperscript{2} \small\emph{Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA, USA} \\
-\textsuperscript{3} \small\emph{Department of Biology, Pennsylvania State University, State College, PA, USA}
-
 \end{centering}
 
+<!-- Andrew T. Tredennick\textsuperscript{1,2}\footnote[1]{Corresponding author: atredenn@gmail.com}, ... -->
+<!-- Eamon O'Dea\textsuperscript{1,2}, -->
+<!-- Andrew W. Park\textsuperscript{1,2}, -->
+<!-- Tobias Brett\textsuperscript{1,2}, -->
+<!-- Matthew J. Ferrari\textsuperscript{3}, -->
+<!-- Pejman Rohani\textsuperscript{1,2}, -->
+<!-- \& John M. Drake\textsuperscript{1,2} -->
+<!-- \\ -->
+<!-- \bigskip -->
+<!-- \textsuperscript{1} \small\emph{Odum School of Ecology, University of Georgia, Athens, GA, USA} \\ -->
+<!-- \textsuperscript{2} \small\emph{Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA, USA} \\ -->
+<!-- \textsuperscript{3} \small\emph{Department of Biology, Pennsylvania State University, State College, PA, USA} -->
 
+
+<!-- # Author Contributions -->
+<!-- * Developed research questions: ATT, PR, JMD -->
+<!-- * Provided data: MJF -->
+<!-- * Designed the study: ATT, EO, AWP, PR, JMD -->
+<!-- * Conducted the analyses: ATT, EO -->
+<!-- * Analyzed and interpreted results: ATT, EO, AWP, TB, MJF PR, JMD -->
+<!-- * Wrote the first draft: ATT -->
+<!-- * Substantial revisions: ATT, EO, AWP, TB, MJF PR, JMD -->
 
 # Abstract
 
