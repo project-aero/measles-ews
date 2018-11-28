@@ -111,6 +111,20 @@ ggsave(filename = "../figures/map-and-series.pdf", plot = outplot, height = 4, w
 
 # Calculate model-data agreement ------------------------------------------
 
+for(do_city in unique(pred_cases$city_name)){
+  tmp_data <- pred_cases %>%
+    filter(city_name == do_city)
+  
+  mod <- lm(mean_cases ~ observed_cases, data = tmp_data)
+}
+
+# r_squares <- pred_cases %>%
+#   group_by(city_name) %>%
+#   summarise(
+#     rmse = sqrt(mean((mean_cases - observed_cases)^2)),
+#     corr = cor(mean_cases, observed_cases)
+#   )
+  
 r_squares <- pred_cases %>%
   group_by(city_name) %>%
   mutate(
@@ -131,9 +145,15 @@ r_squares <- pred_cases %>%
 scatters <- ggplot(pred_cases, aes(x = log(observed_cases+1), y = log(mean_cases+1))) +
   geom_point(color = "dodgerblue4", size = 2, alpha = 0.3) +
   geom_abline(aes(intercept = 0, slope = 1), linetype = 2, size = 1) +
-  geom_label(data = r_squares, aes(x = 1.7, y = 7.3, label = paste0("italic(R)^2 == ", round(R2,2))), label.size = NA, parse = TRUE) +
+  geom_label(data = r_squares, 
+             aes(x = 1.7, y = 7.3, label = paste0("italic(R)^2 == ", 
+                                                  round(R2,2))), 
+             label.size = NA, parse = TRUE, size = 3) +
   labs(y = "Expected log(cases + 1)", x = "Observed log(cases + 1)") +
-  facet_wrap(~city_name, nrow = 1) +
-  theme_minimal() +
-  theme(panel.spacing = unit(1, "lines"))
+  facet_wrap(~city_name, nrow = 1, scales = "free_y") +
+  scale_y_continuous(limits = c(0,8)) +
+  scale_x_continuous(limits = c(0,8)) +
+  theme_classic() +
+  theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
+        strip.text = element_text(face = "bold"))
 ggsave(filename = "../figures/pred-obs-scatters.pdf", plot = scatters, width = 8.5, height = 2.5, units = "in")

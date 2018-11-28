@@ -42,7 +42,7 @@ eliminate_plot <- ggplot() +
   geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = abs(AUC-0.5))) +
   scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = expression(paste("Rate of vaccine coverage (", phantom()%*%phantom(), "1", e^4, ")")), y = NULL) +
+  labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines")) +
