@@ -64,7 +64,7 @@ do_grid <- as.numeric(myargument)
 
 # Set city to model -------------------------------------------------------
 
-DO_CITY <- "Niamey"  # which city to model
+DO_CITY <- "Maradi"  # which city to model
 do_param <- "rho"
 
 
@@ -227,7 +227,7 @@ if(do_param == "S_0"){
 # Perform MIF -------------------------------------------------------------
 
 set.seed(NULL)
-particles <- 30000
+particles <- 40000
 mif_iters <- 200
 
 profile_params <- large_profile_grid[do_grid, ]
@@ -281,7 +281,7 @@ mf <- measles_pomp %>%
 test <- TRUE
 counter <- 1
 while(test == TRUE){
-  if(counter == 5){
+  if(counter == 6){
     break
   }
   mf <- run_mif(mf = mf, rw_sd_setup = rw_sd_setup, iters = 100, particles = particles, cooling_fraction = 0.9)
@@ -289,7 +289,7 @@ while(test == TRUE){
   counter <- counter + 1
 }
 
-ll <- logmeanexp(replicate(10, logLik(pfilter(mf, Np = particles))), se=TRUE)
+ll <- logmeanexp(replicate(20, logLik(pfilter(mf, Np = particles))), se=TRUE)
 
 outdf <- data.frame(
   do_grid = do_grid,

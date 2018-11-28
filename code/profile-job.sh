@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --array=1-10
-#SBATCH -t 50:00:00
+#SBATCH --array=1-1000
+#SBATCH -t 80:00:00
 #SBATCH -N 1
 #SBATCH --constraint="intel"
 #SBATCH --ntasks-per-node 1
