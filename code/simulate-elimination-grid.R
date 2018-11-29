@@ -96,7 +96,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 500,
+      nsim = 1,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble() 
@@ -108,13 +108,13 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     #   summarise(avg_re = mean(RE_seas))
     # 
     # par(mfrow = c(1, 2))
-    # vacc_start <- 50*365/7
-    # tcrit <- which(vacc_coverage_ts >= 0.95)[1]/7
-    # window_start <- vacc_start - (tcrit - vacc_start)
-    # plot(model_sims$reports, type = "l", xlab = "day", ylab = "reports", col = "grey45")
-    # abline(v = vacc_start, col = "red", lwd =2, lty = 2)
-    # abline(v = tcrit, col = "dodgerblue4", lty = 2, lwd = 2)
-    # abline(v = window_start, col = "dodgerblue4", lty = 2, lwd = 2)
+    vacc_start <- 50*365/7
+    tcrit <- which(vacc_coverage_ts >= 0.95)[1]/7
+    window_start <- vacc_start - (tcrit - vacc_start)
+    plot(model_sims$reports, type = "l", xlab = "week", ylab = "reports", col = "grey45")
+    abline(v = vacc_start, col = "red", lwd =2, lty = 2)
+    abline(v = tcrit, col = "dodgerblue4", lty = 2, lwd = 2)
+    abline(v = window_start, col = "dodgerblue4", lty = 2, lwd = 2)
     # plot(summ$avg_re, type = "l", col = "grey35", xlab = "year", ylab = expression(R[E]))
     # abline(h = 1, col = "red", lty = 2, lwd = 2)
     # abline(v = 50, col = "dodgerblue4", lty = 2, lwd = 2)

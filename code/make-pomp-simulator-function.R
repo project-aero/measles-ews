@@ -48,7 +48,8 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     
     // Transitions
     dNN0 = rpois(nu * N * dt);  // deaths
-    dN0S = rpois(vacc_discount * mu * N * dt);  // births
+    dN0S = rpois(vacc_discount * mu * N * dt);  // births, unvaccinated
+    dN0R = rpois((1-vacc_discount) * mu * N * dt);  // births, vaccinated
     dN0I = rpois(iota * dt);
     dNSE = trans[0];
     dNEI = trans[1];
@@ -58,7 +59,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     S += dN0S - dNSE;
     E +=        dNSE - dNEI;
     I += dN0I        + dNEI - dNIR;
-    N += dN0S                      - dNN0;
+    N += dN0S + dN0R                - dNN0;
     
     cases += dNIR;  // cases are cumulative reports at end of infectious period (I->R)
     if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
@@ -172,7 +173,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   sfact <- susc_discount
   N1 <- initial_population_size
   global_str <- paste0(
-    "int K = 6; double mu = 0.05; double nu = 0.014;", 
+    "int K = 6; double mu = 0.05; double nu = 0.05;", 
     " double sfact = ", sfact, ";", 
     " double N1 = ", N1, ";",
     " double beta_mu = ", mle_beta, ";"
