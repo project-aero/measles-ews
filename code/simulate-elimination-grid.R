@@ -84,7 +84,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       do_city, 
       mles, 
       years_to_sim = years, 
-      initial_population_size = fitted_pomp@covar[1, "N"], 
+      initial_population_size = round(mean(fitted_pomp@covar[, "N"])), 
       susc_discount = 1,
       vacc_coverage_ts = vacc_coverage_ts
     )
