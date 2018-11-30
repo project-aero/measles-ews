@@ -51,12 +51,13 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       mles, 
       years_to_sim = 30, 
       initial_population_size = fitted_pomp@covar[1, "N"], 
-      susc_discount = i
+      susc_discount = i,
+      vacc_coverage_ts = NULL
     )
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 500,
+      nsim = 1,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble()
