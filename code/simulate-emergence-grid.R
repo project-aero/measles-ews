@@ -32,25 +32,22 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   mles <- read.csv(mle_file) %>% 
     slice(2:n()) %>%  # ignore first row of storage NAs
     filter(loglik == max(loglik, na.rm = TRUE)) %>%
-    dplyr::select(-do_grid, -loglik, -loglik_se, -beta_mu)
-  
-  mle_beta <- read.csv(mle_file) %>% 
-    slice(2:n()) %>%  # ignore first row of storage NAs
-    filter(loglik == max(loglik, na.rm = TRUE)) %>%
-    pull(beta_mu)
+    dplyr::select(-do_grid, -loglik, -loglik_se)
   
   pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
   fitted_pomp <- readRDS(pomp_file)
   
   # Simulate from the new pomp object ---------------------------------------
   
-  outsims <- foreach(i = discount_grid, .packages = c("pomp", "tidyverse", "dplyr"), .combine = "rbind") %dopar%
+  outsims <- foreach(i = discount_grid,
+                     .packages = c("pomp", "tidyverse", "dplyr"), 
+                     .combine = "rbind") %dopar%
   {
     simulator_pomp <- make_pomp_simulator(
       do_city, 
       mles, 
       years_to_sim = 30, 
-      initial_population_size = fitted_pomp@covar[1, "N"], 
+      initial_population_size = round(mean(fitted_pomp@covar[, "N"])), 
       susc_discount = i,
       vacc_coverage_ts = NULL
     )

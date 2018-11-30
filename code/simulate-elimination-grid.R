@@ -62,12 +62,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   mles <- read.csv(mle_file) %>% 
     slice(2:n()) %>%  # ignore first row of storage NAs
     filter(loglik == max(loglik, na.rm = TRUE)) %>%
-    dplyr::select(-do_grid, -loglik, -loglik_se, -beta_mu)
-  
-  mle_beta <- read.csv(mle_file) %>% 
-    slice(2:n()) %>%  # ignore first row of storage NAs
-    filter(loglik == max(loglik, na.rm = TRUE)) %>%
-    pull(beta_mu)
+    dplyr::select(-do_grid, -loglik, -loglik_se)
   
   pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
   fitted_pomp <- readRDS(pomp_file)

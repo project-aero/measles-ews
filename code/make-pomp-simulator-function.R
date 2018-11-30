@@ -17,7 +17,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   measles_process <- Csnippet(
     "
     // Define the variables
-    int nrate = 6;            // number of rates
+    int nrate = 7;            // number of rates
     double rate[nrate];	  	  // transition rates
     double trans[nrate];   	  // transition numbers
     double lambda;            // force of infection
@@ -28,7 +28,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     double seas;              // seasonality term
     double dNS0, dN0S, dNSE;  // S transitions
     double dNE0, dNEI;        // E transitions
-    double dNI0, dNIR;        // I transitions
+    double dN0I, dNI0, dNIR;  // I transitions
     double dN0R, dNR0;        // R transitions
 
     // Calculate force of infection
@@ -60,6 +60,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     dNSE = trans[1];                                // S -> E
     dNE0 = trans[2];                                // exposed deaths
     dNEI = trans[3];                                // E -> I
+    dN0I = rpois(eta * dt);                         // imported infections
     dNI0 = trans[4];                                // infected deaths
     dNIR = trans[5];                                // I -> R
     dN0R = rpois((1-vacc_discount) * mu * N * dt);  // births, vaccinated
@@ -68,7 +69,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     // Balance the equations
     S += dN0S - dNSE               - dNS0;
     E +=        dNSE - dNEI        - dNE0;
-    I +=               dNEI - dNIR - dNI0;
+    I += dN0I        + dNEI - dNIR - dNI0;
     R += dN0R               + dNIR - dNR0;
     
     cases += dNIR;  // cumulative reports at end of infectious period (I->R)
@@ -87,7 +88,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     if (ISNA(reports)) {  // for catching missing observations
     lik = (give_log) ? 0 : 1;
     } else {
-    f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
+    f = dnbinom_mu(reports, 1/tau, mean, give_log);  // neg binomial likelihood
     }
     
     lik = (give_log) ? log(f) : f;
@@ -99,7 +100,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   
   measles_rmeasure <- Csnippet(
     "
-    reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
+    reports = rnbinom_mu(1/tau, rho*cases);  // neg binomial measurement process
     
     if (reports > 0.0) {
     reports = nearbyint(reports);
@@ -141,7 +142,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     S = nearbyint(N*S_0*sfact);
     E = nearbyint(N*E_0);
     I = nearbyint(N*I_0);
-    R = N - (N*S_0*sfact + N*E_0 + N*I_0);
+    R = nearbyint(N - (N*S_0*sfact + N*E_0 + N*I_0));
     cases = rho*N*I_0;
     RE_seas = 0;
     "
@@ -176,23 +177,20 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
       )
   }
   
-  
   sfact <- susc_discount
   N1 <- initial_population_size
   global_str <- paste0(
     "int K = 6; double mu = 0.05; double nu = 0.05;", 
     " double sfact = ", sfact, ";", 
-    " double N = ", N1, ";",
-    " double beta_mu = ", mle_beta, ";"
+    " double N = ", N1, ";"
   )
   
   if(is.null(vacc_coverage_ts) == TRUE){
-    vacc_discount = 0.3
+    vacc_discount <-  0.3
     global_str <- paste0(
       "int K = 6; double mu = 0.05; double nu = 0.05;", 
       " double sfact = ", sfact, ";", 
       " double N = ", N1, ";",
-      " double beta_mu = ", mle_beta, ";",
       " double vacc_discount = ", vacc_discount, ";"
     )
   }
