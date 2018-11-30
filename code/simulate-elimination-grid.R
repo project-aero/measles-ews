@@ -20,6 +20,16 @@ rho_curve_ramp <- function(t, start = 52*4, speed = 0.0015){
 }
 
 
+# Define function to calculate R0 from seasonal params --------------------
+
+calc_R0 <- function(beta, qis, season, eta = (365/8), 
+                    mu = 0.05, nu = 0.05, gamma = (365/5)){
+  B <- as.numeric((1 + exp(season %*% qis)) * beta)
+  R0 <- (eta*B*mu) / (nu*(eta + nu)*(gamma + nu))
+  return(R0)
+}
+
+
 # Make example plot of vaccination curve ----------------------------------
 
 test <- sapply(0:520, FUN = rho_curve_ramp)
@@ -67,6 +77,32 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
   fitted_pomp <- readRDS(pomp_file)
   
+  # Calculte R0 -------------------------------------------------------------
+  qis <- mles %>%
+    dplyr::select(b1, b2, b3, b4, b5, b6) %>%
+    as.numeric()
+  
+  beta <- mles %>%
+    pull(beta_mu)
+  
+  bases <- as_tibble(fitted_pomp@covar) %>%
+    dplyr::select(starts_with("x")) %>%
+    dplyr::slice(1:365) %>%
+    mutate(
+      day = 1:365
+    ) %>%
+    gather(key = base, value = value, -day)
+  
+  season <- bases %>%
+    spread(key = base, value = value) %>%
+    dplyr::select(-day) %>%
+    as.matrix()
+  
+  N <- round(mean(fitted_pomp@covar[, "N"]))
+  
+  R0 <- calc_R0(beta = beta, qis = qis, season = season)
+  crit_vacc_cover <- 1 - (1/max(R0))
+  
   # Simulate from the new pomp object ---------------------------------------
   
   outsims <- foreach(i = speed_grid,
@@ -78,7 +114,6 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     days <- years*365
     vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, 
                                start = 50*365, speed = i)
-    vacc_coverage_ts[vacc_coverage_ts < 0.7] <- 0.7
     
     simulator_pomp <- make_pomp_simulator(
       do_city, 
@@ -101,15 +136,18 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     #   mutate(year = trunc(time)) %>%
     #   group_by(year) %>%
     #   summarise(avg_re = mean(RE_seas))
-    # 
-    # par(mfrow = c(1, 2))
+    par(mfrow = c(1, 2))
+    plot(model_sims$S+model_sims$I+model_sims$E+model_sims$R, type = "l")
     vacc_start <- 50*365/7
-    tcrit <- which(vacc_coverage_ts >= 0.95)[1]/7
+    tcrit <- which(vacc_coverage_ts >= crit_vacc_cover)[1]/7
     window_start <- vacc_start - (tcrit - vacc_start)
     plot(model_sims$reports, type = "l", xlab = "week", ylab = "reports", col = "grey45")
     abline(v = vacc_start, col = "red", lwd =2, lty = 2)
     abline(v = tcrit, col = "dodgerblue4", lty = 2, lwd = 2)
     abline(v = window_start, col = "dodgerblue4", lty = 2, lwd = 2)
+    # par(mfrow = c(1,2))
+    # acf(model_sims$reports[window_start:vacc_start])
+    # acf(model_sims$reports[vacc_start:tcrit])
     # plot(summ$avg_re, type = "l", col = "grey35", xlab = "year", ylab = expression(R[E]))
     # abline(h = 1, col = "red", lty = 2, lwd = 2)
     # abline(v = 50, col = "dodgerblue4", lty = 2, lwd = 2)

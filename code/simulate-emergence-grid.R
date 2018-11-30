@@ -11,6 +11,7 @@
 
 discount_grid <- c(0.0001, seq(0.1, 1, length.out = 10))
 
+
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
@@ -37,6 +38,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
   fitted_pomp <- readRDS(pomp_file)
   
+  
   # Simulate from the new pomp object ---------------------------------------
   
   outsims <- foreach(i = discount_grid,
@@ -46,7 +48,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     simulator_pomp <- make_pomp_simulator(
       do_city, 
       mles, 
-      years_to_sim = 30, 
+      years_to_sim = 40, 
       initial_population_size = round(mean(fitted_pomp@covar[, "N"])), 
       susc_discount = i,
       vacc_coverage_ts = NULL
@@ -54,7 +56,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 1,
+      nsim = 500,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble()
