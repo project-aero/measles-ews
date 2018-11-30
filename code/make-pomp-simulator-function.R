@@ -17,20 +17,17 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   measles_process <- Csnippet(
     "
     // Define the variables
-    int nrate = 7;            // number of rates
-    double rate[nrate];	  	  // transition rates
-    double trans[nrate];   	  // transition numbers
-    double lambda;            // force of infection
-    double beta;              // transmission rate
-    double eta = 365/8;       // infectious rate (8 days latent)
-    double gamma = 365/5;     // recovery rate (5 days infectious)
-    double dW;                // white noise
-    double seas;              // seasonality term
-    double dNS0, dN0S, dNSE;  // S transitions
-    double dNE0, dNEI;        // E transitions
-    double dN0I, dNI0, dNIR;  // I transitions
-    double dN0R, dNR0;        // R transitions
-
+    int nrate = 3;          // number of rates
+    double rate[nrate];	  	// transition rates
+    double trans[nrate];   	// transition numbers
+    double lambda;          // force of infection
+    double beta;            // transmission rate
+    double eta = 365/8;     // infectious rate (8 days latent)
+    double gamma = 365/5;   // recovery rate (5 days infectious)
+    double dW;              // white noise
+    double seas;            // seasonality term
+    double dN0S, dN0I, dNSE, dNEI, dNIR, dNN0;  // transitions
+    
     // Calculate force of infection
     seas = (1 + exp(dot_product(K, &xi1, &b1)));
     beta = beta_mu*seas;
@@ -40,39 +37,32 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     dW = rgammawn(beta_sd, dt);
     
     // Compute the transition rates
-    rate[0] = nu;           // susceptible deaths
-    rate[1] = lambda*dW/dt; // force of infection
-    rate[2] = nu;           // exposed deaths
-    rate[3] = eta;          // infectious rate from latent
-    rate[4] = nu;           // infected deaths
-    rate[5] = gamma;	      // recovery from infectious
-    rate[6] = nu;           // recovered deaths
+    rate[0] = lambda*dW/dt; // force of infection
+    rate[1] = eta;          // infectious rate from latent
+    rate[2] = gamma;	      // recovery from infectious
     
     // Compute the state transitions
-    reulermultinom(2, S, &rate[0], dt, &trans[0]);
-    reulermultinom(2, E, &rate[2], dt, &trans[2]);
-    reulermultinom(2, I, &rate[4], dt, &trans[4]);
-    reulermultinom(1, R, &rate[6], dt, &trans[6]);
+    reulermultinom(1, S, &rate[0], dt, &trans[0]);
+    reulermultinom(1, E, &rate[1], dt, &trans[1]);
+    reulermultinom(1, I, &rate[2], dt, &trans[2]);
     
     // Transitions
-    dNS0 = trans[0];                                // susceptible deaths
-    dN0S = rpois(vacc_discount * mu * N * dt);      // births, unvaccinated
-    dNSE = trans[1];                                // S -> E
-    dNE0 = trans[2];                                // exposed deaths
-    dNEI = trans[3];                                // E -> I
-    dN0I = rpois(eta * dt);                         // imported infections
-    dNI0 = trans[4];                                // infected deaths
-    dNIR = trans[5];                                // I -> R
+    dNN0 = rpois(nu * N * dt);  // deaths
+    dN0S = rpois(vacc_discount * mu * N * dt);  // births, unvaccinated
     dN0R = rpois((1-vacc_discount) * mu * N * dt);  // births, vaccinated
-    dNR0 = trans[6];                                // recovered deaths
+    dN0I = rpois(iota * dt);
+    dNSE = trans[0];
+    dNEI = trans[1];
+    dNIR = trans[2];
     
     // Balance the equations
-    S += dN0S - dNSE               - dNS0;
-    E +=        dNSE - dNEI        - dNE0;
-    I += dN0I        + dNEI - dNIR - dNI0;
-    R += dN0R               + dNIR - dNR0;
+    S += dN0S - dNSE;
+    E +=        dNSE - dNEI;
+    I += dN0I        + dNEI - dNIR;
+    N += dN0S + dN0R                - dNN0;
     
-    cases += dNIR;  // cumulative reports at end of infectious period (I->R)
+    cases += dNIR;  // cases are cumulative reports at end of infectious period (I->R)
+    if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
     RE_seas = (beta / gamma) * (S / N);
     "
   )
@@ -88,7 +78,8 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     if (ISNA(reports)) {  // for catching missing observations
     lik = (give_log) ? 0 : 1;
     } else {
-    f = dnbinom_mu(reports, 1/tau, mean, give_log);  // neg binomial likelihood
+    f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
+    // f = dpois(reports, mean, give_log);
     }
     
     lik = (give_log) ? log(f) : f;
@@ -100,7 +91,8 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   
   measles_rmeasure <- Csnippet(
     "
-    reports = rnbinom_mu(1/tau, rho*cases);  // neg binomial measurement process
+    reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
+    // reports = rpois(rho*cases);
     
     if (reports > 0.0) {
     reports = nearbyint(reports);
@@ -139,11 +131,12 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   
   initial_values <- Csnippet(
     "
-    S = nearbyint(N*S_0*sfact);
-    E = nearbyint(N*E_0);
-    I = nearbyint(N*I_0);
-    R = nearbyint(N - (N*S_0*sfact + N*E_0 + N*I_0));
-    cases = rho*N*I_0;
+    S = nearbyint(N1*S_0*sfact);
+    E = nearbyint(N1*E_0);
+    I = nearbyint(N1*I_0);
+    N = N1;
+    cases = rho*N1*I_0;
+    W = 0;
     RE_seas = 0;
     "
   )
@@ -182,18 +175,9 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   global_str <- paste0(
     "int K = 6; double mu = 0.05; double nu = 0.05;", 
     " double sfact = ", sfact, ";", 
-    " double N = ", N1, ";"
+    " double N1 = ", N1, ";",
+    " double beta_mu = ", mle_beta, ";"
   )
-  
-  if(is.null(vacc_coverage_ts) == TRUE){
-    vacc_discount <-  0.3
-    global_str <- paste0(
-      "int K = 6; double mu = 0.05; double nu = 0.05;", 
-      " double sfact = ", sfact, ";", 
-      " double N = ", N1, ";",
-      " double vacc_discount = ", vacc_discount, ";"
-    )
-  }
   
   simulator_pomp <- pomp(
     data = the_data,
@@ -205,13 +189,13 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     rmeasure = measles_rmeasure,
     dmeasure = measles_dmeasure,
     initializer = initial_values,
-    statenames = c("S", "E", "I", "R", "cases", "RE_seas"),
+    statenames = c("S", "E", "I", "N", "cases", "W", "RE_seas"),
     toEstimationScale = to_estimation,
     fromEstimationScale = from_estimation,
     paramnames = names(mles),
     params = unlist(mles),
     globals = global_str,
-    zeronames = c("cases")
+    zeronames = c("cases", "W")
   )
   
   return(simulator_pomp)
