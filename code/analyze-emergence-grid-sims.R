@@ -204,10 +204,10 @@ for(do_city in unique(data_for_ews$city)){
       filter(city == do_city & susc_discount == do_discount) %>%
       pull(bandwidth)
     
-    ews_first <- apply(X = first_half[,1:10], MARGIN = 2, FUN = my_get_stats, 
+    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_stats, 
                        bw = window_bandwidth)
     
-    ews_second <- apply(X = second_half[,1:10], MARGIN = 2, FUN = my_get_stats, 
+    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_stats, 
                         bw = window_bandwidth)
     
     first_tbl <- tibble(
@@ -236,19 +236,15 @@ for(do_city in unique(data_for_ews$city)){
   
 }  # end city loop
 
+# Save the results
+write.csv(x = ews_out, file = "../results/ews-emergence.csv", row.names = FALSE)
 
-# Plot the results --------------------------------------------------------
 
-scale_it <- function(x){
-  (x-min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE)-min(x, na.rm = TRUE))
-}
+
+# Reformat results --------------------------------------------------------
 
 ews_long <- ews_out %>%
-  gather(key = metric, value = value, -half, -sim, -city, -susc_discount) %>%
   group_by(city, metric) %>%
-  mutate(
-    scaled_value = scale_it(value)
-  ) %>%
   filter(metric != "variance_first_diff") %>%
   # filter(value < 100) %>%
   ungroup() %>%
@@ -266,6 +262,41 @@ ews_long <- ews_out %>%
   )
 
 
+# Calculate AUC -----------------------------------------------------------
+
+cats <- tibble(
+  half = c("first", "second"),
+  cat = c(0, 1)
+)
+
+ews_long <- ews_long %>%
+  left_join(cats, by = "half")
+
+auc_tbl <- {}
+for(do_city in unique(ews_long$city)){
+  for(do_discount in unique(ews_long$susc_discount)){
+    for(do_metric in unique(ews_long$metric)){
+      tmp <- filter(ews_long, metric == do_metric & city == do_city & susc_discount == do_discount)
+      roc_obj <- roc(tmp$cat, tmp$value)
+      tmp_auc <- auc(roc_obj)
+      tmp_tbl <- tibble(
+        city = do_city,
+        susc_discount = do_discount,
+        metric = do_metric,
+        AUC = as.numeric(tmp_auc)
+      )
+      
+      auc_tbl <- bind_rows(auc_tbl, tmp_tbl)
+    }
+  }
+}
+
+write.csv(x = auc_tbl, "../results/emergence-grid-aucs.csv")
+
+
+
+
+# OLD CODE ----------------------------------------------------------------
 
 # gout <- list()
 # for(do_city in sort(unique(ews_long$city))){
@@ -310,36 +341,6 @@ ews_long <- ews_out %>%
 # )
 
 
-# Calculate AUC -----------------------------------------------------------
-
-cats <- tibble(
-  half = c("first", "second"),
-  cat = c(0, 1)
-)
-
-ews_long <- ews_long %>%
-  left_join(cats, by = "half")
-
-auc_tbl <- {}
-for(do_city in unique(ews_long$city)){
-  for(do_discount in unique(ews_long$susc_discount)){
-    for(do_metric in unique(ews_long$metric)){
-      tmp <- filter(ews_long, metric == do_metric & city == do_city & susc_discount == do_discount)
-      roc_obj <- roc(tmp$cat, tmp$value)
-      tmp_auc <- auc(roc_obj)
-      tmp_tbl <- tibble(
-        city = do_city,
-        susc_discount = do_discount,
-        metric = do_metric,
-        AUC = as.numeric(tmp_auc)
-      )
-      
-      auc_tbl <- bind_rows(auc_tbl, tmp_tbl)
-    }
-  }
-}
-
-write.csv(x = auc_tbl, "../results/emergence-grid-aucs.csv")
 
 
 # ggplot(auc_tbl, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
