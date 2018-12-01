@@ -22,40 +22,61 @@ all_sims <- {}
 for(do_file in sim_files){
   tmp_file <- paste0("../simulations/", do_file)
   tmp <- readRDS(tmp_file) %>%
-    filter(time > 0 & susc_discount < 0.6)
+    filter(time > 0 & susc_discount < 0.6)  # ignore extra simulations above 0.6
   all_sims <- bind_rows(all_sims, tmp)
 }
 
 
-# Calculate yearly average RE ---------------------------------------------
+# Find year of critical transition ----------------------------------------
 
-re_time_avg <- all_sims %>%
+# The year of the critical transition is defined as the year just after
+# effective reproduction number (R_E) reaches or exceeds the critical
+# value of 1. For example, if R_E reaches or exceeds 1 at some point during
+# the fifth year of the simulation, then the critical transition year is
+# defined as the sixth year of the simulation. Thus, the window for 
+# calculating early warning signals ends at the end of the fifth year. The
+# dplyr chain below finds these critical years.
+
+re_one_year <- all_sims %>%
   group_by(city, time, susc_discount) %>%
-  summarise(mean_re = mean(RE_seas)) %>%
-  mutate(
-    year = round(time)
-  ) %>%
-  ungroup() %>%
-  group_by(city, year, susc_discount) %>%
-  summarise(time_mean_re = mean(mean_re)) %>%
-  filter(year <= 20)
-
-re_one_year <- re_time_avg %>%
+  summarise(mean_re = mean(RE_seas)) %>%  
+  mutate(year = round(time)) %>%  # create 'year' variable
   ungroup() %>%
   group_by(city, susc_discount) %>%
-  filter(round(time_mean_re,1) >= 1) %>%
+  filter(mean_re >= 1) %>%  # drop times where Re less than 1
+  filter(year == min(year) + 1) %>%  # filter to critical transition year
+  distinct(city, susc_discount, year, .keep_all = TRUE) %>%  # drop duplicates
   dplyr::select(city, year, susc_discount) %>%
-  filter(year == min(year)) %>%
   ungroup()
 
-plot_sims <- all_sims %>% 
-  filter(sim < 21 & time <= 20)
+
+# re_time_avg <- all_sims %>%
+#   group_by(city, time, susc_discount) %>%
+#   summarise(mean_re = mean(RE_seas)) %>%
+#   mutate(
+#     year = round(time)
+#   ) %>%
+#   ungroup() %>%
+#   group_by(city, year, susc_discount) %>%
+#   summarise(time_mean_re = mean(mean_re)) %>%
+#   filter(year <= 25)
+# 
+# re_one_year <- re_time_avg %>%
+#   ungroup() %>%
+#   group_by(city, susc_discount) %>%
+#   filter(round(time_mean_re,1) >= 1) %>%
+#   dplyr::select(city, year, susc_discount) %>%
+#   filter(year == min(year)) %>%
+#   ungroup()
 
 
 # Plot RE series ----------------------------------------------------------
 
-re_series <- ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
-  geom_hline(aes(yintercept = 1), linetype = 2) +
+plot_sims <- all_sims %>% 
+  filter(sim < 21 & time <= 25)  # just plot 20 reps for 25 years
+
+re_series <- ggplot() +
+  geom_hline(data = re_one_year, aes(yintercept = 1), linetype = 2) +
   geom_segment(
     data = re_one_year,
     aes(x = year, xend = year, y = 0, yend = 1),
@@ -68,14 +89,12 @@ re_series <- ggplot(re_time_avg, aes(x = year, y = time_mean_re)) +
     color = "grey55",
     size = 0.3
   ) +
-  geom_line(size = 0.2, color = ptol_pal()(2)[1]) +
-  geom_point(size = 0.5, color = ptol_pal()(2)[1]) +
   labs(x = "Simulation year", y = expression(R[E](t))) +
   facet_grid(susc_discount~city) +
   theme_minimal() 
 
 ggsave(
-  filename = "../figures/re-simulated-series-grid.pdf", 
+  filename = "../figures/effective-r-emergence-grid.pdf", 
   plot = re_series, 
   width = 8.5, 
   height = 5, 
@@ -136,6 +155,24 @@ for(do_city in unique(all_sims$city)){
 
 # Calculate EWS -----------------------------------------------------------
 
+my_get_stats <- function(x, bw){
+  suppressWarnings(
+    ews_list <- spaero::get_stats(
+      x = x,
+      center_trend = "local_constant",
+      center_kernel = "uniform",
+      center_bandwidth = bw,
+      stat_trend = "local_constant",
+      stat_kernel = "uniform",
+      stat_bandwidth = bw,
+      lag = 1,
+      backward_only = FALSE)$stats
+  )
+  
+  stats <- sapply(ews_list, mean, na.rm = TRUE)
+  return(stats)
+}
+
 ews_out <- {}
 
 for(do_city in unique(data_for_ews$city)){
@@ -146,61 +183,54 @@ for(do_city in unique(data_for_ews$city)){
   for(do_discount in unique(data_for_ews$susc_discount)){
    
     discount_data <- city_data %>%
-      filter(susc_discount == do_discount)
+      filter(susc_discount == do_discount) %>%
+      dplyr::select(time, reports, sim, half)
+    
+    first_half <- discount_data %>%
+      filter(half == "first") %>%
+      dplyr::select(-half) %>%
+      spread(key = sim, value = reports) %>%
+      dplyr::select(-time) %>%
+      as.matrix()
+    
+    second_half <- discount_data %>%
+      filter(half == "second") %>%
+      dplyr::select(-half) %>%
+      spread(key = sim, value = reports) %>%
+      dplyr::select(-time) %>%
+      as.matrix()
     
     window_bandwidth <- bws %>%
       filter(city == do_city & susc_discount == do_discount) %>%
       pull(bandwidth)
     
-    for(i in unique(data_for_ews$sim)){
-      
-      tmp_data <- discount_data %>%
-        filter(sim == i)
-      
-      tmp_first <- spaero::get_stats(
-        x = pull(filter(tmp_data, half == "first"), reports),
-        center_trend = "local_constant",
-        center_kernel = "uniform",
-        center_bandwidth = window_bandwidth,
-        stat_trend = "local_constant",
-        stat_kernel = "uniform",
-        stat_bandwidth = window_bandwidth,
-        lag = 1,
-        backward_only = FALSE)$stats
-      
-      tmp_second <- spaero::get_stats(
-        x = pull(filter(tmp_data, half == "second"), reports),
-        center_trend = "local_constant",
-        center_kernel = "uniform",
-        center_bandwidth = window_bandwidth,
-        stat_trend = "local_constant",
-        stat_kernel = "uniform",
-        stat_bandwidth = window_bandwidth,
-        lag = 1,
-        backward_only = FALSE)$stats
-      
-      tmp_out1 <- as_tibble(tmp_first) %>%
-        summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
-        mutate(
-          half = "first",
-          sim = i
-        )
-      
-      tmp_out2<- as_tibble(tmp_second) %>%
-        summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
-        mutate(
-          half = "second",
-          sim = i
-        )
-      
-      tmp_out <- bind_rows(tmp_out1, tmp_out2) %>%
-        mutate(
-          city = do_city,
-          susc_discount = do_discount)
-      
-      ews_out <- bind_rows(ews_out, tmp_out)
-      
-    }  # end simulation loop
+    ews_first <- apply(X = first_half[,1:10], MARGIN = 2, FUN = my_get_stats, 
+                       bw = window_bandwidth)
+    
+    ews_second <- apply(X = second_half[,1:10], MARGIN = 2, FUN = my_get_stats, 
+                        bw = window_bandwidth)
+    
+    first_tbl <- tibble(
+      metric = row.names(ews_first)
+    ) %>%
+      bind_cols(as_tibble(ews_first)) %>%
+      gather(key = sim, value = value, - metric) %>%
+      mutate(half = "first")
+    
+    second_tbl <- tibble(
+      metric = row.names(ews_second)
+    ) %>%
+      bind_cols(as_tibble(ews_second)) %>%
+      gather(key = sim, value = value, - metric) %>%
+      mutate(half = "second")
+    
+    tmp_out <- bind_rows(first_tbl, second_tbl) %>%
+      mutate(
+        city = do_city,
+        susc_discount = do_discount
+      )
+    
+    ews_out <- bind_rows(ews_out, tmp_out)
     
   }  # end susceptible discount loop
   
