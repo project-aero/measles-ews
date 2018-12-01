@@ -14,6 +14,16 @@ library(pROC)
 library(spaero)
 
 
+# Define function to calculate R0 from seasonal params --------------------
+
+calc_R0 <- function(beta, qis, season, eta = (365/8), 
+                    mu = 0.05, nu = 0.05, gamma = (365/5)){
+  B <- as.numeric((1 + exp(season %*% qis)) * beta)
+  R0 <- (eta*B*mu) / (nu*(eta + nu)*(gamma + nu))
+  return(R0)
+}
+
+
 # Load simulations --------------------------------------------------------
 
 all_files <- list.files("../simulations/")
@@ -28,9 +38,59 @@ for(do_file in sim_files){
 }
 
 
+# Calculate vaccination thresholds for each city --------------------------
+
+vacc_thresholds <- {}
+
+for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
+  
+  # Load fitted parameters and pomp model 
+  mle_file <- paste0("../results/initial-mif-lls-", do_city, ".csv")
+  mles <- read.csv(mle_file) %>% 
+    slice(2:n()) %>%  # ignore first row of storage NAs
+    filter(loglik == max(loglik, na.rm = TRUE)) %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+  
+  pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
+  fitted_pomp <- readRDS(pomp_file)
+  
+  # Calculte R0 
+  qis <- mles %>%
+    dplyr::select(b1, b2, b3, b4, b5, b6) %>%
+    as.numeric()
+  
+  beta <- mles %>%
+    pull(beta_mu)
+  
+  bases <- as_tibble(fitted_pomp@covar) %>%
+    dplyr::select(starts_with("x")) %>%
+    dplyr::slice(1:365) %>%
+    mutate(
+      day = 1:365
+    ) %>%
+    gather(key = base, value = value, -day)
+  
+  season <- bases %>%
+    spread(key = base, value = value) %>%
+    dplyr::select(-day) %>%
+    as.matrix()
+  
+  N <- round(mean(fitted_pomp@covar[, "N"]))
+  
+  R0 <- calc_R0(beta = beta, qis = qis, season = season)
+  crit_vacc_cover <- 1 - (1/max(R0))
+  vacc_thresholds <- bind_rows(
+    vacc_thresholds, 
+    tibble(
+      city = do_city,
+      threshold = crit_vacc_cover
+    )
+  )
+}
+
+
 # Drop time series past herd immunity -------------------------------------
 
-herd_immunity_coverage <- 0.95
 all_sims <- all_sims %>%
   filter(vacc_coverage <= herd_immunity_coverage)
 
