@@ -23,21 +23,6 @@ calc_R0 <- function(beta, qis, season, eta = (365/8),
   return(R0)
 }
 
-
-# Load simulations --------------------------------------------------------
-
-all_files <- list.files("../simulations/")
-sim_file_ids <- grep("elimination-simulations-grid", all_files)
-sim_files <- all_files[sim_file_ids]
-all_sims <- {}
-for(do_file in sim_files){
-  tmp_file <- paste0("../simulations/", do_file)
-  tmp <- readRDS(tmp_file) %>%
-    filter(time > 0)
-  all_sims <- bind_rows(all_sims, tmp)
-}
-
-
 # Calculate vaccination thresholds for each city --------------------------
 
 vacc_thresholds <- {}
@@ -89,10 +74,24 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
 }
 
 
-# Drop time series past herd immunity -------------------------------------
+# Load simulations --------------------------------------------------------
 
-all_sims <- all_sims %>%
-  filter(vacc_coverage <= herd_immunity_coverage)
+all_files <- list.files("../simulations/")
+sim_file_ids <- grep("elimination-simulations-grid", all_files)
+sim_files <- all_files[sim_file_ids]
+all_sims_list <- list()
+counter <- 1
+for(do_file in sim_files){
+  tmp_file <- paste0("../simulations/", do_file)
+  tmp <- readRDS(tmp_file) %>%
+    filter(time > 0) %>%
+    left_join(vacc_thresholds, by = "city") %>%
+    filter(vacc_coverage <= threshold)
+  all_sims_list[[counter]] <- tmp
+  counter <- counter+1
+}
+
+all_sims <- as_tibble(data.table::rbindlist(all_sims_list))
 
 
 # Format data for 2-window EWS --------------------------------------------
