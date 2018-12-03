@@ -170,6 +170,38 @@ for(do_city in unique(all_sims$city)){
 }  # end city loop
 
 
+# Plot an example series and window ---------------------------------------
+
+ews_data_example <- data_for_ews %>%
+  filter(city == "Maradi" & sim == 1 & vacc_speed == 0.000015)
+
+min_time <- min(ews_data_example$time)
+
+example_file <- "../simulations/elimination-simulations-grid-Maradi-1.5e-05.RDS"
+example_data <- readRDS(example_file) %>%
+  filter(sim == 2) %>%
+  left_join(vacc_thresholds, by = "city") %>%
+  mutate(
+    use_it = ifelse(vacc_coverage > threshold | time < min_time, FALSE, TRUE)
+  ) %>%
+  filter(use_it == FALSE) %>%
+  mutate(group = ifelse(time < 50, 1, 2))
+
+ggplot() +
+  geom_line(data = example_data, aes(x = time, y = reports, group = group), color = "tan", alpha = 0.4, size = 0.3) +
+  geom_vline(data = ews_data_example, aes(xintercept = max(time)), color = "dodgerblue4",  linetype = 2) +
+  geom_vline(data = ews_data_example, aes(xintercept = min(time)), color = "dodgerblue4",  linetype = 2) +
+  geom_vline(data = ews_data_example, aes(xintercept = 50), color = "grey45", linetype = 1) +
+  geom_line(data = ews_data_example, aes(x = time, y = reports), color = "tan", size = 0.3) +
+  annotate(geom = "text", x = 28, y = 1450, label = "Null window") +
+  annotate(geom = "text", x = 70, y = 1450, label = "Test window") +
+  annotate(geom = "text", x = 38, y = 900, label = "start of\nvaccination campaign", size = 3, color = "grey25") +
+  annotate(geom = "text", x = 81, y = 900, label = "coverage reaches\nherd immunity", size = 3, color = "dodgerblue4") +
+  labs(x = "Simulation time (year)", y = "Reported cases") +
+  theme_classic(base_size = 14)
+ggsave(filename = "../figures/elimination-series-example.pdf", height = 3, width = 7, units = "in")
+
+
 # Calculate EWS -----------------------------------------------------------
 
 ews_out <- {}
