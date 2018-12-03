@@ -57,9 +57,8 @@ start_population <- as.numeric(measles_pomp@covar[1,1])
 
 bootstraps <- readRDS(paste0("../simulations/bootstrap-sims-", do_city, ".RDS"))
 boot_data <- bootstraps %>%
-  filter(sim == comp_grid[do_grid, "boot_series"]) %>%
-  unnest() %>%
-  pull(reports)
+  filter(sim == comp_grid[do_grid, "boot_series"])
+boot_data <- boot_data$data[[1]]$reports  # extract from nested df
 boot_reports <- t(as.matrix(c(NA, boot_data)))  # make a row vector for pomp
 row.names(boot_reports) <- "reports"
 
