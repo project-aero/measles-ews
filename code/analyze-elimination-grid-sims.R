@@ -101,10 +101,10 @@ bws <- tibble()
 
 for(do_city in unique(all_sims$city)){
   for(do_speed in unique(all_sims$vacc_speed)){
+    
     tmpsims <- all_sims %>%
       filter(city == do_city) %>%
-      filter(vacc_speed == do_speed) %>%
-      filter(vacc_coverage > 0.7)
+      filter(vacc_speed == do_speed)
     
     window_size <- tmpsims %>%
       filter(vacc_coverage > 0.7 & sim == 1) %>%
@@ -114,38 +114,38 @@ for(do_city in unique(all_sims$city)){
       pull(time) %>%
       unique()  # returns unique observation times across simulations
     
-    if((length(tmptimes) %% 2) != 0){
-      tmptimes <- tmptimes[2:length(tmptimes)]
-    }
+    # if((length(tmptimes) %% 2) != 0){
+    #   tmptimes <- tmptimes[2:length(tmptimes)]
+    # }
+    # 
+    # ews_time_ids <- tibble(
+    #   time = tmptimes,
+    #   half = c(
+    #     rep("first", length(tmptimes)/2), 
+    #     rep("second", length(tmptimes)/2)
+    #   )
+    # )
+    # 
+    # window_bandwidth <- length(tmptimes)/2
     
+    times_before_vaccine <- tmptimes[tmptimes < 50]
+    start_ts <- length(times_before_vaccine) - window_size + 1
+    times_before_vaccine <- times_before_vaccine[start_ts:length(times_before_vaccine)]
+    times_after_vaccine <- tmptimes[tmptimes >= 50]
+
+    simtimes <- c(times_before_vaccine, times_after_vaccine)
+
     ews_time_ids <- tibble(
-      time = tmptimes,
-      half = c(
-        rep("first", length(tmptimes)/2), 
-        rep("second", length(tmptimes)/2)
+      time = simtimes,
+      half = ifelse(
+        time < 50,
+        "first",
+        "second"
       )
     )
     
-    window_bandwidth <- length(tmptimes)/2
-    
-    # times_before_vaccine <- tmptimes[tmptimes < 50]
-    # start_ts <- length(times_before_vaccine) - window_size + 1
-    # times_before_vaccine <- times_before_vaccine[start_ts:length(times_before_vaccine)]
-    # times_after_vaccine <- tmptimes[tmptimes >= 50]
-    # 
-    # simtimes <- c(times_before_vaccine, times_after_vaccine)
-    # 
-    # ews_time_ids <- tibble(
-    #   time = simtimes,
-    #   half = ifelse(
-    #     time < 50,
-    #     "first",
-    #     "second"
-    #   )
-    # )
-    
     # Bandwidth is the full window for each half
-    # window_bandwidth <- length(simtimes)/2
+    window_bandwidth <- length(simtimes)/2
     
     # Merge in `time` and `half` information
     tmp_ews_data <- tmpsims %>%
