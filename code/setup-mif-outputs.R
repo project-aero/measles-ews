@@ -29,7 +29,9 @@ mles <- data.frame(
 )
 
 ll_file <- "initial-mif-lls.csv"
+boot_file <- "bootstrap-mif-lls.csv"
 write.table(mles, ll_file, sep = ",", col.names = T, append = T, row.names = FALSE)
+write.table(mles, boot_file, sep = ",", col.names = T, append = T, row.names = FALSE)
 
 mf_traces <- data.frame(
   do_grid = NA,
@@ -53,7 +55,9 @@ mf_traces <- data.frame(
 )
 
 trace_file <- "initial-mif-traces.csv"
+boot_trace <- "bootstrap-mif-traces.csv"
 write.table(mf_traces, trace_file, sep = ",", col.names = T, append = T, row.names = FALSE)
+write.table(mf_traces, boot_trace, sep = ",", col.names = T, append = T, row.names = FALSE)
 
 
 
