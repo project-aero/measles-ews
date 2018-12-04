@@ -53,7 +53,6 @@ measles_data <- readRDS(file_name) %>%
   )
 
 
-
 # Load predictive distributions -------------------------------------------
 
 pred_ids <- grep("predictive-dist-states", list.files("../results/"))
@@ -104,7 +103,7 @@ the_series <- ggplot(pred_cases, aes(x = date)) +
   labs(x = "Date", y = "Reported cases") +
   theme_minimal()
 
-outplot <- plot_grid(the_map, the_series, ncol = 2, labels = "AUTO")
+outplot <- plot_grid(the_map, the_series, ncol = 2, labels = "AUTO", label_size = 12)
 
 ggsave(filename = "../figures/map-and-series.pdf", plot = outplot, height = 4, width = 8.5, units = "in")
 
@@ -141,19 +140,97 @@ r_squares <- pred_cases %>%
   ) %>%
   dplyr::select(city_name, R2)
 
-
 scatters <- ggplot(pred_cases, aes(x = log(observed_cases+1), y = log(mean_cases+1))) +
-  geom_point(color = "dodgerblue4", size = 2, alpha = 0.3) +
-  geom_abline(aes(intercept = 0, slope = 1), linetype = 2, size = 1) +
+  geom_point(color = "dodgerblue4", size = 1, alpha = 0.3) +
+  geom_abline(aes(intercept = 0, slope = 1), linetype = 2) +
   geom_label(data = r_squares, 
              aes(x = 1.7, y = 7.3, label = paste0("italic(R)^2 == ", 
                                                   round(R2,2))), 
              label.size = NA, parse = TRUE, size = 3) +
   labs(y = "Expected log(cases + 1)", x = "Observed log(cases + 1)") +
-  facet_wrap(~city_name, nrow = 1, scales = "free_y") +
+  facet_wrap(~city_name, nrow = 2, scales = "free") +
   scale_y_continuous(limits = c(0,8)) +
   scale_x_continuous(limits = c(0,8)) +
   theme_classic() +
   theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
         strip.text = element_text(face = "bold"))
-ggsave(filename = "../figures/pred-obs-scatters.pdf", plot = scatters, width = 8.5, height = 2.5, units = "in")
+# ggsave(filename = "../figures/pred-obs-scatters.pdf", plot = scatters, width = 8.5, height = 2.5, units = "in")
+
+
+# Plot R0 curves ----------------------------------------------------------
+
+# Define function to calculate R0 from seasonal params
+calc_R0 <- function(beta, qis, season, eta = (365/8), 
+                    mu = 0.05, nu = 0.05, gamma = (365/5)){
+  B <- as.numeric((1 + exp(season %*% qis)) * beta)
+  R0 <- (eta*B*mu) / (nu*(eta + nu)*(gamma + nu))
+  return(R0)
+}
+
+# Calculate R0 curves for each city
+
+R_0s <- tibble()
+
+for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
+  
+  # Load fitted parameters and pomp model 
+  mle_file <- paste0("../results/initial-mif-lls-", do_city, ".csv")
+  mles <- read.csv(mle_file) %>% 
+    slice(2:n()) %>%  # ignore first row of storage NAs
+    filter(loglik == max(loglik, na.rm = TRUE)) %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+  
+  pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
+  fitted_pomp <- readRDS(pomp_file)
+  
+  # Calculte R0 
+  qis <- mles %>%
+    dplyr::select(b1, b2, b3, b4, b5, b6) %>%
+    as.numeric()
+  
+  beta <- mles %>%
+    pull(beta_mu)
+  
+  bases <- as_tibble(fitted_pomp@covar) %>%
+    dplyr::select(starts_with("x")) %>%
+    dplyr::slice(1:365) %>%
+    mutate(
+      day = 1:365
+    ) %>%
+    gather(key = base, value = value, -day)
+  
+  season <- bases %>%
+    spread(key = base, value = value) %>%
+    dplyr::select(-day) %>%
+    as.matrix()
+  
+  N <- round(mean(fitted_pomp@covar[, "N"]))
+  
+  R0 <- calc_R0(beta = beta, qis = qis, season = season)
+  
+  tmp_out <- tibble(
+    city = do_city,
+    doy = 1:length(R0),
+    R0 = R0
+  )
+  
+  R_0s <- bind_rows(R_0s, tmp_out)
+}
+
+R_0s <- R_0s %>%
+  mutate(
+    date = as.Date(doy, origin = "2016-12-31",tz = "UTC")
+  )
+
+rnaughts <- ggplot(R_0s, aes(x = date, y = R0, color = city)) +
+  geom_line() +
+  scale_color_colorblind(name = NULL) +
+  scale_x_date(date_labels = "%b", date_breaks = "2 months") +
+  labs(x = "Time of year", y = expression(R[0])) +
+  theme_classic() +
+  theme(legend.position = c(0.8, 0.9), 
+        legend.box.background = element_blank(),
+        legend.key.size = unit(0.8, 'lines'))
+
+scatters_and_season <- cowplot::plot_grid(scatters, rnaughts, labels = "AUTO", scale = 0.9, label_size = 12)
+ggsave(filename = "../figures/pred-obs-scatters.pdf", plot = scatters_and_season, width = 8.5, height = 4, units = "in")

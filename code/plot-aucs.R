@@ -35,7 +35,8 @@ emerge_plot <- ggplot() +
   labs(x = "Level of susceptible depletion", y = NULL) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(panel.spacing = unit(1, "lines")) +
+  theme(panel.spacing = unit(1, "lines"),
+        plot.title = element_text(size = 11, face = "bold")) +
   ggtitle("Anticipating emergence")
 
 eliminate_plot <- ggplot() +
@@ -45,10 +46,11 @@ eliminate_plot <- ggplot() +
   labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(panel.spacing = unit(1, "lines")) +
+  theme(panel.spacing = unit(1, "lines"),
+        plot.title = element_text(size = 11, face = "bold")) +
   ggtitle("Anticipating elimination")
 
-auc_plot <- cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = "AUTO")
+auc_plot <- cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = "AUTO", label_size = 12)
 
 ggsave(filename = "../figures/simulation-grid-aucs.pdf", plot = auc_plot, width = 8.5, height = 5.5, units = "in")
 
