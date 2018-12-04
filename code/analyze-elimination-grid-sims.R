@@ -92,7 +92,7 @@ for(do_file in sim_files){
 }
 
 all_sims <- as_tibble(data.table::rbindlist(all_sims_list))
-
+rm(all_sims_list)
 
 # Format data for 2-window EWS --------------------------------------------
 
@@ -204,6 +204,24 @@ ggsave(filename = "../figures/elimination-series-example.pdf", height = 3, width
 
 # Calculate EWS -----------------------------------------------------------
 
+my_get_stats <- function(x, bw){
+  suppressWarnings(
+    ews_list <- spaero::get_stats(
+      x = x,
+      center_trend = "local_constant",
+      center_kernel = "uniform",
+      center_bandwidth = bw,
+      stat_trend = "local_constant",
+      stat_kernel = "uniform",
+      stat_bandwidth = bw,
+      lag = 1,
+      backward_only = FALSE)$stats
+  )
+  
+  stats <- sapply(ews_list, mean, na.rm = TRUE)
+  return(stats)
+}
+
 ews_out <- {}
 
 for(do_city in unique(data_for_ews$city)){
@@ -212,82 +230,69 @@ for(do_city in unique(data_for_ews$city)){
     filter(city == do_city)
   
   for(do_speed in unique(data_for_ews$vacc_speed)){
-   
+    
     discount_data <- city_data %>%
-      filter(vacc_speed == do_speed)
+      filter(vacc_speed == do_speed) %>%
+      dplyr::select(time, reports, sim, half)
+    
+    first_half <- discount_data %>%
+      filter(half == "first") %>%
+      dplyr::select(-half) %>%
+      spread(key = sim, value = reports) %>%
+      dplyr::select(-time) %>%
+      as.matrix()
+    
+    second_half <- discount_data %>%
+      filter(half == "second") %>%
+      dplyr::select(-half) %>%
+      spread(key = sim, value = reports) %>%
+      dplyr::select(-time) %>%
+      as.matrix()
     
     window_bandwidth <- bws %>%
       filter(city == do_city & vacc_speed == do_speed) %>%
       pull(bandwidth)
     
-    for(i in unique(data_for_ews$sim)){
-      
-      tmp_data <- discount_data %>%
-        filter(sim == i)
-      
-      tmp_first <- spaero::get_stats(
-        x = pull(filter(tmp_data, half == "first"), reports),
-        center_trend = "local_constant",
-        center_kernel = "uniform",
-        center_bandwidth = window_bandwidth,
-        stat_trend = "local_constant",
-        stat_kernel = "uniform",
-        stat_bandwidth = window_bandwidth,
-        lag = 1,
-        backward_only = FALSE)$stats
-      
-      tmp_second <- spaero::get_stats(
-        x = pull(filter(tmp_data, half == "second"), reports),
-        center_trend = "local_constant",
-        center_kernel = "uniform",
-        center_bandwidth = window_bandwidth,
-        stat_trend = "local_constant",
-        stat_kernel = "uniform",
-        stat_bandwidth = window_bandwidth,
-        lag = 1,
-        backward_only = FALSE)$stats
-      
-      tmp_out1 <- as_tibble(tmp_first) %>%
-        summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
-        mutate(
-          half = "first",
-          sim = i
-        )
-      
-      tmp_out2<- as_tibble(tmp_second) %>%
-        summarise_all(funs(mean, .args = list(na.rm = TRUE))) %>%
-        mutate(
-          half = "second",
-          sim = i
-        )
-      
-      tmp_out <- bind_rows(tmp_out1, tmp_out2) %>%
-        mutate(
-          city = do_city,
-          vacc_speed = do_speed
-        )
-      
-      ews_out <- bind_rows(ews_out, tmp_out)
-      
-    }  # end simulation loop
+    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_stats, 
+                       bw = window_bandwidth)
+    
+    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_stats, 
+                        bw = window_bandwidth)
+    
+    first_tbl <- tibble(
+      metric = row.names(ews_first)
+    ) %>%
+      bind_cols(as_tibble(ews_first)) %>%
+      gather(key = sim, value = value, - metric) %>%
+      mutate(half = "first")
+    
+    second_tbl <- tibble(
+      metric = row.names(ews_second)
+    ) %>%
+      bind_cols(as_tibble(ews_second)) %>%
+      gather(key = sim, value = value, - metric) %>%
+      mutate(half = "second")
+    
+    tmp_out <- bind_rows(first_tbl, second_tbl) %>%
+      mutate(
+        city = do_city,
+        vacc_speed = do_speed
+      )
+    
+    ews_out <- bind_rows(ews_out, tmp_out)
     
   }  # end susceptible discount loop
   
 }  # end city loop
 
+# Save the results
+write.csv(x = ews_out, file = "../results/ews-elimination.csv", row.names = FALSE)
+
 
 # Format results ----------------------------------------------------------
 
-scale_it <- function(x){
-  (x-min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE)-min(x, na.rm = TRUE))
-}
-
 ews_long <- ews_out %>%
-  gather(key = metric, value = value, -half, -sim, -city, -vacc_speed) %>%
   group_by(city, metric) %>%
-  mutate(
-    scaled_value = scale_it(value)
-  ) %>%
   filter(metric != "variance_first_diff") %>%
   # filter(value < 100) %>%
   ungroup() %>%
@@ -341,56 +346,56 @@ write.csv(x = auc_tbl, "../results/elimination-grid-aucs.csv")
 
 # EXTRAS ------------------------------------------------------------------
 
-gout <- list()
-for(do_city in sort(unique(ews_long$city))){
-  if(do_city != "Zinder"){
-    gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
-      geom_histogram(bins = 20) +
-      facet_wrap(~metric, scales = "free", nrow = 1) +
-      scale_fill_manual(values = ptol_pal()(2)) +
-      theme_minimal(base_size = 8) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      guides(fill = FALSE) +
-      labs(y = "Count", x = "") +
-      ggtitle(do_city)
-  }
-
-  if(do_city == "Zinder"){
-    gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
-      geom_histogram(bins = 20) +
-      facet_wrap(~metric, scales = "free", nrow = 1) +
-      scale_fill_manual(values = ptol_pal()(2)) +
-      theme_minimal(base_size = 8) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      labs(y = "Count", x = "EWS value") +
-      ggtitle(do_city)
-  }
-
-}
-
-ews_hists <- cowplot::plot_grid(
-  plotlist = gout,
-  align = "v",
-  nrow = 4,
-  labels = "AUTO"
-)
-ggsave(
-  filename = "../figures/ews-histograms-elimination.pdf",
-  plot = ews_hists,
-  height = 5,
-  width = 9,
-  units = "in"
-)
-
-
-ggplot(auc_tbl, aes(x = as.factor(vacc_speed), y = metric, fill = abs(AUC-0.5))) +
-  geom_tile() +
-  viridis::scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
-  facet_wrap(~city, nrow = 1) +
-  labs(x = "Speed of vaccination campaign", y = NULL) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(panel.spacing = unit(1, "lines"))
+# gout <- list()
+# for(do_city in sort(unique(ews_long$city))){
+#   if(do_city != "Zinder"){
+#     gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
+#       geom_histogram(bins = 20) +
+#       facet_wrap(~metric, scales = "free", nrow = 1) +
+#       scale_fill_manual(values = ptol_pal()(2)) +
+#       theme_minimal(base_size = 8) +
+#       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#       guides(fill = FALSE) +
+#       labs(y = "Count", x = "") +
+#       ggtitle(do_city)
+#   }
+# 
+#   if(do_city == "Zinder"){
+#     gout[[do_city]] <- ggplot(filter(ews_long, city == do_city), aes(fill = half, x = value)) +
+#       geom_histogram(bins = 20) +
+#       facet_wrap(~metric, scales = "free", nrow = 1) +
+#       scale_fill_manual(values = ptol_pal()(2)) +
+#       theme_minimal(base_size = 8) +
+#       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#       labs(y = "Count", x = "EWS value") +
+#       ggtitle(do_city)
+#   }
+# 
+# }
+# 
+# ews_hists <- cowplot::plot_grid(
+#   plotlist = gout,
+#   align = "v",
+#   nrow = 4,
+#   labels = "AUTO"
+# )
+# ggsave(
+#   filename = "../figures/ews-histograms-elimination.pdf",
+#   plot = ews_hists,
+#   height = 5,
+#   width = 9,
+#   units = "in"
+# )
+# 
+# 
+# ggplot(auc_tbl, aes(x = as.factor(vacc_speed), y = metric, fill = abs(AUC-0.5))) +
+#   geom_tile() +
+#   viridis::scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+#   facet_wrap(~city, nrow = 1) +
+#   labs(x = "Speed of vaccination campaign", y = NULL) +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#   theme(panel.spacing = unit(1, "lines"))
 
 # plt_tbl <- auc_tbl %>%
 #   filter(metric %in% c("Variance", "Autocovar.", "Autocorr.",
