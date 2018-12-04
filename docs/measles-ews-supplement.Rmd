@@ -1,5 +1,5 @@
 ---
-csl: ecology.csl
+csl: science-without-titles.csl
 fontsize: 11pt
 geometry: margin=1in
 header-includes:
@@ -19,6 +19,8 @@ header-includes:
  - \usepackage{mathptmx} 
  - \usepackage{longtable,booktabs}
  - \usepackage[symbol]{footmisc}
+ - \usepackage{float}
+ - \floatplacement{figure}{H}
 layout: 11pt
 linkcolor: black
 output:
@@ -29,26 +31,23 @@ urlcolor: black
 bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 ---
 \renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\renewcommand{\theequation}{S.\arabic{equation}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\thesection}{Section S\arabic{section}}
+
 \raggedright
 \vspace*{0.2in}
 
 \begin{centering}
 
 {\LARGE
-\textbf\newline{SUPPLEMENTAL INFORMATION FOR:\\Early warning signals anticipate critical transitions\\in empirically-based simulations of measles dynamics in Niger} 
+\textbf\newline{SUPPLEMENTAL INFORMATION FOR:\\Title} 
 }
 
 \vspace{2em}
 
-Andrew T. Tredennick\textsuperscript{1,2}\footnote[1]{Corresponding author: atredenn@gmail.com},
-Eamon O'Dea\textsuperscript{1,2},
-Tobias Brett\textsuperscript{1,2},
-Pejman Rohani\textsuperscript{1,2},
-\& John M. Drake\textsuperscript{1,2}
-\\
-\bigskip
-\textsuperscript{1} \small\emph{Odum School of Ecology, University of Georgia, Athens, GA, USA} \\
-\textsuperscript{2} \small\emph{Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA, USA}
+Andrew T. Tredennick, others
 
 \end{centering}
 
@@ -58,7 +57,7 @@ Pejman Rohani\textsuperscript{1,2},
 Here we show stochastic simulations from the fitted models.
 Simulations are all initialized from the same initial conditions, which were estimated as part of model fitting.
 
-```{r stoch-sims, message=FALSE, warning=FALSE, echo = FALSE}
+```{r stoch-sims, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Stochastic simulations from the fitted models. Each colored line is a single realization of the model from the same initial conditions. Ten simulations are shown. The black lines are the observed data. We do not expect model simulations to perfectly align with the data because of the multiple sources of stochasticity present. Thus, these simulations should be judged by their ability to reproduce dynamical features of the data.", fig.width=8.5, fig.height=4}
 library(tidyverse)
 library(stringr)
 library(dplyr)
@@ -101,88 +100,84 @@ ggplot() +
   geom_line(data = filter(all_sims, sim == "data"), aes(x = time, y = reports)) +
   guides(color = FALSE) +
   facet_wrap(~city, scales = "free_y") +
+  labs(x = "Date", y = expression(sqrt(Reports))) +
   scale_y_sqrt() +
   theme_minimal()
 ```
 
-# Seasonality of transmission
+# Estimating the timing of critical transitions
+To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.
+For re-emergence, we defined the year of the critical transition as the year just after the effective reproduction number ($R_E$) reaches or exceeds the critical value of 1. 
+For example, if $R_E$ reaches or exceeds 1 at some point during the fifth year of the simulation, then the critical transition year is defined as the sixth year of the simulation. 
+Thus, the simulated data for calculating early warning signals ends at the end of the fifth year.
+We call this year the ``critical year.''
+From this full window, from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $R_E = 1$) and the test interval as the second half of the full window (near $R_E = 1$).
+Figure Sx shows a typical example.
 
-```{r seasonal, echo=FALSE, message=FALSE, warning=FALSE}
-result_files <- list.files("../results/")
-mle_files <- result_files[grep("initial-mif-lls", result_files)]
+```{r emerge-windows, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was discounted by 1e-04. (**A**) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (**B**) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals.", fig.width=6}
+ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
+emerge_sim <- readRDS(ex_file)
 
-b_splines <- tibble()
-betas <- tibble()
-for(do_file in mle_files){
-  tmp <- read.csv(paste0("../results/", do_file)) %>%
-    drop_na() %>%
-    filter(loglik == max(loglik)) %>%
-    dplyr::select(b1, b2, b3, b4, b5, b6) %>%
-    gather() %>%
-    mutate(city = str_sub(do_file, 17, (nchar(do_file)-4)))
-  
-  b_splines <- bind_rows(b_splines, tmp)
-  
-  tmp2 <- read.csv(paste0("../results/", do_file)) %>%
-    drop_na() %>%
-    filter(loglik == max(loglik)) %>%
-    dplyr::select(beta_mu) %>%
-    gather() %>%
-    mutate(city = str_sub(do_file, 17, (nchar(do_file)-4)))
-  
-  betas <- bind_rows(betas, tmp2)
-}
+re_one_year <- emerge_sim %>%
+  group_by(time) %>%
+  summarise(mean_re = mean(RE_seas)) %>%  
+  mutate(year = round(time)) %>%  # create 'year' variable
+  ungroup() %>%
+  filter(mean_re >= 1) %>%  # drop times where Re less than 1
+  filter(year == min(year) + 1) %>%  # filter to critical transition year
+  distinct(year, .keep_all = TRUE) %>%  # drop duplicates
+  dplyr::select(year) %>%
+  ungroup()
 
+re_path <- emerge_sim %>%
+  group_by(time) %>%
+  summarise(mean_re = mean(RE_seas)) %>%  
+  mutate(year = round(time)) %>%  # create 'year' variable
+  ungroup()
 
-# Load exemplar bases from pomp model -------------------------------------
+one_sim <- emerge_sim %>% 
+  filter(sim == 1) %>%
+  left_join(re_path) %>%
+  mutate(used = ifelse(time <= re_one_year$year, "yes", "no"))
 
-measles_pomp <- readRDS("../code/measles-pomp-object-Agadez.RDS")
+re_series <- ggplot(one_sim, aes(x = time, y = mean_re)) +
+  geom_line(color = "tan", aes(alpha = used)) +
+  geom_hline(aes(yintercept = 1), color = "grey35", linetype = 3) +
+  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
+  annotate(geom = "text", x = 9, y = 0.2, label = "critical\nyear", size = 3, color = "dodgerblue4") +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  guides(alpha = FALSE) +
+  labs(x = "Simulation time (year)", y = expression(R[E])) +
+  theme_classic(base_size = 12)
 
-bases <- as_tibble(measles_pomp@covar) %>%
-  dplyr::select(starts_with("x")) %>%
-  dplyr::slice(1:365) %>%
-  mutate(
-    day = 1:365
-  ) %>%
-  gather(key = base, value = value, -day)
+cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports)) +
+  geom_line(color = "tan", aes(alpha = used)) +
+  geom_vline(aes(xintercept = 0), color = "dodgerblue4", linetype = 2) +
+  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
+  geom_vline(aes(xintercept = 7/2)) +
+  annotate(geom = "text", x = 1.75, y = 250, label = "Null window") +
+  annotate(geom = "text", x = 5.25, y = 250, label = "Test window") +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  guides(alpha = FALSE) +
+  annotate(geom = "text", x = 6.35, y = 150, label = "critical\nyear", size = 3, color = "dodgerblue4") +
+  labs(x = "Simulation time (year)", y = "Reported cases") +
+  theme_classic(base_size = 12)
 
-
-# Calculate seasonality function ------------------------------------------
-
-season <- bases %>%
-  spread(key = base, value = value) %>%
-  dplyr::select(-day) %>%
-  as.matrix()
-
-seasonal_beta <- tibble()
-for(do_city in unique(b_splines$city)){
-  qis <- b_splines %>%
-    filter(city == do_city) %>%
-    pull(value) 
-  
-  beta_tmp <- betas %>%
-    filter(city == do_city) %>%
-    pull(value)
-  
-  seasonal_tmp <- tibble(
-    beta = as.numeric((1+exp(season %*% qis)) * beta_tmp),
-    day = 1:365,
-    city = do_city
-  )
-  
-  seasonal_beta <- bind_rows(seasonal_beta, seasonal_tmp)
-}
-
-seasonal_beta <- seasonal_beta %>%
-  mutate(
-    date = as.Date(day, origin = "2016-12-31",tz = "UTC")
-  )
-
-ggplot(seasonal_beta, aes(x = date, y = beta, color = city)) +
-  geom_line(size = 1) +
-  labs(x = "Date", y = expression(paste("Tranmission rate, ",beta, " (", yr^-1, ")"))) +
-  scale_color_manual(values = ggthemes::ptol_pal()(4), name = NULL) +
-  scale_x_date(date_labels = "%b", date_breaks = "2 months") +
-  theme_minimal() +
-  theme(legend.position = c(0.7, 0.8), legend.box.background = element_rect(color = "white"))
+outplot <- cowplot::plot_grid(re_series, cases_series, nrow = 2, align = "v", 
+                              scale = 0.9, labels = "AUTO", label_size = 12)
+print(outplot)
 ```
+
+For simulations of disease elimination by increasing the vaccination coverage of the population, we define the critical time as the time at which vaccination coverage reaches the threshold needed for herd immunity.
+This vaccination threshold is defined as $p = 1 - 1/R_0$.
+Because our transmission function is seasonal, we first calculated time-specific $R_0$ as: $R_{0(t)} = \frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the infectious period, $1/\gamma$ is the recovery period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\mu = \nu$ = 0.05.
+Figure 2 in the main text shows these values.
+We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$, such that: $p = 1 - 1/\text{max}(R_{0(t)})$.
+We set the time at which vaccination coverage is equal to *p* as the endpoint for the EWS analysis.
+All elimination simulations had vaccination campaigns that started at year 50.
+So, we define the test interval as the times between year 50 and the year at which vaccination coverage is equal to *p*.
+We then defined the null interval as window with length equal to test interval and ending at year 49.
+Figure Sx shows a typical example.
+
+![ A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (left-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. ](../figures/elimination-series-example.pdf){ width=\textwidth }
+
