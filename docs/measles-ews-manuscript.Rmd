@@ -1,5 +1,5 @@
 ---
-csl: ecology.csl
+csl: science-without-titles.csl
 fontsize: 11pt
 geometry: margin=1in
 header-includes:
@@ -13,7 +13,7 @@ header-includes:
  - \DisableLigatures[f]{encoding = *, family = * }
  - \usepackage[table]{xcolor}
  - \usepackage{array}
- - \usepackage[font=small,labelfont=bf]{caption}
+ - \usepackage[font={footnotesize, sf},labelfont=bf, labelsep=period]{caption}
  - \usepackage{lastpage,fancyhdr,graphicx}
  - \usepackage{epstopdf}
  - \usepackage{mathptmx} 
@@ -28,6 +28,7 @@ output:
 urlcolor: black
 bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 ---
+\renewcommand{\figurename}{Fig.}
 \renewcommand{\thefootnote}{\fnsymbol{footnote}}
 \raggedright
 \vspace*{0.2in}
@@ -35,7 +36,7 @@ bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 \begin{centering}
 
 {\LARGE
-\textbf\newline{Critial slowing down anticipates emergence and elimination of measles in Niger} 
+\textbf\newline{Critical slowing down anticipates\\re-emergence and elimination of measles in Niger} 
 }
 
 \vspace{2em}
@@ -74,7 +75,7 @@ Forecasts of the emergence and re-emergence of infectious diseases have the pote
 Similarly, indicators of the elimination of infectious diseases can signal the effectiveness of ``end game'' strategies aimed at disease eradication [@Drake2017].
 Predicting (re)emergence and elimination is possible with complex mathematical models of disease transmission, but their success relies on detailed understanding of the underlying transmission and pathogen dynamics.
 We often do not have enough information to parameterize such models.
-An alternative approach is to use model-independent early warning signals that portend infectious disease (re)emergence and elimination by detecting critical slowing down as the system approaches a critical transition [@ORegan2013].
+An alternative approach is to use model-independent statistical signals that portend infectious disease (re)emergence and elimination by detecting critical slowing down as the system approaches a critical transition [@ORegan2013].
 
 Emergence and elimination of an infectious disease both involve a critical transition.
 The transition typically occurs at the critical point where the basic reproduction number ($R_0$, the number of secondary cases that arise from a single infected case in a fully susceptible population) is equal to one [@Heffernan2005].
@@ -84,6 +85,7 @@ Critical transitions in stochastic systems, such as disease transmission systems
 Critical slowing down (CSD), in turn, is associated with changes in the dynamical features of the system, so-called early warning signals (EWS) such as an increase in the variance and autocorrelation [@Carpenter2006; @Scheffer2009].
 Recent theoretical work suggests that CSD occurs as disease dynamics approach $R_0 = 1$ from below (emergence) [@ORegan2013; @Dibble2016] and from above (elimination) [@ORegan2013; @ORegan2016; @Drake2017], and that several EWS anticipate the critical transition [@Brett2017; @Brett2018; @Miller2017].
 Empirical tests of EWS and associated CSD are, however, scarce.
+Documenting CSD in real disease dynamics is an essential first step toward the development of model-independent outbreak detection systems [@Han2016].
 
 
 <!-- Theory shows that epidemic transitions can be anticipated by trends in the statistical properties of disease time series (AERO papers). -->
@@ -113,14 +115,16 @@ Moreoever, and contrary to theoretical expectations [@ORegan2013], we find that 
 # Materials and Methods
 
 ## Data
-We used weekly measles case report data from four Nigerien cities, Agadez, Maradi, Niamey, and Zinder, collected over an 11 year period (1995-2005) (Figure \ref{fig:data}).
-These data are ideal for stress testing EWS because each city has different population sizes, has different dynamics in terms of size of outbreaks and length of inter-epidemic periods, and each time series has different amounts of demographic stochasticity due to differences in population size.
+We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder.
+The data were collected over an 11 year period from 1995-2005 (Figure \ref{fig:data}).
+These data are ideal for testing theory on CSD in disease dynamics because each city has different population sizes, has different dynamics in terms of size of outbreaks and length of inter-epidemic periods, and each time series has different amounts of demographic stochasticity due to differences in population size.
+Such differences provide a natural gradient of "noise" that may obscure CSD (*citation?*).
 The data come from [*somewhere/someone*], and used here with permission from [*somewhere/someone*].
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/map-and-series.pdf}
-\caption{(A) Locations and population sizes (in parantheses) of our four focal cities in Niger. (B) Time series of weekly reported cases (yellow solid lines) and the 95\% prediction intervals (black ribbons) for one-step-ahead predictions from our fitted SEIR models for each city.}
+\caption{\textbf{Locations of data sources and observed and predicted measles dynamics}. (\textbf{A}) Locations and population sizes (in parantheses) of our four focal cities in Niger. (\textbf{B}) Time series of weekly reported cases (yellow solid lines) and the 95\% prediction intervals (black ribbons) for one-step-ahead predictions from our fitted SEIR models for each city.}
 \label{fig:data}
 \end{figure}
 
@@ -282,7 +286,7 @@ Our model for Agadez performs poorly relative to the other cities.
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/pred-obs-scatters.pdf}
-\caption{Comparison of in-sample model predictions and observations for each city. Expected cases are one-step-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases.}
+\caption{\textbf{Accuracy of the fitted \emph{SEIR} models and estimated seasonality.} (\textbf{A}) Comparison of in-sample model predictions and observations for each city. Expected cases are one-step-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases (SI text). (\textbf{B}) The estimated seasonality of the basic reproductive ratio ($R_0$) for each city. $R_0$ was calculated as: $\frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma \nu)}$, where $1/\eta$ is the infectious period, $1/\gamma$ is the recovery period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, $\mu = \nu$ = 0.05 for calculating $R_0$ as shown in this figure.}
 \label{fig:scatters}
 \end{figure}
 
@@ -363,7 +367,7 @@ Nonlinear increases in the susceptible pool would lead to different dynamics.
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/simulation-grid-aucs.pdf}
-\caption{Performance of EWS calculated over two windows (far from and near $R_E(t) = 1$) from the time series of 500 simulated dynamics, shown as a heatmap of AUC values minus 0.5. The two windows were defined as equally-sized windows over the course of the time series up to $R_E(t) = 1$ (red lines in Figure \ref{fig:re-sims}). The asterisks (*) in the heatmap for Niamey note EWS with high AUC but for the wrong reason: skewness and kurtosis \emph{decrease} as $R_E(t)$ approaches 1 rather than increase. This occurs because of the negative binomial sampling in the measurement component of our SEIR model.}
+\caption{\textbf{Performance of early warning signals (EWS)}. calculated over two windows (far from and near $R_E(t) = 1$) from the time series of 500 simulated dynamics, shown as a heatmap of AUC values minus 0.5. The two windows were defined as equally-sized windows over the course of the time series up to $R_E(t) = 1$ (red lines in Figure \ref{fig:re-sims}). The asterisks (*) in the heatmap for Niamey note EWS with high AUC but for the wrong reason: skewness and kurtosis \emph{decrease} as $R_E(t)$ approaches 1 rather than increase. This occurs because of the negative binomial sampling in the measurement component of our SEIR model.}
 \label{fig:aucs}
 \end{figure}
 
