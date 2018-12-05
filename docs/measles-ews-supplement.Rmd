@@ -70,6 +70,8 @@ pomp_files <- code_files[pomp_ids]
 results_files <- list.files("../results/")
 mle_ids <- grep("mif-lls", results_files)
 mle_files <- results_files[mle_ids]
+boot_ids <- grep("boot", mle_files)
+mle_files <- mle_files[-boot_ids]
 
 all_sims <- tibble()
 for(do_file in pomp_files){
@@ -181,3 +183,88 @@ Figure Sx shows a typical example.
 
 ![ A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (left-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. ](../figures/elimination-series-example.pdf){ width=\textwidth }
 
+# Trends of early warning signals
+
+Theory suggests that most EWS should increase as disease dynamics approach a critical transition from below (emergence).
+When approaching the critical transition from above (elimination), less is known about the behavior of EWS, but theory does tell us that the mean and variance should decrease while the autocorrelation should increase (at least for SIR and SEIR models).
+To confirm that the EWS are behaving as expected, and to document cases in which they do not, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
+
+```{r ews-hists, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
+emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
+  filter(metric != "variance_first_diff" & susc_discount == 1e-04)
+elimination_ews <- read.csv("../results/ews-elimination.csv") %>%
+  filter(metric != "variance_first_diff")
+
+gout <- list()
+for(do_city in sort(unique(emerge_ews$city))){
+  if(do_city != "Zinder"){
+    gout[[do_city]] <- ggplot(filter(emerge_ews, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = c("tan", "dodgerblue4")) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      guides(fill = FALSE) +
+      labs(y = "Count", x = "") +
+      ggtitle(do_city)
+  }
+
+  if(do_city == "Zinder"){
+    gout[[do_city]] <- ggplot(filter(emerge_ews, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = c("tan", "dodgerblue4"), labels = c("Null", "Test"), name = NULL) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(y = "Count", x = "EWS value") +
+      ggtitle(do_city)
+  }
+
+}
+
+ews_hists <- cowplot::plot_grid(
+  plotlist = gout,
+  nrow = 4,
+  labels = "AUTO"
+)
+print(ews_hists)
+```
+
+```{r ews-hists2, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where rate of vaccination coverage reaching 1 is 1.5e-05.", fig.height=5}
+elimination_ews <- read.csv("../results/ews-elimination.csv") %>%
+  filter(metric != "variance_first_diff" & vacc_speed == 1.5e-05)
+
+gout <- list()
+for(do_city in sort(unique(emerge_ews$city))){
+  if(do_city != "Zinder"){
+    gout[[do_city]] <- ggplot(filter(elimination_ews, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = c("tan", "dodgerblue4")) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      guides(fill = FALSE) +
+      labs(y = "Count", x = "") +
+      ggtitle(do_city)
+  }
+
+  if(do_city == "Zinder"){
+    gout[[do_city]] <- ggplot(filter(elimination_ews, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = c("tan", "dodgerblue4"), labels = c("Null", "Test"), name = NULL) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(y = "Count", x = "EWS value") +
+      ggtitle(do_city)
+  }
+
+}
+
+ews_hists <- cowplot::plot_grid(
+  plotlist = gout,
+  nrow = 4,
+  labels = "AUTO"
+)
+print(ews_hists)
+```
