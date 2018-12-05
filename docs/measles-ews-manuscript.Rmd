@@ -36,7 +36,7 @@ bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 \begin{centering}
 
 {\LARGE
-\textbf\newline{Critical slowing down anticipates\\re-emergence and elimination of measles in Niger} 
+\textbf\newline{Early warning signals anticipate\\measles emergence and elimination} 
 }
 
 \vspace{2em}
