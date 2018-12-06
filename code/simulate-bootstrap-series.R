@@ -42,7 +42,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     )
   ) %>%
     filter(time >= 1995) %>%
-    dplyr::select(sim, time, reports, RE_seas) %>%
+    dplyr::select(sim, time, reports, S, E, I, RE_seas) %>%
     mutate(
       sim = as.numeric(sim)
     ) %>%
