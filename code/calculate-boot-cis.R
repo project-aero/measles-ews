@@ -12,6 +12,9 @@ library(tidyverse)
 library(dplyr)
 
 
+do_city <- "Maradi"
+boot_file <- paste0("../results/bootstrap-mif-lls-", do_city, ".csv")
+pomp_file <- paste0("measles-pomp-object-", do_city, ".RDS")
 
 # Define computation grid -------------------------------------------------
 
@@ -24,7 +27,7 @@ comp_grid$do_grid <- 1:nrow(comp_grid)
 
 # Load parameter estimate grid --------------------------------------------
 
-param_summaries <- read.csv("../results/bootstrap-mif-lls-Agadez.csv") %>%
+param_summaries <- read.csv(boot_file) %>%
   slice(2:n()) %>%  # ignore first row of NAs
   left_join(comp_grid, by = "do_grid") %>%  # merge in comp grid info
   group_by(boot_series) %>%
@@ -46,7 +49,7 @@ param_summaries <- read.csv("../results/bootstrap-mif-lls-Agadez.csv") %>%
 
 # Plot all seasonal transmission curves -----------------------------------
 
-b_splines <- read.csv("../results/bootstrap-mif-lls-Agadez.csv") %>%
+b_splines <- read.csv(boot_file) %>%
   slice(2:n()) %>%  # ignore first row of NAs
   left_join(comp_grid, by = "do_grid") %>%  # merge in comp grid info
   group_by(boot_series) %>%
@@ -54,7 +57,7 @@ b_splines <- read.csv("../results/bootstrap-mif-lls-Agadez.csv") %>%
   ungroup() %>%
   dplyr::select(b1, b2, b3, b4, b5, b6)
 
-betas <- read.csv("../results/bootstrap-mif-lls-Agadez.csv") %>%
+betas <- read.csv(boot_file) %>%
   slice(2:n()) %>%  # ignore first row of NAs
   left_join(comp_grid, by = "do_grid") %>%  # merge in comp grid info
   group_by(boot_series) %>%
@@ -62,7 +65,7 @@ betas <- read.csv("../results/bootstrap-mif-lls-Agadez.csv") %>%
   ungroup() %>%
   dplyr::select(beta_mu)
 
-measles_pomp <- readRDS("measles-pomp-object-Agadez.RDS")  # exemplar bases
+measles_pomp <- readRDS(pomp_file)  # exemplar bases
 
 bases <- as_tibble(measles_pomp@covar) %>%
   dplyr::select(starts_with("x")) %>%
