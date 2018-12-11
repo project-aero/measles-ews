@@ -292,3 +292,160 @@ ews_hists <- cowplot::plot_grid(
 )
 print(ews_hists)
 ```
+
+# Bootstrapped parameter confidence intervals
+
+We used a bootstrap approach to estimate approximate 95\% confidence intervals for all parameters.
+Below we show summary statistics for all parameters except the B-splines.
+For B-splines, and transmission rate more gerenally, we plot the seasonal transmission rate function for all bootstrap replicates.
+
+```{r param-summaries, message=FALSE, warning=FALSE, echo = FALSE, results = "asis"}
+
+# Define computation grid -------------------------------------------------
+
+nboots <- 100
+nmifs <- 50
+comp_grid <- expand.grid(1:nboots, 1:50)
+colnames(comp_grid) <- c("boot_series", "param_set")
+comp_grid$do_grid <- 1:nrow(comp_grid)
+
+
+# Load loglikelihood results and combine ----------------------------------
+
+loglik_files <- list.files("../results/", pattern = "bootstrap-mif-lls")
+param_summaries <- tibble()
+
+for(do_file in loglik_files){
+  do_city <- str_sub(do_file, 19, -5)
+  tmp_file <- read.csv(paste0("../results/", do_file)) %>%
+    slice(2:n()) %>%  # ignore first row of NAs
+    left_join(comp_grid, by = "do_grid") %>%  # merge in comp grid info
+    group_by(boot_series) %>%
+    filter(loglik == max(loglik)) %>%
+    ungroup() %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se, -boot_series, -param_set,
+                  -b1, -b2, -b3, -b4, -b5, -b6) %>%
+    gather(key = parameter, value = mle_value) %>%
+    group_by(parameter) %>%
+    summarise(
+      mean_value = mean(mle_value),
+      median_value = median(mle_value),
+      std_dev = sd(mle_value),
+      upper_95_ci = quantile(mle_value, 0.975),
+      lower_95_ci = quantile(mle_value, 0.025)
+    ) %>%
+    mutate(city = do_city)
+  
+  param_summaries <- bind_rows(param_summaries, tmp_file)
+}
+
+# Load example pomp file for basis function
+pomp_file <- "../code/measles-pomp-object-Agadez.RDS"
+measles_pomp <- readRDS(pomp_file)  # exemplar bases
+
+
+# Calculate seasonal transmission functions -------------------------------
+
+bases <- as_tibble(measles_pomp@covar) %>%
+  dplyr::select(starts_with("x")) %>%
+  dplyr::slice(1:365) %>%
+  mutate(
+    day = 1:365
+  ) %>%
+  gather(key = base, value = value, -day)
+
+season <- bases %>%
+  spread(key = base, value = value) %>%
+  dplyr::select(-day) %>%
+  as.matrix()
+
+seasonal_functions <- tibble()
+for(do_file in loglik_files){
+  do_city <- str_sub(do_file, 19, -5)
+  
+  b_splines <- read.csv(paste0("../results/", do_file)) %>%
+    slice(2:n()) %>%  # ignore first row of NAs
+    left_join(comp_grid, by = "do_grid") %>%  # merge in comp grid info
+    group_by(boot_series) %>%
+    filter(loglik == max(loglik)) %>%
+    ungroup() %>%
+    dplyr::select(b1, b2, b3, b4, b5, b6)
+  
+  betas <- read.csv(paste0("../results/", do_file)) %>%
+    slice(2:n()) %>%  # ignore first row of NAs
+    left_join(comp_grid, by = "do_grid") %>%  # merge in comp grid info
+    group_by(boot_series) %>%
+    filter(loglik == max(loglik)) %>%
+    ungroup() %>%
+    dplyr::select(beta_mu)
+  
+  seasonal_betas <- tibble()
+  for(i in 1:nrow(b_splines)){
+    qis <- as.numeric(b_splines[i, ])
+    beta_tmp <- as.numeric(betas[i, "beta_mu"])
+    
+    seasonal_tmp <- tibble(
+      beta = as.numeric((1+exp(season %*% qis)) * beta_tmp),
+      day = 1:365,
+      boot = i
+    )
+    seasonal_betas <- bind_rows(seasonal_betas, seasonal_tmp)
+  }  # end bootstrap loop
+  
+  seasonal_betas <- seasonal_betas %>%
+    mutate(city = do_city)
+  
+  seasonal_functions <- bind_rows(seasonal_functions, seasonal_betas)
+  
+}  # end city loop
+
+param_summaries <- param_summaries %>%
+  mutate(
+    parameter = ifelse(parameter == "beta_mu", "$\\beta$", parameter),
+    parameter = ifelse(parameter == "beta_sd", "$\\sigma$", parameter),
+    parameter = ifelse(parameter == "rho", "$\\rho$", parameter),
+    parameter = ifelse(parameter == "iota", "$\\psi$", parameter),
+    parameter = ifelse(parameter == "S_0", "$\\textsl{S}_{t=0}$", parameter),
+    parameter = ifelse(parameter == "E_0", "$\\textsl{E}_{t=0}$", parameter),
+    parameter = ifelse(parameter == "I_0", "$\\textsl{I}_{t=0}$", parameter),
+    parameter = ifelse(parameter == "tau", "$\\tau$", parameter)
+  ) %>%
+  select(parameter, mean_value, median_value, std_dev, lower_95_ci, upper_95_ci, city) %>%
+  rename(
+    `Parameter` = parameter,
+    `Mean` = mean_value,
+    `Median` = median_value,
+    `SD` = std_dev,
+    `Upper 95% CI` = upper_95_ci,
+    `Lower 95% CI` = lower_95_ci
+  )
+```
+
+```{r param-tables, message=FALSE, warning=FALSE, echo = FALSE, results = "asis"}
+
+for(do_city in unique(param_summaries$city)){
+  tmp_table <- param_summaries %>%
+  filter(city == do_city) %>%
+  select(-city) %>%
+  mutate_if(is.numeric, funs(as.character(signif(., 3))))
+
+  docap <- paste0("Summary statistics of parameters from bootstrapped estimates for ", do_city, ".")
+  print(knitr::kable(tmp_table, format = "pandoc", caption = docap))
+}
+```
+
+```{r plot-seasonal-transmission, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Bootstrap replicates of estimated seasonal transmission functions.", fig.width=8.5, fig.height=3}
+
+seasonal_functions <- seasonal_functions %>%
+  mutate(
+    date = as.Date(day, origin = "2016-12-31", tz = "UTC")
+  )
+
+ggplot(seasonal_functions, aes(x = date, y = beta, group = boot)) +
+  geom_line(alpha = 0.3, color = "dodgerblue4") +
+  labs(x = "Date", y = expression(paste("Tranmission rate, ",beta, " (", yr^-1, ")"))) +
+  scale_x_date(date_labels = "%b", date_breaks = "2 months") +
+  facet_wrap(~city) +
+  theme_minimal()
+
+```
