@@ -187,19 +187,21 @@ example_data <- readRDS(example_file) %>%
   filter(use_it == FALSE) %>%
   mutate(group = ifelse(time < 50, 1, 2))
 
-ggplot() +
-  geom_line(data = example_data, aes(x = time, y = reports, group = group), color = "tan", alpha = 0.4, size = 0.3) +
-  geom_vline(data = ews_data_example, aes(xintercept = max(time)), color = "dodgerblue4",  linetype = 2) +
-  geom_vline(data = ews_data_example, aes(xintercept = min(time)), color = "dodgerblue4",  linetype = 2) +
-  geom_vline(data = ews_data_example, aes(xintercept = 50), color = "grey45", linetype = 1) +
-  geom_line(data = ews_data_example, aes(x = time, y = reports), color = "tan", size = 0.3) +
-  annotate(geom = "text", x = 28, y = 1450, label = "Null window") +
-  annotate(geom = "text", x = 70, y = 1450, label = "Test window") +
-  annotate(geom = "text", x = 38, y = 900, label = "start of\nvaccination campaign", size = 3, color = "grey25") +
-  annotate(geom = "text", x = 81, y = 900, label = "coverage reaches\nherd immunity", size = 3, color = "dodgerblue4") +
-  labs(x = "Simulation time (year)", y = "Reported cases") +
-  theme_classic(base_size = 14)
-ggsave(filename = "../figures/elimination-series-example.pdf", height = 3, width = 7, units = "in")
+saveRDS(list(example_data, ews_data_example), "../simulations/single-elimination-example.RDS")
+
+# ggplot() +
+#   geom_line(data = example_data, aes(x = time, y = reports, group = group), color = "tan", alpha = 0.4, size = 0.3) +
+#   geom_vline(data = ews_data_example, aes(xintercept = max(time)), color = "dodgerblue4",  linetype = 2) +
+#   geom_vline(data = ews_data_example, aes(xintercept = min(time)), color = "dodgerblue4",  linetype = 2) +
+#   geom_vline(data = ews_data_example, aes(xintercept = 50), color = "grey45", linetype = 1) +
+#   geom_line(data = ews_data_example, aes(x = time, y = reports), color = "tan", size = 0.3) +
+#   annotate(geom = "text", x = 28, y = 1450, label = "Null window") +
+#   annotate(geom = "text", x = 70, y = 1450, label = "Test window") +
+#   annotate(geom = "text", x = 38, y = 900, label = "start of\nvaccination campaign", size = 3, color = "grey25") +
+#   annotate(geom = "text", x = 81, y = 900, label = "coverage reaches\nherd immunity", size = 3, color = "dodgerblue4") +
+#   labs(x = "Simulation time (year)", y = "Reported cases") +
+#   theme_classic(base_size = 14)
+# ggsave(filename = "../figures/elimination-series-example.pdf", height = 3, width = 7, units = "in")
 
 
 # Calculate EWS -----------------------------------------------------------

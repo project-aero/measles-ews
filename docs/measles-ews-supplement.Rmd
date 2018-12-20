@@ -181,7 +181,65 @@ So, we define the test interval as the times between year 50 and the year at whi
 We then defined the null interval as window with length equal to test interval and ending at year 49.
 Figure Sx shows a typical example.
 
-![ A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (left-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. ](../figures/elimination-series-example.pdf){ width=\textwidth }
+```{r elim-ex,  message=FALSE, warning=FALSE, echo = FALSE, fig.cap="A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval.", fig.width=6}
+
+example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
+ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
+
+rho_curve_ramp <- function(t, start = 50, speed = 1.5e-05){
+  ifelse(
+    t <= start,
+    rho <- 0.7,
+    # rho <- 0.3 * (1 - exp((t - start) * -0.015 speed)) + 0.7  # exponential
+    rho <- min(0.7 + (t - start)*speed, 1)  # linear
+  )
+  return(rho)
+}
+
+years <- 100
+weeks <- years*52
+days <- years*365
+vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, 
+                           start = 50*365, speed = 1.5e-05)
+
+vacc_ex_tbl <- tibble(
+  time = 1:length(vacc_coverage_ts),
+  coverage = vacc_coverage_ts
+)
+
+
+vacc_plot <- ggplot(vacc_ex_tbl, aes(time/365, coverage)) +
+  geom_line(color = "dodgerblue4") +
+  geom_hline(aes(yintercept = 0.7), linetype = 2, 
+             size = 0.25, color = "grey45") +
+  geom_hline(aes(yintercept = unique(example_data$threshold)), linetype = 2, 
+             size = 0.25, color = "grey45") +
+  annotate(geom = "text", x = 81, y = 0.72, color = "grey45",
+           label = "Current vaccination coverage in Niger", size = 3) +
+  annotate(geom = "text", x = 25, y = 0.91, color = "grey45",
+           label = "Vaccination coverage for herd immunity", size = 3) +
+  scale_y_continuous(limits = c(0.7, 1)) +
+  labs(x = NULL, y = "Vaccination\ncoverage") +
+  theme_classic(base_size = 14)
+
+ts_plot <- ggplot() +
+  geom_line(data = example_data, aes(x = time, y = reports, group = group), color = "tan", alpha = 0.4, size = 0.3) +
+  geom_vline(data = ews_data_example, aes(xintercept = max(time)), color = "dodgerblue4",  linetype = 2) +
+  geom_vline(data = ews_data_example, aes(xintercept = min(time)), color = "dodgerblue4",  linetype = 2) +
+  geom_vline(data = ews_data_example, aes(xintercept = 50), color = "grey45", linetype = 1) +
+  geom_line(data = ews_data_example, aes(x = time, y = reports), color = "tan", size = 0.3) +
+  annotate(geom = "text", x = 28, y = 1450, label = "Null window") +
+  annotate(geom = "text", x = 70, y = 1450, label = "Test window") +
+  annotate(geom = "text", x = 36, y = 900, label = "start of\nvaccination campaign", size = 3, color = "grey25") +
+  annotate(geom = "text", x = 79, y = 900, label = "coverage reaches\nherd immunity", size = 3, color = "dodgerblue4") +
+  labs(x = "Simulation time (year)", y = "Reported cases") +
+  theme_classic(base_size = 14)
+
+cowplot::plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
+
+```
+
+<!-- ![ A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (left-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. ](../figures/elimination-series-example.pdf){ width=\textwidth } -->
 
 # Trends of early warning signals
 
