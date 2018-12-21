@@ -1,6 +1,8 @@
-# analyze-emergence-sims.R
+# analyze-mvw-emergence-sims.R
 #  Script calculate EWS over two windows from simulated series for each
 #  city. Simulations start at low number of susceptibles to mimic emergence.
+#  This script conducts a moving window analysis that represents an
+#  "online" mode of outbreak detection.
 #
 # Author: Andrew Tredennick (atredenn@gmail.com)
 
@@ -15,6 +17,12 @@ library(spaero)
 
 # Load simulations --------------------------------------------------------
 
+# This chunck loops over all the relevant emergence simulation files
+# and combines them into one long tibble for futher processing and
+# subsetting. We simulated emergence at lower levels of susceptible
+# discounting, but focus this analysis on discount factors that are less
+# than 0.6. 
+
 all_files <- list.files("../simulations/")
 sim_file_ids <- grep("emergence-simulations-grid", all_files)
 sim_files <- all_files[sim_file_ids]
@@ -22,7 +30,7 @@ all_sims <- {}
 for(do_file in sim_files){
   tmp_file <- paste0("../simulations/", do_file)
   tmp <- readRDS(tmp_file) %>%
-    filter(time > 0 & susc_discount < 0.6)  # ignore extra simulations above 0.6
+    filter(time > 0 & susc_discount < 0.6)  # drop simulations above 0.6
   all_sims <- bind_rows(all_sims, tmp)
 }
 
@@ -50,62 +58,13 @@ re_one_year <- all_sims %>%
   ungroup()
 
 
-# re_time_avg <- all_sims %>%
-#   group_by(city, time, susc_discount) %>%
-#   summarise(mean_re = mean(RE_seas)) %>%
-#   mutate(
-#     year = round(time)
-#   ) %>%
-#   ungroup() %>%
-#   group_by(city, year, susc_discount) %>%
-#   summarise(time_mean_re = mean(mean_re)) %>%
-#   filter(year <= 25)
-# 
-# re_one_year <- re_time_avg %>%
-#   ungroup() %>%
-#   group_by(city, susc_discount) %>%
-#   filter(round(time_mean_re,1) >= 1) %>%
-#   dplyr::select(city, year, susc_discount) %>%
-#   filter(year == min(year)) %>%
-#   ungroup()
-
-
-# Plot RE series ----------------------------------------------------------
-
-plot_sims <- all_sims %>% 
-  filter(sim < 21 & time <= 25)  # just plot 20 reps for 25 years
-
-re_series <- ggplot() +
-  geom_hline(data = re_one_year, aes(yintercept = 1), linetype = 2) +
-  geom_segment(
-    data = re_one_year,
-    aes(x = year, xend = year, y = 0, yend = 1),
-    color = ptol_pal()(2)[2]
-  ) +
-  geom_line(
-    data = plot_sims,
-    aes(x = time, y = RE_seas, group = sim),
-    alpha = 0.1,
-    color = "grey55",
-    size = 0.3
-  ) +
-  labs(x = "Simulation year", y = expression(R[E](t))) +
-  facet_grid(susc_discount~city) +
-  theme_minimal() 
-
-ggsave(
-  filename = "../figures/effective-r-emergence-grid.pdf", 
-  plot = re_series, 
-  width = 8.5, 
-  height = 5, 
-  units = "in"
-)
-
-
 # Format data for 2-window EWS --------------------------------------------
 
 data_for_ews <- tibble()
-bws <- tibble()
+
+# For testing...
+do_city <- "Maradi"
+do_discount <- 1e-04
 
 for(do_city in unique(all_sims$city)){
   for(do_discount in unique(all_sims$susc_discount)){
@@ -132,8 +91,6 @@ for(do_city in unique(all_sims$city)){
         rep("second", length(tmptimes)/2)
       )
     )
-    
-    window_bandwidth <- length(tmptimes)/2
     
     tmp_ews_data <- tmpsims %>%
       dplyr::select(city, time, reports, sim, susc_discount) %>%
@@ -164,14 +121,6 @@ for(do_city in unique(all_sims$city)){
     # rbind(unlist(test_stats1), unlist(test_stats2))
     
     data_for_ews <- bind_rows(data_for_ews, tmp_ews_data)
-    bws <- bind_rows(
-      bws, 
-      tibble(
-        city = do_city,
-        susc_discount = do_discount,
-        bandwidth = window_bandwidth
-      )
-    )
   }
 }
 
@@ -196,7 +145,12 @@ my_get_taus <- function(x, bw){
   return(taus)
 }
 
+# For testing...
+do_city <- "Maradi"
+do_discount <- 1e-04
+
 ews_out <- {}
+window_bandwidth <- 35  # from Miller et al. 2017
 
 for(do_city in unique(data_for_ews$city)){
   
@@ -223,14 +177,10 @@ for(do_city in unique(data_for_ews$city)){
       dplyr::select(-time) %>%
       as.matrix()
     
-    window_bandwidth <- bws %>%
-      filter(city == do_city & susc_discount == do_discount) %>%
-      pull(bandwidth)
-    
-    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_stats, 
+    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_taus, 
                        bw = window_bandwidth)
     
-    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_stats, 
+    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_taus, 
                         bw = window_bandwidth)
     
     first_tbl <- tibble(
@@ -260,7 +210,7 @@ for(do_city in unique(data_for_ews$city)){
 }  # end city loop
 
 # Save the results
-write.csv(x = ews_out, file = "../results/ews-emergence.csv", row.names = FALSE)
+write.csv(x = ews_out, file = "../results/ews-mvw-emergence.csv", row.names = FALSE)
 
 
 
@@ -321,6 +271,60 @@ write.csv(x = auc_tbl, "../results/emergence-grid-aucs.csv")
 
 # OLD CODE ----------------------------------------------------------------
 
+# re_time_avg <- all_sims %>%
+#   group_by(city, time, susc_discount) %>%
+#   summarise(mean_re = mean(RE_seas)) %>%
+#   mutate(
+#     year = round(time)
+#   ) %>%
+#   ungroup() %>%
+#   group_by(city, year, susc_discount) %>%
+#   summarise(time_mean_re = mean(mean_re)) %>%
+#   filter(year <= 25)
+# 
+# re_one_year <- re_time_avg %>%
+#   ungroup() %>%
+#   group_by(city, susc_discount) %>%
+#   filter(round(time_mean_re,1) >= 1) %>%
+#   dplyr::select(city, year, susc_discount) %>%
+#   filter(year == min(year)) %>%
+#   ungroup()
+
+
+# Plot RE series --
+
+# plot_sims <- all_sims %>% 
+#   filter(sim < 21 & time <= 25)  # just plot 20 reps for 25 years
+# 
+# re_series <- ggplot() +
+#   geom_hline(data = re_one_year, aes(yintercept = 1), linetype = 2) +
+#   geom_segment(
+#     data = re_one_year,
+#     aes(x = year, xend = year, y = 0, yend = 1),
+#     color = ptol_pal()(2)[2]
+#   ) +
+#   geom_line(
+#     data = plot_sims,
+#     aes(x = time, y = RE_seas, group = sim),
+#     alpha = 0.1,
+#     color = "grey55",
+#     size = 0.3
+#   ) +
+#   labs(x = "Simulation year", y = expression(R[E](t))) +
+#   facet_grid(susc_discount~city) +
+#   theme_minimal() 
+# 
+# ggsave(
+#   filename = "../figures/effective-r-emergence-grid.pdf", 
+#   plot = re_series, 
+#   width = 8.5, 
+#   height = 5, 
+#   units = "in"
+# )
+
+
+
+
 # gout <- list()
 # for(do_city in sort(unique(ews_long$city))){
 #   if(do_city != "Zinder"){
@@ -366,14 +370,14 @@ write.csv(x = auc_tbl, "../results/emergence-grid-aucs.csv")
 
 
 
-# ggplot(auc_tbl, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
-#   geom_tile() +
-#   scale_fill_viridis_c(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
-#   facet_wrap(~city, nrow = 1) +
-#   labs(x = "Level of susceptible depletion", y = NULL) +
-#   theme_minimal() +
-#   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-#   theme(panel.spacing = unit(1, "lines"))
+ggplot(auc_tbl, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
+  geom_tile() +
+  scale_fill_viridis_c(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  facet_wrap(~city, nrow = 1) +
+  labs(x = "Level of susceptible depletion", y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"))
 
 
 
