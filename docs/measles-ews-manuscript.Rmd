@@ -389,10 +389,10 @@ mles_table <- bind_rows(loglik_bindr, mles_cis) %>%
   dplyr::rename(
     City = city,
     `Log likelihood (S.E.)` = loglik_and_se,
-    `$\\beta$ (C.I.)` = beta_mu,
-    `$\\psi$ (C.I.)` = iota,
-    `$\\rho$ (C.I.)` = rho,
-    `$\\textsl{S}_{t=0}$ (C.I.)` = S_0
+    `$\\beta$ (95\\% C.I.)` = beta_mu,
+    `$\\psi$ (95\\% C.I.)` = iota,
+    `$\\rho$ (95\\% C.I.)` = rho,
+    `$\\textsl{S}_{t=0}$ (95\\% C.I.)` = S_0
   )
 
 
@@ -406,14 +406,14 @@ mles_table <- bind_rows(loglik_bindr, mles_cis) %>%
 #   dplyr::rename(
 #     City = city,
 #     `Log likelihood (S.E.)` = loglik_and_se,
-#     `$\\beta$ (C.I.)` = beta_mu,
-#     `$\\sigma$ (C.I.)` = beta_sd,
-#     `$\\psi$ (C.I.)` = iota,
-#     `$\\rho$ (C.I.)` = rho,
-#     `$\\textsl{S}_{t=0}$ (C.I.)` = S_0
+#     `$\\beta$ (95% C.I.)` = beta_mu,
+#     `$\\sigma$ (95% C.I.)` = beta_sd,
+#     `$\\psi$ (95% C.I.)` = iota,
+#     `$\\rho$ (95% C.I.)` = rho,
+#     `$\\textsl{S}_{t=0}$ (95% C.I.)` = S_0
 #   )
 
-print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estimates for select epidemiological parameters."), caption.placement = "top", include.rownames = F, sanitize.colnames.function = identity, size="\\fontsize{9pt}{10pt}\\selectfont")
+print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estimates and 95\\% bootstrapped confidence intervals for select epidemiological parameters. MLEs and C.I.s for all parameters are in the SI material."), caption.placement = "top", include.rownames = F, sanitize.colnames.function = identity, size="\\fontsize{9pt}{10pt}\\selectfont")
 
 ```
 
