@@ -124,8 +124,8 @@ for(do_city in unique(all_sims$city)){
     #                                  stat_bandwidth = 35,
     #                                  lag = 1,
     #                                  backward_only = TRUE)$taus
-
-    rbind(unlist(test_stats1), unlist(test_stats2))
+    # 
+    # rbind(unlist(test_stats1), unlist(test_stats2))
     
     data_for_ews <- bind_rows(data_for_ews, tmp_ews_data)
   }
@@ -212,12 +212,15 @@ for(do_city in unique(data_for_ews$city)){
     
     ews_out <- bind_rows(ews_out, tmp_out)
     
+    print(do_city)
+    print(do_discount)
   }  # end susceptible discount loop
   
 }  # end city loop
 
 # Save the results
-write.csv(x = ews_out, file = "../results/ews-mvw-emergence.csv", row.names = FALSE)
+write.csv(x = ews_out, file = "../results/ews-mvw-emergence.csv", 
+          row.names = FALSE)
 
 
 
@@ -273,7 +276,14 @@ for(do_city in unique(ews_long$city)){
 
 write.csv(x = auc_tbl, "../results/emergence-mvw-grid-aucs.csv")
 
-
+# ggplot(auc_tbl, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
+#   geom_tile() +
+#   scale_fill_viridis_c(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+#   facet_wrap(~city, nrow = 1) +
+#   labs(x = "Level of susceptible depletion", y = NULL) +
+#   theme_minimal() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#   theme(panel.spacing = unit(1, "lines"))
 
 
 # OLD CODE ----------------------------------------------------------------
@@ -375,18 +385,12 @@ write.csv(x = auc_tbl, "../results/emergence-mvw-grid-aucs.csv")
 # )
 
 
-
-
-ggplot(auc_tbl, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
-  geom_tile() +
-  scale_fill_viridis_c(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
-  facet_wrap(~city, nrow = 1) +
-  labs(x = "Level of susceptible depletion", y = NULL) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(panel.spacing = unit(1, "lines"))
-
-
+# 
+# 
+# 
+# ggplot(ews_long, aes(x = half, y = value)) +
+#   geom_boxplot() +
+#   facet_wrap(~metric, scales = "free")
 
 # plt_tbl <- auc_tbl %>%
 #   filter(metric %in% c("Variance", "Autocovar.", "Autocorr.",
