@@ -124,8 +124,8 @@ for(do_city in unique(all_sims$city)){
     #                                  stat_bandwidth = 35,
     #                                  lag = 1,
     #                                  backward_only = TRUE)$taus
-    # 
-    # rbind(unlist(test_stats1), unlist(test_stats2))
+
+    rbind(unlist(test_stats1), unlist(test_stats2))
     
     data_for_ews <- bind_rows(data_for_ews, tmp_ews_data)
   }
@@ -145,7 +145,7 @@ my_get_taus <- function(x, bw){
       stat_kernel = "uniform",
       stat_bandwidth = bw,
       lag = 1,
-      backward_only = FALSE)$taus
+      backward_only = TRUE)$taus
   )
   
   taus <- unlist(ews_list)
@@ -271,7 +271,7 @@ for(do_city in unique(ews_long$city)){
   }
 }
 
-write.csv(x = auc_tbl, "../results/emergence-grid-aucs.csv")
+write.csv(x = auc_tbl, "../results/emergence-mvw-grid-aucs.csv")
 
 
 
