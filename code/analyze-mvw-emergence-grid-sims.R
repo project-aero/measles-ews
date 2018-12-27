@@ -4,7 +4,8 @@
 #  This script conducts a moving window analysis that represents an
 #  "online" mode of outbreak detection.
 #
-# Author: Andrew Tredennick (atredenn@gmail.com)
+# Author: 
+#  Andrew Tredennick (atredenn@gmail.com)
 
 
 # Load libraries ----------------------------------------------------------

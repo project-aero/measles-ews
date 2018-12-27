@@ -4,7 +4,8 @@
 #  mimicking elimination. This script conducts a moving window analysis 
 #  that represents an "online" mode of disease elimination.
 #
-# Author: Andrew Tredennick (atredenn@gmail.com)
+# Author: 
+#  Andrew Tredennick (atredenn@gmail.com)
 
 
 # Load libraries ----------------------------------------------------------
@@ -13,6 +14,19 @@ library(tidyverse)
 library(ggthemes)
 library(pROC)
 library(spaero)
+library(doParallel)
+library(parallel)
+library(foreach)
+
+
+# Set number of cores based on machine ------------------------------------
+
+avail_cores <- detectCores()
+if(avail_cores <= 4){
+  n_cores <- 3  # on PC
+} else{
+  n_cores <- 20  # on lab monster
+}
 
 
 # Define function to calculate R0 from seasonal params --------------------
@@ -23,6 +37,7 @@ calc_R0 <- function(beta, qis, season, eta = (365/8),
   R0 <- (eta*B*mu) / (nu*(eta + nu)*(gamma + nu))
   return(R0)
 }
+
 
 # Calculate vaccination thresholds for each city --------------------------
 
@@ -167,7 +182,7 @@ my_get_taus <- function(x, bw){
 
 # For testing...
 do_city <- "Maradi"
-do_discount <- 1e-04
+do_speed <- 8.3e-05
 
 ews_out <- {}
 window_bandwidth <- 35  # from Miller et al. 2017
@@ -197,25 +212,44 @@ for(do_city in unique(data_for_ews$city)){
       dplyr::select(-time) %>%
       as.matrix()
     
-    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_taus, 
-                       bw = window_bandwidth)
+    # Calculate EWS for each sim of first half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_first <- foreach(i=1:ncol(first_half), .combine=cbind) %dopar%
+      my_get_taus(first_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
     
-    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_taus, 
-                        bw = window_bandwidth)
+    # Calculate EWS for each sim of second half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_second <- foreach(i=1:ncol(second_half), .combine=cbind) %dopar%
+      my_get_taus(second_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
+    
+    # ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_taus, 
+    #                    bw = window_bandwidth)
+    # ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_taus, 
+    #                     bw = window_bandwidth)
     
     first_tbl <- tibble(
       metric = row.names(ews_first)
     ) %>%
       bind_cols(as_tibble(ews_first)) %>%
       gather(key = sim, value = value, - metric) %>%
-      mutate(half = "first")
+      mutate(half = "first") %>%
+      separate(col = sim, into = c("trash", "sim"), sep = "[.]") %>%
+      dplyr::select(-trash) %>%
+      mutate(sim = as.integer(sim))
     
     second_tbl <- tibble(
       metric = row.names(ews_second)
     ) %>%
       bind_cols(as_tibble(ews_second)) %>%
       gather(key = sim, value = value, - metric) %>%
-      mutate(half = "second")
+      mutate(half = "second") %>%
+      separate(col = sim, into = c("trash", "sim"), sep = "[.]") %>%
+      dplyr::select(-trash) %>%
+      mutate(sim = as.integer(sim))
     
     tmp_out <- bind_rows(first_tbl, second_tbl) %>%
       mutate(
@@ -224,12 +258,9 @@ for(do_city in unique(data_for_ews$city)){
       )
     
     ews_out <- bind_rows(ews_out, tmp_out)
-    
-    ggplot(ews_out, aes(x = half, y = value)) +
-      geom_boxplot() +
-      facet_wrap(~metric)
-    
-  }  # end susceptible discount loop
+    print(do_city)
+    print(do_speed)
+  }  # end vaccination speed loop
   
 }  # end city loop
 
