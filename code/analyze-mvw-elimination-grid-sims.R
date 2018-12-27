@@ -265,7 +265,8 @@ for(do_city in unique(data_for_ews$city)){
 }  # end city loop
 
 # Save the results
-write.csv(x = ews_out, file = "../results/ews-mvw-elimination.csv", row.names = FALSE)
+write.csv(x = ews_out, file = "../results/ews-mvw-elimination.csv", 
+          row.names = FALSE)
 
 
 # Format results ----------------------------------------------------------
@@ -303,7 +304,8 @@ auc_tbl <- {}
 for(do_city in unique(ews_long$city)){
   for(do_speed in unique(ews_long$vacc_speed)){
     for(do_metric in unique(ews_long$metric)){
-      tmp <- filter(ews_long, metric == do_metric & city == do_city & vacc_speed == do_speed)
+      tmp <- filter(ews_long, metric == do_metric & 
+                      city == do_city & vacc_speed == do_speed)
       roc_obj <- roc(tmp$cat, tmp$value)
       tmp_auc <- auc(roc_obj)
       tmp_tbl <- tibble(
