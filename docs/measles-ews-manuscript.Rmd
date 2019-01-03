@@ -1,6 +1,6 @@
 ---
 csl: science-without-titles.csl
-fontsize: 12pt
+fontsize: 11pt
 geometry: margin=1in
 header-includes:
  - \usepackage{amsmath,amssymb}
@@ -19,7 +19,6 @@ header-includes:
  - \usepackage{mathptmx} 
  - \usepackage{longtable,booktabs}
  - \usepackage[symbol]{footmisc}
- - \usepackage{setspace}\doublespacing
 layout: 11pt
 linkcolor: black
 output:
