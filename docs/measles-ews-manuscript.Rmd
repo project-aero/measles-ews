@@ -85,7 +85,7 @@ Predicting (re)emergence and elimination is possible with complex mathematical m
 We often do not have enough information to parameterize such models.
 An alternative approach is to use model-independent statistical signals that portend infectious disease (re)emergence and elimination by detecting critical slowing down as the system approaches a critical transition [@ORegan2013].
 
-Emergence and elimination of an infectious disease both involve a critical transition.
+Emergence and elimination of an infectious disease both involve a critical transition (technically, a *transcritical bifurcation*).
 The transition typically occurs at the critical point where the basic reproduction number ($R_0$, the number of secondary cases that arise from a single infected case in a fully susceptible population) is equal to one [@Heffernan2005].
 Thus, subcritical ($R_0 < 1$) and supercritical ($R_0 > 1$) systems represent alternative modes of fluctuation [@Scheffer2009; @Scheffer2012; @ORegan2013].
 
@@ -236,12 +236,12 @@ To simulate re-emergence of measles, we manipulated the initial size of the susc
 Doing so allows us to test whether EWS can distinguish between windows of time when $R_E(t)$ is far from a critical transition and when $R_E(t)$ is near a critical transition.
 We reduced the initial fraction of susceptible individuals by multplying the MLE for $S_{(t=0)}$ by six discounting factors: 1e-4, 0.1, 0.2, 0.3, 0.4, and 0.5.
 These discounting factors represent situations of susceptible depletion after outbreaks of various size.
-We then simulated the model forward for thirty years using mean birth and death rates for the entire country.
-Thirty years was long enough for yearly average $R_E(t)$ to reach 1 for each city.
+We then simulated the model forward for forty years using mean birth rate for the entire country ($\mu = 0.05$) and setting the death rate equal to the birth rate ($\mu = \nu = 0.05$) to achieve a constant total population size over the course of the simulation.
+Forty years was long enough for $R_E(t)$ to reach or exceed 1 for each city.
 Because the model is stochastic, we repeated these simulations 500 times for each city-susceptible discount combination.
 
 Next, we split each simulated time series into null and test intervals.
-First, across all simulations for a city-susceptible discount combination, we found the simulation year in which $R_E(t)$ reaches or exceeds 1, and excluded years past that year (SI text).
+First, across all simulations for a city-susceptible discount combination, we found the simulation year in which $R_E(t)$ reaches or exceeds 1 and excluded years past that year (SI text).
 We split the remaining time series into two windows of equal length (Fig. S2).
 The null interval is the first window, where $R_E(t)$ is increasing but far from 1.
 The test interval is the second window, where $R_E(t)$ is increasing and approaching 1.
@@ -254,6 +254,7 @@ We ran simulations for 100 years, starting with 50 years of dynamics at the base
 Note that vaccination coverage is included in our model by discounting the birth rate of susceptibles by $1-p$.
 At year 50, we initiated the vaccination campaign and let the model run for another 50 years.
 We ran simulations across six vaccination ``speeds'' (the rate at which $p \rightarrow 1$; SI text), simulating situations of slow and fast approaches to elimination.
+As in the re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant total population size. 
 
 We then split each time series into null and test intervals for calculating EWS.
 We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which vaccination coverage reached the vaccination threshold of $1 - 1/R_0$.
@@ -445,7 +446,7 @@ As in the case of anticipating elimination, AUC values decreased as the speed of
 Again, this is due to shorter null and test intervals.
 
 In all, the suite of EWS suggest that critical slowing down does occur in measles dynamics as a critical transition is approached.
-We found similar results when calculating EWS over a moving window in the null and test intervals (SI text, Fig. Sx).
+We found similar results when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, Fig. Sx).
 
 <!-- \begin{figure}[!ht] -->
 <!-- \centering -->
