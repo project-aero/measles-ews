@@ -155,7 +155,8 @@ scatters <- ggplot(pred_cases, aes(x = log(observed_cases+1), y = log(mean_cases
   guides(color = FALSE)+
   theme_classic() +
   theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
-        strip.text = element_text(face = "bold")) +
+        strip.text = element_text(face = "bold"),
+        plot.title = element_text(face = "bold")) +
   ggtitle("A. Model-data agreement")
 # ggsave(filename = "../figures/pred-obs-scatters.pdf", plot = scatters, width = 8.5, height = 2.5, units = "in")
 
@@ -323,7 +324,8 @@ rnaughts <- ggplot(all_R_0s, aes(x = date)) +
   scale_y_continuous(limits = c(0,35))+
   theme_classic() +
   theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
-        strip.text = element_text(face = "bold")) +
+        strip.text = element_text(face = "bold"),
+       plot.title = element_text(face = "bold")) +
   ggtitle("B. Seasonal basic reproduction number")
 
 
