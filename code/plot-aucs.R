@@ -55,6 +55,41 @@ auc_plot <- cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v
 ggsave(filename = "../figures/simulation-grid-aucs.pdf", plot = auc_plot, width = 8.5, height = 5.5, units = "in")
 
 
+# Load moving window results ----------------------------------------------
+
+emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
+elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")
+
+
+# Make the plots ----------------------------------------------------------
+
+emerge_plot <- ggplot() +
+  geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
+  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  facet_wrap(~city, nrow = 1) +
+  labs(x = "Level of susceptible depletion", y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"),
+        plot.title = element_text(size = 11, face = "bold")) +
+  ggtitle("Anticipating emergence over a moving window")
+
+eliminate_plot <- ggplot() +
+  geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = abs(AUC-0.5))) +
+  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  facet_wrap(~city, nrow = 1) +
+  labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"),
+        plot.title = element_text(size = 11, face = "bold")) +
+  ggtitle("Anticipating elimination over a moving window")
+
+auc_mvw_plot <- cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = "AUTO", label_size = 12)
+
+ggsave(filename = "../figures/simulation-mvw-grid-aucs.pdf", plot = auc_mvw_plot, width = 8.5, height = 5.5, units = "in")
+
+
 
 
 # endemic_aucs <- read.csv("../results/endemic-aucs.csv") %>%

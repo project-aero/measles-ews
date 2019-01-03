@@ -15,16 +15,29 @@ library(spaero)
 
 # Load simulations --------------------------------------------------------
 
+# This chunck loops over all the relevant emergence simulation files
+# and combines them into one long tibble for futher processing and
+# subsetting. We simulated emergence at lower levels of susceptible
+# discounting, but focus this analysis on discount factors that are less
+# than 0.6. 
+
 all_files <- list.files("../simulations/")
 sim_file_ids <- grep("emergence-simulations-grid", all_files)
 sim_files <- all_files[sim_file_ids]
-all_sims <- {}
-for(do_file in sim_files){
+ignore_id <- grep("0.6|0.7|0.8|0.9|-1.RDS", sim_files)
+sim_files_reduced <- sim_files[-ignore_id]
+all_sims_list <- list()
+counter <- 1
+for(do_file in sim_files_reduced){
   tmp_file <- paste0("../simulations/", do_file)
   tmp <- readRDS(tmp_file) %>%
-    filter(time > 0 & susc_discount < 0.6)  # ignore extra simulations above 0.6
-  all_sims <- bind_rows(all_sims, tmp)
+    filter(time > 0)
+  all_sims_list[[counter]] <- tmp
+  counter <- counter+1
 }
+
+all_sims <- as_tibble(data.table::rbindlist(all_sims_list))
+rm(all_sims_list)  # remove the large list from memory
 
 
 # Find year of critical transition ----------------------------------------

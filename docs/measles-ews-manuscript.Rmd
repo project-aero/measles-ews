@@ -19,6 +19,7 @@ header-includes:
  - \usepackage{mathptmx} 
  - \usepackage{longtable,booktabs}
  - \usepackage[symbol]{footmisc}
+ - \usepackage{setspace}\singlespacing
 layout: 11pt
 linkcolor: black
 output:
@@ -296,7 +297,7 @@ Our model for Agadez performs poorly relative to the other cities.
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{../figures/pred-obs-scatters.pdf}
-\caption{\textbf{Accuracy of the fitted \emph{SEIR} models and estimated seasonality.} (\textbf{A}) Comparison of in-sample model predictions and observations for each city. Expected cases are one-step-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases (SI text). (\textbf{B}) The estimated seasonality of the basic reproductive ratio ($R_0$) for each city. $R_0$ was calculated as: $\frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the infectious period, $1/\gamma$ is the recovery period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, $\mu = \nu$ = 0.05 for calculating $R_0$ as shown in this figure.}
+\caption{\textbf{Accuracy of the fitted \emph{SEIR} models and estimated seasonality.} (\textbf{A}) Comparison of in-sample model predictions and observations for each city. Expected cases are one-step-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases (SI text). (\textbf{B}) The estimated seasonality of the basic reproductive ratio ($R_0$) for each city. $R_0$ was calculated as: $\frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the infectious period, $1/\gamma$ is the recovery period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, $\mu = \nu$ = 0.05 for calculating $R_0$ as shown in this figure. The white line is $R_0$ calculated using the MLE parameters; shaded regions are the bootstrap 95\% confidence intervals.}
 \label{fig:scatters}
 \end{figure}
 
@@ -317,6 +318,7 @@ options(xtable.comment = FALSE)
 
 result_files <- list.files("../results/")
 mle_files <- result_files[grep("initial-mif-lls", result_files)]
+boot_files <- result_files[grep("bootstrap-mif-lls", result_files)]
 
 mles <- tibble()
 for(do_file in mle_files){
@@ -324,30 +326,94 @@ for(do_file in mle_files){
     drop_na() %>%
     filter(loglik == max(loglik)) %>%
     dplyr::select(loglik, loglik_se, beta_mu, beta_sd, iota, rho, S_0) %>%
-    gather() %>%
+    gather(key = parameter, value = mle) %>%
     mutate(city = str_sub(do_file, 17, (nchar(do_file)-4)))
   
   mles <- bind_rows(mles, tmp)
 }
 
-mles_table <- mles %>%
-  spread(key = key, value = value) %>%
+nboots <- 100
+nmifs <- 50
+comp_grid <- expand.grid(1:nboots, 1:50)
+colnames(comp_grid) <- c("boot_series", "param_set")
+comp_grid$do_grid <- 1:nrow(comp_grid)
+boots <- tibble()
+for(do_file in boot_files){
+  do_city <- str_sub(do_file, 19, -5)
+  tmp_file <- read.csv(paste0("../results/", do_file)) %>%
+    slice(2:n()) %>%  # ignore first row of NAs
+    left_join(comp_grid, by = "do_grid") %>%  # merge in comp grid info
+    group_by(boot_series) %>%
+    filter(loglik == max(loglik)) %>%
+    ungroup() %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se, -boot_series, -param_set,
+                  -b1, -b2, -b3, -b4, -b5, -b6) %>%
+    gather(key = parameter, value = mle_value) %>%
+    group_by(parameter) %>%
+    summarise(
+      mean_value = mean(mle_value),
+      median_value = median(mle_value),
+      std_dev = sd(mle_value),
+      upper_95_ci = quantile(mle_value, 0.975),
+      lower_95_ci = quantile(mle_value, 0.025)
+    ) %>%
+    mutate(city = do_city)
+  
+  boots <- bind_rows(boots, tmp_file)
+}
+
+boot_cis <- boots %>%
+  dplyr::select(city, parameter, lower_95_ci, upper_95_ci)
+
+mles_cis <- mles %>%
+  left_join(boot_cis) %>%
+  drop_na() %>%
+  mutate(
+    table_value = paste0(round(mle,2), " (", round(lower_95_ci,2), ", ", round(upper_95_ci,2), ")")
+  ) %>%
+  dplyr::select(city, parameter, table_value)
+
+loglik_bindr <- mles %>%
+  spread(key = parameter, value = mle) %>%
   arrange(city) %>%
   mutate(
     loglik_and_se = paste0(round(loglik,2), " (", round(loglik_se,2), ")")
   ) %>%
-  dplyr::select(city, loglik_and_se, beta_mu, beta_sd, iota, rho, S_0) %>%
+  dplyr::select(city, loglik_and_se) %>%
+  gather(parameter, table_value, -city)
+
+mles_table <- bind_rows(loglik_bindr, mles_cis) %>%
+  spread(parameter, table_value) %>%
+  arrange(city) %>%
+  dplyr::select(city, loglik_and_se, beta_mu, iota, rho, S_0) %>%
   dplyr::rename(
     City = city,
     `Log likelihood (S.E.)` = loglik_and_se,
-    `$\\beta$` = beta_mu,
-    `$\\sigma$` = beta_sd,
-    `$\\psi$` = iota,
-    `$\\rho$` = rho,
-    `$\\textsl{S}_{t=0}$` = S_0
+    `$\\beta$ (95\\% C.I.)` = beta_mu,
+    `$\\psi$ (95\\% C.I.)` = iota,
+    `$\\rho$ (95\\% C.I.)` = rho,
+    `$\\textsl{S}_{t=0}$ (95\\% C.I.)` = S_0
   )
 
-print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estimates for select epidemiological parameters."), caption.placement = "top", include.rownames = F, sanitize.colnames.function = identity)
+
+# mles_table <- mles %>%
+#   spread(key = key, value = value) %>%
+#   arrange(city) %>%
+#   mutate(
+#     loglik_and_se = paste0(round(loglik,2), " (", round(loglik_se,2), ")")
+#   ) %>%
+#   dplyr::select(city, loglik_and_se, beta_mu, beta_sd, iota, rho, S_0) %>%
+#   dplyr::rename(
+#     City = city,
+#     `Log likelihood (S.E.)` = loglik_and_se,
+#     `$\\beta$ (95% C.I.)` = beta_mu,
+#     `$\\sigma$ (95% C.I.)` = beta_sd,
+#     `$\\psi$ (95% C.I.)` = iota,
+#     `$\\rho$ (95% C.I.)` = rho,
+#     `$\\textsl{S}_{t=0}$ (95% C.I.)` = S_0
+#   )
+
+print(xtable::xtable(mles_table, digits = 2, caption = "Maximum likelihood estimates and 95\\% bootstrapped confidence intervals for select epidemiological parameters. MLEs and C.I.s for all parameters are in the SI material."), caption.placement = "top", include.rownames = F, sanitize.colnames.function = identity, size="\\fontsize{9pt}{10pt}\\selectfont")
 
 ```
 

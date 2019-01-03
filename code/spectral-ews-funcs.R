@@ -3,7 +3,7 @@
 #
 # Author: Paige Miller
 
-wavelet_filter <- function (y1, x1 = seq_along(y1), h, l){ #
+wavelet_filter <- function (y1, x1 = seq_along(y1), h = 55, l = 115){ #
   t1 <- data.frame(time=x1, incid=y1)
   
   ## Continuous bias corrected wavelet transform (liu et al 2007)
