@@ -17,20 +17,22 @@ library(dplyr)
 
 # Load EWS statistics -----------------------------------------------------
 
+do_metric <- "variance"
+
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
-  filter(metric == "variance" & susc_discount == 1e-04)  %>%
+  filter(metric == do_metric & susc_discount == 1e-04)  %>%
   mutate(
     metric = as.character(metric),
     metric = ifelse(metric == "variance", "Variance", metric),
-    type = "Emergence"
+    type = "Emerge."
   )
 
 elimin_ews <- read.csv("../results/ews-elimination.csv") %>%
-  filter(metric == "variance" & vacc_speed == 1.5e-05)  %>%
+  filter(metric == do_metric & vacc_speed == 1.5e-05)  %>%
   mutate(
     metric = as.character(metric),
     metric = ifelse(metric == "variance", "Variance", metric),
-    type = "Elimination"
+    type = "Elimin."
   )
 
 all_ews <- bind_rows(emerge_ews, elimin_ews)
@@ -38,15 +40,20 @@ all_ews <- bind_rows(emerge_ews, elimin_ews)
 
 # Plot the EWS distributions ----------------------------------------------
 
-ggplot(all_ews, aes(x = type, y = log(value), fill = half)) +
-  geom_boxplot(outlier.size = 0.6, outlier.shape = 1) +
-  facet_wrap(~city, scales = "free", nrow = 1) +
-  scale_fill_manual(values = ptol_pal()(2), name = "Interval", labels = c("Null", "Test")) +
+mycols <- c("#91CDF0", "#EF6677")
+
+varplot <- ggplot(all_ews, aes(x = type, y = log(value), fill = half)) +
+  geom_boxplot(outlier.size = 0.6, outlier.shape = 1, width = 0.5, lwd = 0.2) +
+  facet_wrap(~city, scales = "free", nrow = 2) +
+  scale_fill_manual(values = mycols, name = "Interval", labels = c("Null", "Test")) +
   labs(x = NULL, y = "log(Variance)") +
-  theme_classic() +
+  theme_classic(base_size = 10) +
   theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
         strip.text = element_text(face = "bold"),
         plot.title = element_text(face = "bold"))
+
+ggsave(filename = "../figures/var-ews-example.pdf", plot = varplot, 
+       width = 4, height = 4, units = "in")
 
 # ggplot(filter(all_ews, type == "emergence"), aes(x = value)) +
 #   geom_density(aes(fill = half), color = "white", alpha = 0.7) +

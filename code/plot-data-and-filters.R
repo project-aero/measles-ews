@@ -319,7 +319,7 @@ rnaughts <- ggplot(all_R_0s, aes(x = date)) +
   scale_color_colorblind(name = NULL) +
   guides(fill = FALSE) +
   facet_wrap(~city,nrow = 2, scales = "free") +
-  labs(x = "Time of year", y = expression(R[0])) +
+  labs(x = "Time of year", y = expression(italic(R[0]))) +
   scale_x_date(date_labels = "%b", date_breaks = "2 months") +
   scale_y_continuous(limits = c(0,35))+
   theme_classic() +
