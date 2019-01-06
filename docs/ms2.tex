@@ -65,9 +65,7 @@
 \setcounter{secnumdepth}{0}
 % Pandoc header
 
-\journal{Journal Name}
-\usepackage{lineno}
-\linenumbers
+\journal{Journal Name} \usepackage{lineno} \linenumbers
 
 \begin{document}
 \begin{frontmatter}
@@ -92,13 +90,27 @@
 University of Georgia, Athens, GA, USA}
   
   \begin{abstract}
-  Forecast something. More here.
+  Forecasts of the emergence, re-emergence, and elimination of human
+  infectious diseases would allow for proactive, rather than reactive,
+  decisions that could save lives. Recent theory suggests that a generic
+  feature of dynamical systems approching a tipping point, critical
+  slowing down, can anticipate disease emergence and elimination.
+  Empirical demonstrations of critical slowing down in real disease
+  dynamics are scarce, but are essential before we can implement
+  model-independent outbreak detection systems. Here, we use
+  empirically-based, mechanistic models of measles transmission in four
+  Nigerien cities to detect critical slowing down through statistical
+  early warning signals. We find that several early warning signals
+  accurately anticipate measles re-emergence and elimination, suggesting
+  that critical slowing down does portend tipping points in disease
+  transmission. Broadly, our findings suggest that early warning signals,
+  coupled with decision-support algorithms and expert judgment, could
+  provide the basis for outbreak early detection systems.
   \end{abstract}
    \begin{keyword} critical slowing down, early warning signals, epidemiology, measles, infectious disease\end{keyword}
  \end{frontmatter}
 
-\hypertarget{introduction}{%
-\section{Introduction}\label{introduction}}
+\section{Introduction}\label{introduction}
 
 Forecasts of the emergence and re-emergence of infectious diseases have
 the potential to save lives, money, and human productivity by allowing
@@ -164,11 +176,9 @@ re-emergence and elimination occurs rapidly. Moreoever, and contrary to
 theoretical expectations (\emph{3}), we find that EWS perform better at
 detecting CSD before re-emergence than before elimination.
 
-\hypertarget{materials-and-methods}{%
-\section{Materials and Methods}\label{materials-and-methods}}
+\section{Materials and Methods}\label{materials-and-methods}
 
-\hypertarget{data}{%
-\subsection{Data}\label{data}}
+\subsection{Data}\label{data}
 
 We used weekly measles case report data from four Nigerien cities:
 Agadez, Maradi, Niamey, and Zinder (Fig. \ref{data}A). The data were
@@ -193,9 +203,8 @@ for one-step-ahead predictions from our fitted SEIR models for each
 city. \label{data}}
 \end{figure}
 
-\hypertarget{stochastic-seir-model}{%
 \subsection{\texorpdfstring{Stochastic \emph{SEIR}
-model}{Stochastic SEIR model}}\label{stochastic-seir-model}}
+model}{Stochastic SEIR model}}\label{stochastic-seir-model}
 
 The model is a discrete-time approximation of a continuous-time SEIR
 model with limited demography, specified as a set of difference
@@ -275,9 +284,8 @@ Negative Binomial distribution subject to a constant reporting fraction
 y_t \sim \text{Negative Binomial} \left( \rho I_t, \tau \right).
 \end{align}
 
-\hypertarget{model-fitting-and-inference}{%
 \subsection{Model fitting and
-inference}\label{model-fitting-and-inference}}
+inference}\label{model-fitting-and-inference}
 
 We fit the SEIR model to time series of case reports from each of our
 focal cities using Maximization by Iterated particle Filtering (MIF). We
@@ -331,11 +339,9 @@ among the 50 MIF paramete sets. Last, we calculated summary statistics
 (mean, median, quantiles) from the distribution of 100 MLE parameters
 (SI text).
 
-\hypertarget{model-simulations}{%
-\subsection{Model simulations}\label{model-simulations}}
+\subsection{Model simulations}\label{model-simulations}
 
-\hypertarget{model-data-comparisons}{%
-\subsubsection{Model-data comparisons}\label{model-data-comparisons}}
+\subsubsection{Model-data comparisons}\label{model-data-comparisons}
 
 We used the MLE parameter sets to make one-step-ahead predictions and to
 test the ability of early warning signals to anticipate the critical
@@ -348,8 +354,7 @@ coefficient of determination, calculated as:
 \(R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}\)
 (\emph{24}).
 
-\hypertarget{simulating-re-emergence}{%
-\subsubsection{Simulating re-emergence}\label{simulating-re-emergence}}
+\subsubsection{Simulating re-emergence}\label{simulating-re-emergence}
 
 To simulate re-emergence of measles, we manipulated the initial size of
 the susceptible pool to simulate an increase from low \(R_E(t)\) to high
@@ -379,8 +384,7 @@ increasing and approaching 1. We did this for each city and for each
 level of susceptible depletion. We calculated EWS over null and test
 intervals separately.
 
-\hypertarget{simulating-elimination}{%
-\subsubsection{Simulating elimination}\label{simulating-elimination}}
+\subsubsection{Simulating elimination}\label{simulating-elimination}
 
 To simulate elimination, we simulated a vaccine campaign in which
 vaccination coverage linearly increased over time to eventually reach
@@ -406,8 +410,7 @@ that ends at the start of the vaccination campaign (year 49) and starts
 at a time that results in an interval equal in length the test interval
 (Fig. S3). EWS were then calculated for each interval.
 
-\hypertarget{early-warning-signals}{%
-\subsection{Early warning signals}\label{early-warning-signals}}
+\subsection{Early warning signals}\label{early-warning-signals}
 
 We considered nine candidate early warning signals (SI Table S.x). We
 used the \texttt{spaero::get\_stats()} function (\emph{25}) in R
@@ -430,8 +433,7 @@ and thus better performance of a particular EWS in terms of classifying
 whether \(R_E(t)\) is close to a critical transition. We used the
 \texttt{pROC:auc()} function (\emph{26}) in R to calculate AUC values.
 
-\hypertarget{results}{%
-\section{Results}\label{results}}
+\section{Results}\label{results}
 
 The fitted models adequately reproduce observed dynamics (Fig.
 \ref{data}B), with in-sample \(R^2\)s from one-step-ahead predictions
@@ -513,8 +515,7 @@ in measles dynamics as a critical transition is approached. We found
 similar results when calculating EWS over a moving window of 35 weeks in
 the null and test intervals (SI text, Fig. Sx).
 
-\hypertarget{discussion}{%
-\section{Discussion}\label{discussion}}
+\section{Discussion}\label{discussion}
 
 Using empirically-based disease transmission models, we found evidence
 of critical slowing down before critical transitions to re-emergence and
@@ -548,8 +549,7 @@ null and test distributions leads to higher AUC values in Fig. 3.
 Variance is log transformed for visual purposes. \label{var-ex}}
 \end{figure}
 
-\hypertarget{acknowledgments}{%
-\section{Acknowledgments}\label{acknowledgments}}
+\section{Acknowledgments}\label{acknowledgments}
 
 This research was funded by the National Institute of General Medical
 Sciences of the National Institutes of Health (Award Number
@@ -561,113 +561,112 @@ University, which is supported by National Institute of General Medical
 Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics
 Services Group grant 1U24GM110707.
 
-\hypertarget{references}{%
-\section*{References}\label{references}}
+\section*{References}\label{references}
 \addcontentsline{toc}{section}{References}
 
 \hypertarget{refs}{}
-\leavevmode\hypertarget{ref-Han2016}{}%
+\hypertarget{ref-Han2016}{}
 1. B. A. Han, J. M. Drake, \emph{EMBO reports}, e201642534 (2016).
 
-\leavevmode\hypertarget{ref-Drake2017}{}%
+\hypertarget{ref-Drake2017}{}
 2. J. M. Drake, S. I. Hay, \emph{Tropical Medicine and Infectious
 Disease}. \textbf{2}, 20 (2017).
 
-\leavevmode\hypertarget{ref-ORegan2013}{}%
+\hypertarget{ref-ORegan2013}{}
 3. S. M. O'Regan, J. M. Drake, \emph{Theoretical Ecology}. \textbf{6},
 333--357 (2013).
 
-\leavevmode\hypertarget{ref-Heffernan2005}{}%
+\hypertarget{ref-Heffernan2005}{}
 4. J. M. Heffernan, R. J. Smith, L. M. Wahl, \emph{Journal of the Royal
 Society Interface}. \textbf{2}, 281--293 (2005).
 
-\leavevmode\hypertarget{ref-Scheffer2009}{}%
+\hypertarget{ref-Scheffer2009}{}
 5. M. Scheffer \emph{et al.}, \emph{Nature}. \textbf{461}, 53--59
 (2009).
 
-\leavevmode\hypertarget{ref-Scheffer2012}{}%
+\hypertarget{ref-Scheffer2012}{}
 6. M. Scheffer \emph{et al.}, \emph{Science}. \textbf{338}, 344--348
 (2012).
 
-\leavevmode\hypertarget{ref-VanNes2007}{}%
+\hypertarget{ref-VanNes2007}{}
 7. E. H. van Nes, M. Scheffer, \emph{The American Naturalist}.
 \textbf{169}, 738--747 (2007).
 
-\leavevmode\hypertarget{ref-Carpenter2006}{}%
+\hypertarget{ref-Carpenter2006}{}
 8. S. R. Carpenter, W. A. Brock, \emph{Ecology Letters}. \textbf{9},
 311--318 (2006).
 
-\leavevmode\hypertarget{ref-Dibble2016}{}%
+\hypertarget{ref-Dibble2016}{}
 9. C. J. Dibble, E. B. O'Dea, A. W. Park, J. M. Drake, \emph{Journal of
 the Royal Society Interface}. \textbf{13}, 20160540 (2016).
 
-\leavevmode\hypertarget{ref-ORegan2016}{}%
+\hypertarget{ref-ORegan2016}{}
 10. S. M. O'Regan, J. W. Lillie, J. M. Drake, \emph{Theoretical
 Ecology}. \textbf{9}, 269--286 (2016).
 
-\leavevmode\hypertarget{ref-Brett2017}{}%
+\hypertarget{ref-Brett2017}{}
 11. T. S. Brett, J. M. Drake, P. Rohani, \emph{Journal of the Royal
 Society Interface}. \textbf{14}, 20170115 (2017).
 
-\leavevmode\hypertarget{ref-Brett2018}{}%
+\hypertarget{ref-Brett2018}{}
 12. T. S. Brett \emph{et al.}, \emph{PLoS Computational Biology}.
 \textbf{14}, e1006204 (2018).
 
-\leavevmode\hypertarget{ref-Miller2017}{}%
+\hypertarget{ref-Miller2017}{}
 13. P. B. Miller, E. B. O'Dea, P. Rohani, J. M. Drake, \emph{Theoretical
 Biology and Medical Modelling}. \textbf{14}, 17 (2017).
 
-\leavevmode\hypertarget{ref-Hastings2010}{}%
+\hypertarget{ref-Hastings2010}{}
 14. A. Hastings, D. B. Wysham, \emph{Ecology Letters}. \textbf{13},
 464--472 (2010).
 
-\leavevmode\hypertarget{ref-Dakos2012a}{}%
+\hypertarget{ref-Dakos2012a}{}
 15. V. Dakos, E. H. Van Nes, P. D'Odorico, M. Scheffer, \emph{Ecology}.
 \textbf{93}, 264--271 (2012).
 
-\leavevmode\hypertarget{ref-ODea2018a}{}%
+\hypertarget{ref-ODea2018a}{}
 16. E. B. O'Dea, A. W. Park, J. M. Drake, \emph{Journal of the Royal
 Society Interface}. \textbf{15}, 20180034 (2018).
 
-\leavevmode\hypertarget{ref-ORegan2018}{}%
+\hypertarget{ref-ORegan2018}{}
 17. S. M. O'Regan, D. L. Burton, \emph{Bulletin of Mathematical
 Biology}. \textbf{80}, 1630--1654 (2018).
 
-\leavevmode\hypertarget{ref-Breto2011}{}%
+\hypertarget{ref-Breto2011}{}
 18. C. Bretó, E. L. Ionides, \emph{Stochastic Processes and their
 Applications}. \textbf{121}, 2571--2591 (2011).
 
-\leavevmode\hypertarget{ref-Ferrari2008}{}%
+\hypertarget{ref-Ferrari2008}{}
 19. M. J. Ferrari \emph{et al.}, \emph{Nature}. \textbf{451}, 679--684
 (2008).
 
-\leavevmode\hypertarget{ref-Ionides2015}{}%
+\hypertarget{ref-Ionides2015}{}
 20. E. L. Ionides, D. Nguyen, Y. Atchadé, S. Stoev, A. A. King,
 \emph{Proceedings of the National Academy of Sciences}. \textbf{112},
 719--724 (2015).
 
-\leavevmode\hypertarget{ref-R2017}{}%
+\hypertarget{ref-R2017}{}
 21. R Core Team, R: A language and environment for statistical computing
 (2017), (available at \url{https://www.r-project.org/}).
 
-\leavevmode\hypertarget{ref-King2016}{}%
+\hypertarget{ref-King2016}{}
 22. A. A. King, D. Nguyen, E. L. Ionides, \emph{Journal Of Statistical
 Software}. \textbf{69}, 1--43 (2016).
 
-\leavevmode\hypertarget{ref-King2018}{}%
+\hypertarget{ref-King2018}{}
 23. A. A. King \emph{et al.}, pomp: Statistical Inference for Partially
 Observed Markov Processes (R package, version 1.18) (2018).
 
-\leavevmode\hypertarget{ref-Martinez-Bakker2015}{}%
+\hypertarget{ref-Martinez-Bakker2015}{}
 24. M. Martinez-Bakker, A. A. King, P. Rohani, \emph{PLoS Biology}
 (2015),
 doi:\href{https://doi.org/10.1371/journal.pbio.1002172}{10.1371/journal.pbio.1002172}.
 
-\leavevmode\hypertarget{ref-ODea2018}{}%
+\hypertarget{ref-ODea2018}{}
 25. E. B. O'Dea, spaero: Software for Project AERO (R package version
 0.3.0) (2018).
 
-\leavevmode\hypertarget{ref-Robin2011}{}%
+\hypertarget{ref-Robin2011}{}
 26. X. Robin \emph{et al.}, \emph{BMC Bioinformatics}. \textbf{12}, 77
 (2011).
 

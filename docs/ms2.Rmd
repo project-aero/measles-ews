@@ -17,7 +17,7 @@ address:
   - code: a
     address: "Odum School of Ecology & Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA, USA"
 abstract: |
-  Forecast something. More here.
+  Forecasts of the emergence, re-emergence, and elimination of human infectious diseases would allow for proactive, rather than reactive, decisions that could save lives. Recent theory suggests that a generic feature of dynamical systems approching a tipping point, critical slowing down, can anticipate disease emergence and elimination. Empirical demonstrations of critical slowing down in real disease dynamics are scarce, but are essential before we can implement model-independent outbreak detection systems. Here, we use empirically-based, mechanistic models of measles transmission in four Nigerien cities to detect critical slowing down through statistical early warning signals. We find that several early warning signals accurately anticipate measles re-emergence and elimination, suggesting that critical slowing down does portend tipping points in disease transmission. Broadly, our findings suggest that early warning signals, coupled with decision-support algorithms and expert judgment, could provide the basis for outbreak early detection systems.
 keywords:
   - critical slowing down,
   - early warning signals,
