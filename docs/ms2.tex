@@ -66,35 +66,40 @@
 % Pandoc header
 
 \journal{Journal Name} \usepackage{lineno} \linenumbers
+\usepackage{tgtermes} \renewcommand{\theaffn}{\arabic{affn}}
 
 \begin{document}
 \begin{frontmatter}
 
   \title{Critical slowing down anticipates emergence and elimination of measles}
-    \author[a]{Andrew T. Tredennick\corref{c1}}
+    \author[UGA,CEID]{Andrew T. Tredennick\corref{c1}}
    \ead{atredenn@gmail.com} 
    \cortext[c1]{Corresponding Author}
-    \author[a]{Eamon O'Dea}
+    \author[UGA,CEID]{Eamon O'Dea}
   
   
-    \author[a]{TBD}
+    \author[other]{TBD}
   
   
-    \author[a]{Pejman Rohani}
+    \author[UGA,CEID,ID]{Pejman Rohani}
   
   
-    \author[a]{John M. Drake}
+    \author[UGA,CEID]{John M. Drake}
+   \ead{jdrake@uga.edu} 
   
-  
-      \address[a]{Odum School of Ecology \& Center for the Ecology of Infectious Diseases,
-University of Georgia, Athens, GA, USA}
+      \address[UGA]{Odum School of Ecology, University of Georgia, Athens, GA 30602, USA}
+    \address[CEID]{Center for the Ecology of Infectious Diseases, University of Georgia,
+Athens, GA 30602, USA}
+    \address[other]{A University of Somewhere}
+    \address[ID]{Department of Infectious Diseases, University of Georgia, Athens, GA
+30602, USA}
   
   \begin{abstract}
   Forecasts of the emergence, re-emergence, and elimination of human
   infectious diseases would allow for proactive, rather than reactive,
   decisions that could save lives. Recent theory suggests that a generic
-  feature of dynamical systems approching a tipping point, critical
-  slowing down, can anticipate disease emergence and elimination.
+  feature of dynamical systems approaching a tipping point -- critical
+  slowing down -- can anticipate disease emergence and elimination.
   Empirical demonstrations of critical slowing down in real disease
   dynamics are scarce, but are essential before we can implement
   model-independent outbreak detection systems. Here, we use
@@ -102,10 +107,10 @@ University of Georgia, Athens, GA, USA}
   Nigerien cities to detect critical slowing down through statistical
   early warning signals. We find that several early warning signals
   accurately anticipate measles re-emergence and elimination, suggesting
-  that critical slowing down does portend tipping points in disease
-  transmission. Broadly, our findings suggest that early warning signals,
-  coupled with decision-support algorithms and expert judgment, could
-  provide the basis for outbreak early detection systems.
+  that critical slowing down can be detected before tipping points in real
+  disease dynamics. Broadly, our findings suggest that early warning
+  signals, coupled with decision-support algorithms and expert judgment,
+  could provide the basis for outbreak early detection systems.
   \end{abstract}
    \begin{keyword} critical slowing down, early warning signals, epidemiology, measles, infectious disease\end{keyword}
  \end{frontmatter}
@@ -154,13 +159,13 @@ Here, we use empirically-based model simulations of measles dynamics to
 test whether CSD anticipates critical transitions in real disease
 dynamics. We focus on two scenarios: the re-emergence of measles
 following a large outbreak, a situation typical of measles dynamics in
-sub-Saharan Africa, and the elimination of measles by a vaccination
-campaign. We seek to answer two related questions. First, can CSD
-distinguish between time series of disease incidence when the underlying
-dynamics are far from and near to a critical transition? If so, then CSD
-can anticipate disease re-emergence and elimination. Second, how does
-the distance to and the rate of approaching the threshold impact the
-anticipatory skill of CSD?
+sub-Saharan Africa (\emph{14}), and the elimination of measles by a
+vaccination campaign. We seek to answer two related questions. First,
+can CSD distinguish between time series of disease incidence when the
+underlying dynamics are far from and near to a critical transition? If
+so, then CSD can anticipate disease re-emergence and elimination.
+Second, how does the distance to and the rate of approaching the
+threshold impact the anticipatory skill of CSD?
 
 To answer these questions, we fit mechanistic models of disease
 transmission to time series of measles incidence in four Nigerien
@@ -181,26 +186,27 @@ detecting CSD before re-emergence than before elimination.
 \subsection{Data}\label{data}
 
 We used weekly measles case report data from four Nigerien cities:
-Agadez, Maradi, Niamey, and Zinder (Fig. \ref{data}A). The data were
-collected over an 11 year period from 1995-2005 (Fig. \ref{data}B).
-These data are ideal for testing theory on CSD in disease dynamics
-because each city has different population sizes, has different dynamics
-in terms of outbreak sizes and length of inter-epidemic periods, and
-each time series has different amounts of demographic stochasticity due
-to differences in population size. Such differences provide a natural
-gradient of ``noise'' that may influence CSD (\emph{14}--\emph{17}). The
-data come from {[}\emph{somewhere/someone}{]}, and used here with
-permission from {[}\emph{somewhere/someone}{]}.
+Agadez, Maradi, Niamey, and Zinder (Fig. \ref{data-plot}A). The data
+were collected over an 11 year period from 1995-2005 (Fig.
+\ref{data-plot}B). These data are ideal for testing theory on CSD in
+disease dynamics because each city has different population sizes, has
+different dynamics in terms of outbreak sizes and length of
+inter-epidemic periods, and each time series has different amounts of
+demographic stochasticity due to differences in population size. Such
+differences provide a natural gradient of ``noise'' that may influence
+CSD (\emph{15}--\emph{18}). The data come from
+{[}\emph{somewhere/someone}{]}, and used here with permission from
+{[}\emph{somewhere/someone}{]}.
 
 \begin{figure}
 \centering
-\includegraphics{ms2_files/figure-latex/data-1.pdf}
+\includegraphics{ms2_files/figure-latex/data-plot-1.pdf}
 \caption{Locations of data sources and observed and predicted measles
 dynamics. (A) Locations and population sizes (in parantheses) of our
 four focal cities in Niger. (B) Time series of weekly reported cases
 (yellow solid lines) and the 95\% prediction intervals (black ribbons)
-for one-step-ahead predictions from our fitted SEIR models for each
-city. \label{data}}
+for one-week-ahead predictions from our fitted SEIR models for each
+city. \label{data-plot}}
 \end{figure}
 
 \subsection{\texorpdfstring{Stochastic \emph{SEIR}
@@ -263,7 +269,7 @@ model seasonality in transmission. The B-spline bases (\(\xi_{i_{t}}\))
 are periodic with a 1 year period. The transmission rate (\(\beta_t\))
 is also subject to stochastic process noise at each time step,
 \(\Gamma_t\), which we model as gamma-distributed white (temporally
-uncorrelated) noise with mean 1 and variance \(\sigma^2\) (\emph{18}).
+uncorrelated) noise with mean 1 and variance \(\sigma^2\) (\emph{19}).
 
 We do not include a death process in the model because the rate of
 infection is much faster than the rate of death. Excluding deaths means
@@ -271,9 +277,8 @@ we can avoid making further assumptions about demographic rates -- we
 are already making assumptions about birth rates (e.g., the rate is the
 same across cities, but with city-specific population size). We model
 demographic stochasticity in births and imported infections by drawing
-time-specific values from Poisson distributions. Transitions in the
-model are shown in Table 1. In this model, the effective reproduction
-number at time \emph{t} is:
+time-specific values from Poisson distributions. In this model, the
+effective reproduction number at time \emph{t} is:
 \(R_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}\).
 
 We assume observed case reports (\(\textbf{y}\)) are drawn from a
@@ -298,7 +303,7 @@ accounting for measurement noise (\(\tau\)). To ensure identifiability,
 and to make the model easier to fit, we assumed the infectious period
 was fixed at \(1/\eta = 8\) days and the recovery period was fixed at
 \(1/\gamma = 5\) days. The birth rate (\(\mu_t\)) was multiplied by 0.3
-to account for the reported 70\% vaccination coverage (\emph{19}).
+to account for the reported 70\% vaccination coverage (\emph{14}).
 
 MIF relies on particle filtering, which estimates the likelihood of
 fixed parameters by integrating state variables of a stochastic system.
@@ -343,9 +348,9 @@ among the 50 MIF paramete sets. Last, we calculated summary statistics
 
 \subsubsection{Model-data comparisons}\label{model-data-comparisons}
 
-We used the MLE parameter sets to make one-step-ahead predictions and to
+We used the MLE parameter sets to make one-week-ahead predictions and to
 test the ability of early warning signals to anticipate the critical
-transition at \(R_E(t) = 1\). To make one-step-ahead predictions, we
+transition at \(R_E(t) = 1\). To make one-week-ahead predictions, we
 used particle filtering with 50000 particles and retained the mean and
 standard deviation of all latent states across all particles before they
 were filtered at each time step. We used the mean predictions
@@ -390,7 +395,7 @@ To simulate elimination, we simulated a vaccine campaign in which
 vaccination coverage linearly increased over time to eventually reach
 100\%, i.e.~eradication (Fig. S3). We ran simulations for 100 years,
 starting with 50 years of dynamics at the baseline vaccine coverage
-reported for Niger of 70\%, \(p = 0.7\) (\emph{19}). Note that
+reported for Niger of 70\%, \(p = 0.7\) (\emph{14}). Note that
 vaccination coverage is included in our model by discounting the birth
 rate of susceptibles by \(1-p\). At year 50, we initiated the
 vaccination campaign and let the model run for another 50 years. We ran
@@ -412,15 +417,15 @@ at a time that results in an interval equal in length the test interval
 
 \subsection{Early warning signals}\label{early-warning-signals}
 
-We considered nine candidate early warning signals (SI Table S.x). We
-used the \texttt{spaero::get\_stats()} function (\emph{25}) in R
-(\emph{21}) to calculate EWS according to the formulas in Table 2. All
-EWS except the coefficient of variation are expected to increase as
-\(R_E(t)\) approaches 1 from below (\emph{3}, \emph{10}, \emph{12}).
-Less is known about the behavior of EWS as \(R_E(t)\) approaches 1 from
-above. But, theory does tell us that, for SIR models, the mean should
-decrease, autocorrelation should increase, and the variance should
-decrease (\emph{3}).
+We considered nine candidate early warning signals (Table Sx). We used
+the \texttt{spaero::get\_stats()} function (\emph{25}) in R (\emph{21})
+to calculate EWS according to the formulas in Table Sx. All EWS except
+the coefficient of variation are expected to increase as \(R_E(t)\)
+approaches 1 from below (\emph{3}, \emph{10}, \emph{12}). Less is known
+about the behavior of EWS as \(R_E(t)\) approaches 1 from above. But,
+theory does tell us that, for SIR models, the mean should decrease,
+autocorrelation should increase, and the variance should decrease
+(\emph{3}).
 
 For each simulation of re-emergence and elimination, we calculated EWS
 for the time series of expected cases in the null and test intervals.
@@ -436,19 +441,20 @@ whether \(R_E(t)\) is close to a critical transition. We used the
 \section{Results}\label{results}
 
 The fitted models adequately reproduce observed dynamics (Fig.
-\ref{data}B), with in-sample \(R^2\)s from one-step-ahead predictions
-ranging from 0.54 for Agadez to 0.89 for Maradi (Fig. \ref{scatters}A).
-Stochastic simulations of the models displayed dynamics typical of each
-city (Fig. S1), including the decline in seasonality amplitude as
-population size decreases (Fig. \ref{scatters}B) (\emph{19}). Our model
-for Agadez performs poorly relative to the other cities.
+\ref{data-plot}B), with in-sample \(R^2\)s from one-week-ahead
+predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Fig.
+\ref{scatters}A). Stochastic simulations of the models displayed
+dynamics typical of each city (Fig. S1), including the decline in
+seasonality amplitude as population size decreases (Fig.
+\ref{scatters}B) (\emph{14}). Our model for Agadez performs poorly
+relative to the other cities.
 
 \begin{figure}
 \centering
 \includegraphics{ms2_files/figure-latex/scatters-r0-1.pdf}
 \caption{Accuracy of the fitted \emph{SEIR} models and estimated
 seasonality. (A) Comparison of in-sample model predictions and
-observations for each city. Expected cases are one-step-ahead
+observations for each city. Expected cases are one-week-ahead
 predictions from the fitted models. The dashed line shows 1:1.
 Coefficients of determination (\(R^2\)) were calculated as the reduction
 in the sum-of-squared errors from model predictions relative to a null
@@ -462,7 +468,8 @@ birth rate, and \(\nu\) is the death rate. Only \(\beta_t\) is estimated
 by our model. We set \(1/\eta\) = 8 days, \(1/\gamma\) = 5 days, and
 \(\mu = \nu\) = 0.05 for calculating \(R_0\) as shown in this figure.
 The white line is \(R_0\) calculated using the MLE parameters; shaded
-regions are the bootstrap 95\% confidence intervals. \label{scatters}}
+regions are the bootstrapped 95\% confidence intervals.
+\label{scatters}}
 \end{figure}
 
 \begin{figure}
@@ -616,29 +623,29 @@ Society Interface}. \textbf{14}, 20170115 (2017).
 13. P. B. Miller, E. B. O'Dea, P. Rohani, J. M. Drake, \emph{Theoretical
 Biology and Medical Modelling}. \textbf{14}, 17 (2017).
 
+\hypertarget{ref-Ferrari2008}{}
+14. M. J. Ferrari \emph{et al.}, \emph{Nature}. \textbf{451}, 679--684
+(2008).
+
 \hypertarget{ref-Hastings2010}{}
-14. A. Hastings, D. B. Wysham, \emph{Ecology Letters}. \textbf{13},
+15. A. Hastings, D. B. Wysham, \emph{Ecology Letters}. \textbf{13},
 464--472 (2010).
 
 \hypertarget{ref-Dakos2012a}{}
-15. V. Dakos, E. H. Van Nes, P. D'Odorico, M. Scheffer, \emph{Ecology}.
+16. V. Dakos, E. H. Van Nes, P. D'Odorico, M. Scheffer, \emph{Ecology}.
 \textbf{93}, 264--271 (2012).
 
 \hypertarget{ref-ODea2018a}{}
-16. E. B. O'Dea, A. W. Park, J. M. Drake, \emph{Journal of the Royal
+17. E. B. O'Dea, A. W. Park, J. M. Drake, \emph{Journal of the Royal
 Society Interface}. \textbf{15}, 20180034 (2018).
 
 \hypertarget{ref-ORegan2018}{}
-17. S. M. O'Regan, D. L. Burton, \emph{Bulletin of Mathematical
+18. S. M. O'Regan, D. L. Burton, \emph{Bulletin of Mathematical
 Biology}. \textbf{80}, 1630--1654 (2018).
 
 \hypertarget{ref-Breto2011}{}
-18. C. Bretó, E. L. Ionides, \emph{Stochastic Processes and their
+19. C. Bretó, E. L. Ionides, \emph{Stochastic Processes and their
 Applications}. \textbf{121}, 2571--2591 (2011).
-
-\hypertarget{ref-Ferrari2008}{}
-19. M. J. Ferrari \emph{et al.}, \emph{Nature}. \textbf{451}, 679--684
-(2008).
 
 \hypertarget{ref-Ionides2015}{}
 20. E. L. Ionides, D. Nguyen, Y. Atchadé, S. Stoev, A. A. King,

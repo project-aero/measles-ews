@@ -2,22 +2,29 @@
 title: "Critical slowing down anticipates emergence and elimination of measles"
 author:
   - name: "Andrew T. Tredennick"
-    affiliation: a
+    affiliation: UGA,CEID
     footnote: Corresponding Author
     email: atredenn@gmail.com
   - name: "Eamon O'Dea"
-    affiliation: a
+    affiliation: UGA,CEID
   - name: "TBD"
-    affiliation: a
+    affiliation: other
   - name: "Pejman Rohani"
-    affiliation: a
+    affiliation: UGA,CEID,ID
   - name: "John M. Drake"
-    affiliation: a
+    affiliation: UGA,CEID
+    email: jdrake@uga.edu
 address:
-  - code: a
-    address: "Odum School of Ecology & Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA, USA"
+  - code: UGA
+    address: "Odum School of Ecology, University of Georgia, Athens, GA 30602, USA"
+  - code: CEID
+    address: "Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA 30602, USA"
+  - code: other
+    address: "A University of Somewhere"
+  - code: ID
+    address: "Department of Infectious Diseases, University of Georgia, Athens, GA 30602, USA"
 abstract: |
-  Forecasts of the emergence, re-emergence, and elimination of human infectious diseases would allow for proactive, rather than reactive, decisions that could save lives. Recent theory suggests that a generic feature of dynamical systems approching a tipping point, critical slowing down, can anticipate disease emergence and elimination. Empirical demonstrations of critical slowing down in real disease dynamics are scarce, but are essential before we can implement model-independent outbreak detection systems. Here, we use empirically-based, mechanistic models of measles transmission in four Nigerien cities to detect critical slowing down through statistical early warning signals. We find that several early warning signals accurately anticipate measles re-emergence and elimination, suggesting that critical slowing down does portend tipping points in disease transmission. Broadly, our findings suggest that early warning signals, coupled with decision-support algorithms and expert judgment, could provide the basis for outbreak early detection systems.
+  Forecasts of the emergence, re-emergence, and elimination of human infectious diseases would allow for proactive, rather than reactive, decisions that could save lives. Recent theory suggests that a generic feature of dynamical systems approaching a tipping point -- critical slowing down -- can anticipate disease emergence and elimination. Empirical demonstrations of critical slowing down in real disease dynamics are scarce, but are essential before we can implement model-independent outbreak detection systems. Here, we use empirically-based, mechanistic models of measles transmission in four Nigerien cities to detect critical slowing down through statistical early warning signals. We find that several early warning signals accurately anticipate measles re-emergence and elimination, suggesting that critical slowing down can be detected before tipping points in real disease dynamics. Broadly, our findings suggest that early warning signals, coupled with decision-support algorithms and expert judgment, could provide the basis for outbreak early detection systems.
 keywords:
   - critical slowing down,
   - early warning signals,
@@ -33,6 +40,8 @@ preamble: |
   \journal{Journal Name}
   \usepackage{lineno}
   \linenumbers
+  \usepackage{tgtermes}
+  \renewcommand{\theaffn}{\arabic{affn}}
 extra: \usepackage[nomarkers]{endfloat}
 ---
 
@@ -122,7 +131,7 @@ Empirical tests of EWS and associated CSD are, however, scarce.
 Documenting CSD in real disease dynamics is an essential first step toward the development of model-independent outbreak detection systems [@Han2016].
 
 Here, we use empirically-based model simulations of measles dynamics to test whether CSD anticipates critical transitions in real disease dynamics.
-We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa, and the elimination of measles by a vaccination campaign.
+We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa [@Ferrari2008], and the elimination of measles by a vaccination campaign.
 We seek to answer two related questions.
 First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
 If so, then CSD can anticipate disease re-emergence and elimination.
@@ -138,13 +147,13 @@ Moreoever, and contrary to theoretical expectations [@ORegan2013], we find that 
 # Materials and Methods
 
 ## Data
-We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (Fig. \ref{data}A).
-The data were collected over an 11 year period from 1995-2005 (Fig. \ref{data}B).
+We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (Fig. \ref{data-plot}A).
+The data were collected over an 11 year period from 1995-2005 (Fig. \ref{data-plot}B).
 These data are ideal for testing theory on CSD in disease dynamics because each city has different population sizes, has different dynamics in terms of outbreak sizes and length of inter-epidemic periods, and each time series has different amounts of demographic stochasticity due to differences in population size.
 Such differences provide a natural gradient of "noise" that may influence CSD [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
 The data come from [*somewhere/someone*], and used here with permission from [*somewhere/someone*].
 
-```{r data, fig.width=8.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (A) Locations and population sizes (in parantheses) of our four focal cities in Niger. (B) Time series of weekly reported cases (yellow solid lines) and the 95% prediction intervals (black ribbons) for one-step-ahead predictions from our fitted SEIR models for each city. \\label{data}"}
+```{r data-plot, fig.width=8.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (A) Locations and population sizes (in parantheses) of our four focal cities in Niger. (B) Time series of weekly reported cases (yellow solid lines) and the 95% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
 
 the_map <- ggplot(region_boundaries)+
   geom_sf(fill = "grey90", col = "grey80", size = 0.3) +
@@ -213,7 +222,6 @@ The transmission rate ($\beta_t$) is also subject to stochastic process noise at
 We do not include a death process in the model because the rate of infection is much faster than the rate of death.
 Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
 We model demographic stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
-Transitions in the model are shown in Table 1.
 In this model, the effective reproduction number at time *t* is: $R_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
 
 We assume observed case reports ($\textbf{y}$) are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
@@ -253,8 +261,8 @@ Last, we calculated summary statistics (mean, median, quantiles) from the distri
 ## Model simulations
 
 ### Model-data comparisons
-We used the MLE parameter sets to make one-step-ahead predictions and to test the ability of early warning signals to anticipate the critical transition at $R_E(t) = 1$.
-To make one-step-ahead predictions, we used particle filtering with 50000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
+We used the MLE parameter sets to make one-week-ahead predictions and to test the ability of early warning signals to anticipate the critical transition at $R_E(t) = 1$.
+To make one-week-ahead predictions, we used particle filtering with 50000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
 <!-- To estimate a trend in tranmission rate, we allowed mean transmission to take a random walk throughout the filter and retained the filtered distribution of particles for mean transmission and $R_E(t$). -->
 
@@ -291,8 +299,8 @@ EWS were then calculated for each interval.
 
 ## Early warning signals
 
-We considered nine candidate early warning signals (SI Table S.x).
-We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table 2.
+We considered nine candidate early warning signals (Table Sx).
+We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table Sx.
 All EWS except the coefficient of variation are expected to increase as $R_E(t)$ approaches 1 from below [@ORegan2013; @ORegan2016; @Brett2018].
 Less is known about the behavior of EWS as $R_E(t)$ approaches 1 from above.
 But, theory does tell us that, for SIR models, the mean should decrease, autocorrelation should increase, and the variance should decrease [@ORegan2013].
@@ -307,11 +315,11 @@ We used the `pROC:auc()` function [@Robin2011] in R to calculate AUC values.
 
 # Results
 
-The fitted models adequately reproduce observed dynamics (Fig. \ref{data}B), with in-sample $R^2$s from one-step-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Fig. \ref{scatters}A).
+The fitted models adequately reproduce observed dynamics (Fig. \ref{data-plot}B), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Fig. \ref{scatters}A).
 Stochastic simulations of the models displayed dynamics typical of each city (Fig. S1), including the decline in seasonality amplitude as population size decreases (Fig. \ref{scatters}B) [@Ferrari2008].
 Our model for Agadez performs poorly relative to the other cities.
 
-```{r scatters-r0, fig.width=8.5, fig.height=4, fig.cap="Accuracy of the fitted *SEIR* models and estimated seasonality. (A) Comparison of in-sample model predictions and observations for each city. Expected cases are one-step-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases (SI text). (B) The estimated seasonality of the basic reproductive ratio ($R_0$) for each city. $R_0$ was calculated as: $\\frac{\\eta \\beta_t \\mu}{\\nu(\\eta+\\nu)(\\gamma+\\nu)}$, where $1/\\eta$ is the infectious period, $1/\\gamma$ is the recovery period, $\\beta_t$ is the time-specific rate of transmission, $\\mu$ is the birth rate, and $\\nu$ is the death rate. Only $\\beta_t$ is estimated by our model. We set $1/\\eta$ = 8 days, $1/\\gamma$ = 5 days, and $\\mu = \\nu$ = 0.05 for calculating $R_0$ as shown in this figure. The white line is $R_0$ calculated using the MLE parameters; shaded regions are the bootstrap 95% confidence intervals. \\label{scatters}"}
+```{r scatters-r0, fig.width=8.5, fig.height=4, fig.cap="Accuracy of the fitted *SEIR* models and estimated seasonality. (A) Comparison of in-sample model predictions and observations for each city. Expected cases are one-week-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases (SI text). (B) The estimated seasonality of the basic reproductive ratio ($R_0$) for each city. $R_0$ was calculated as: $\\frac{\\eta \\beta_t \\mu}{\\nu(\\eta+\\nu)(\\gamma+\\nu)}$, where $1/\\eta$ is the infectious period, $1/\\gamma$ is the recovery period, $\\beta_t$ is the time-specific rate of transmission, $\\mu$ is the birth rate, and $\\nu$ is the death rate. Only $\\beta_t$ is estimated by our model. We set $1/\\eta$ = 8 days, $1/\\gamma$ = 5 days, and $\\mu = \\nu$ = 0.05 for calculating $R_0$ as shown in this figure. The white line is $R_0$ calculated using the MLE parameters; shaded regions are the bootstrapped 95% confidence intervals. \\label{scatters}"}
 r_squares <- pred_cases %>%
   group_by(city_name) %>%
   mutate(
