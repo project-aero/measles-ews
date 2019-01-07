@@ -299,8 +299,8 @@ EWS were then calculated for each interval.
 
 ## Early warning signals
 
-We considered nine candidate early warning signals (Table Sx).
-We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table Sx.
+We considered nine candidate early warning signals (Table S1).
+We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table S1.
 All EWS except the coefficient of variation are expected to increase as $R_E(t)$ approaches 1 from below [@ORegan2013; @ORegan2016; @Brett2018].
 Less is known about the behavior of EWS as $R_E(t)$ approaches 1 from above.
 But, theory does tell us that, for SIR models, the mean should decrease, autocorrelation should increase, and the variance should decrease [@ORegan2013].
@@ -318,6 +318,7 @@ We used the `pROC:auc()` function [@Robin2011] in R to calculate AUC values.
 The fitted models adequately reproduce observed dynamics (Fig. \ref{data-plot}B), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Fig. \ref{scatters}A).
 Stochastic simulations of the models displayed dynamics typical of each city (Fig. S1), including the decline in seasonality amplitude as population size decreases (Fig. \ref{scatters}B) [@Ferrari2008].
 Our model for Agadez performs poorly relative to the other cities.
+Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the SI text.
 
 ```{r scatters-r0, fig.width=8.5, fig.height=4, fig.cap="Accuracy of the fitted *SEIR* models and estimated seasonality. (A) Comparison of in-sample model predictions and observations for each city. Expected cases are one-week-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases (SI text). (B) The estimated seasonality of the basic reproductive ratio ($R_0$) for each city. $R_0$ was calculated as: $\\frac{\\eta \\beta_t \\mu}{\\nu(\\eta+\\nu)(\\gamma+\\nu)}$, where $1/\\eta$ is the infectious period, $1/\\gamma$ is the recovery period, $\\beta_t$ is the time-specific rate of transmission, $\\mu$ is the birth rate, and $\\nu$ is the death rate. Only $\\beta_t$ is estimated by our model. We set $1/\\eta$ = 8 days, $1/\\gamma$ = 5 days, and $\\mu = \\nu$ = 0.05 for calculating $R_0$ as shown in this figure. The white line is $R_0$ calculated using the MLE parameters; shaded regions are the bootstrapped 95% confidence intervals. \\label{scatters}"}
 r_squares <- pred_cases %>%
@@ -565,7 +566,7 @@ cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = 
 In the approach to re-emergence, the EWS generally perform as expected, with Niamey being an exception (Fig. \ref{aucs}A).
 Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities except Niamey.
 For Niamey, it appears these metrics perform well at the highest levels of susceptible depletion (i.e., low discounting factors).
-In fact, the high AUC values for Niamey result from exceptionally poor performance: they are all higher in the null interval rather than the test interval, contrary to theoretical expectations.
+In fact, the high AUC values for Niamey result from exceptionally poor performance: they are all higher in the null interval rather than the test interval, contrary to theoretical expectations (Fig. S4).
 Thus, these metrics are unreliable.
 
 For the other cities, variance, mean, index of dispersion, decay time, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (Fig. \ref{aucs}A).
@@ -577,12 +578,18 @@ Nonlinear increases in the susceptible pool would lead to different dynamics.
 
 The EWS did not perform as well when anticipating elimination, relative to emergence (Fig. \ref{aucs}B).
 Only three metrics are reliable: mean, autocovariance, and variance.
-All three metrics decreased as $R_E(t)$ approached the critical transition (Fig. Sx).
+All three metrics decreased as $R_E(t)$ approached the critical transition (Fig. S5).
 As in the case of anticipating elimination, AUC values decreased as the speed of the vaccine campaign increased.
 Again, this is due to shorter null and test intervals.
 
 In all, the suite of EWS suggest that critical slowing down does occur in measles dynamics as a critical transition is approached.
-We found similar results when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, Fig. Sx).
+We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, Fig. S7).
+But, all EWS performed worse when predicting the approach to emergence over the moving window (Fig. S7).
+
+A change in the variance of a dynamical system is one of the most well-studied early warning signals [@Scheffer2012], and it performed well here Fig. \ref{aucs}.
+Thus, we show the distributions of the variance in the null and test intervals for each city as an example of the changes expected (Fig. \ref{var-ex}).
+In many cases, the variance is expected to increase as a critical transition is approached [@Carpenter2006; @Dakos2012a; @ORegan2013], and we find this to be the case for re-emergence.
+The variance decreases on the approach to elimination, which is counter to generic theory but in line with expectations specific to an SIR disease transmission model [@ORegan2013].
 
 # Discussion
 

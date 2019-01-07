@@ -241,6 +241,25 @@ cowplot::plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = 
 
 <!-- ![ A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (left-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. ](../figures/elimination-series-example.pdf){ width=\textwidth } -->
 
+# Early warning signals
+
+We calculated nine early warning signals using the ```spaero::get_stats()``` function.
+Formulas for the early warning signals are in Table S1.
+
+| EWS | Estimator | Theoretical Correlation with $R_E(t)$ |
+| -------------------- | ----------------------------------- | ------------------------ |
+| Mean | $\mu_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{X_s}{2b-1}$ | Positive |
+| Variance | $\sigma_t^2 = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^2}{2b-1}$ | Positive |
+| Coefficient of variation | $CV_t = \frac{\sigma_t}{\mu_t}$ | Null |
+| Index of dispersion | $ID_t = \frac{\sigma_t^2}{\mu_t}$ | Positive |
+| Skewness | $S_t = \frac{1}{\sigma^3_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^3}{2b-1}$ | Positive |
+| Kurtosis | $K_t = \frac{1}{\sigma^4_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^4}{2b-1}$ | Positive |
+| Autocovariance | $\text{ACov}_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)\left(X_{s-\delta} - \mu_{s-\delta}\right)}{2b-1}$ | Positive |
+| Autocorrelation | $\text{AC}_t = \frac{\text{ACov}_t}{\sigma_t \sigma_{t-\delta}}$ | Positive |
+| Decay time | $\overline{\tau}_t = -\delta / \text{ln}\left[\text{AC}_t(\delta)\right]$ | Positive |
+
+Table: List of candidate early warning signals and their estimating equations. Note that *b* denotes the bandwidth. See @Brett2018 for details.
+
 # Trends of early warning signals
 
 Theory suggests that most EWS should increase as disease dynamics approach a critical transition from below (emergence).
@@ -370,6 +389,21 @@ comp_grid$do_grid <- 1:nrow(comp_grid)
 
 # Load loglikelihood results and combine ----------------------------------
 
+result_files <- list.files("../results/")
+mle_files <- result_files[grep("initial-mif-lls", result_files)]
+
+mles <- tibble()
+for(do_file in mle_files){
+  tmp <- read.csv(paste0("../results/", do_file)) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(loglik, loglik_se, beta_mu, beta_sd, iota, rho, tau, S_0, E_0, I_0) %>%
+    gather(key = parameter, value = mle) %>%
+    mutate(city = str_sub(do_file, 17, (nchar(do_file)-4)))
+  
+  mles <- bind_rows(mles, tmp)
+}
+
 loglik_files <- list.files("../results/", pattern = "bootstrap-mif-lls")
 param_summaries <- tibble()
 
@@ -396,6 +430,8 @@ for(do_file in loglik_files){
   
   param_summaries <- bind_rows(param_summaries, tmp_file)
 }
+
+mle_and_boots <- left_join(mles, param_summaries)
 
 # Load example pomp file for basis function
 pomp_file <- "../code/measles-pomp-object-Agadez.RDS"
@@ -457,8 +493,10 @@ for(do_file in loglik_files){
   
 }  # end city loop
 
-param_summaries <- param_summaries %>%
+param_summaries <- mle_and_boots %>%
   mutate(
+    parameter = ifelse(parameter == "loglik", "Log likelihood", parameter),
+    parameter = ifelse(parameter == "loglik_se", "Log likelihood S.E.", parameter),
     parameter = ifelse(parameter == "beta_mu", "$\\beta$", parameter),
     parameter = ifelse(parameter == "beta_sd", "$\\sigma$", parameter),
     parameter = ifelse(parameter == "rho", "$\\rho$", parameter),
@@ -468,9 +506,10 @@ param_summaries <- param_summaries %>%
     parameter = ifelse(parameter == "I_0", "$\\textsl{I}_{t=0}$", parameter),
     parameter = ifelse(parameter == "tau", "$\\tau$", parameter)
   ) %>%
-  select(parameter, mean_value, median_value, std_dev, lower_95_ci, upper_95_ci, city) %>%
+  select(parameter, mle, mean_value, median_value, std_dev, lower_95_ci, upper_95_ci, city) %>%
   rename(
     `Parameter` = parameter,
+    `MLE` = mle,
     `Mean` = mean_value,
     `Median` = median_value,
     `SD` = std_dev,
@@ -487,7 +526,7 @@ for(do_city in unique(param_summaries$city)){
   select(-city) %>%
   mutate_if(is.numeric, funs(as.character(signif(., 3))))
 
-  docap <- paste0("Summary statistics of parameters from bootstrapped estimates for ", do_city, ".")
+  docap <- paste0("Maximum likelihood estimates and summary statistics of parameters from bootstrapped estimates for ", do_city, ".")
   print(knitr::kable(tmp_table, format = "pandoc", caption = docap))
 }
 ```
@@ -507,3 +546,45 @@ ggplot(seasonal_functions, aes(x = date, y = beta, group = boot)) +
   theme_minimal()
 
 ```
+
+# Moving window analysis
+
+To complement our fixed window analysis presented in the main text, we conducted a moving window analysis as might be conducted on real surveilance data.
+We used the same null and test intervals as described above for the emergence and elimination scenarios.
+However, instead of calculating a single value for each EWS over the entire window of the interval, we calculated EWS in the intervals over moving windows of 35 weeks.
+We then calculated the Kendall's rank correlation ($\tau$) between each EWS and time in each of the null and test intervals.
+We used the distributions of Kendall's $\tau$ over the 500 replicate simulations to then calculate the Area Under the Curve (AUC) metric for each EWS.
+For the approach to elimination, the results are similar to those for the fixed window analysis (Figure S7B).
+For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure S7A).
+
+```{r plot-aucs, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition."}
+library(viridis)
+emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
+elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")
+
+emerge_plot <- ggplot() +
+  geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
+  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  facet_wrap(~city, nrow = 1) +
+  labs(x = "Level of susceptible depletion", y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"),
+        plot.title = element_text(size = 11, face = "bold")) +
+  ggtitle("Anticipating emergence over a moving window")
+
+eliminate_plot <- ggplot() +
+  geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = abs(AUC-0.5))) +
+  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  facet_wrap(~city, nrow = 1) +
+  labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"),
+        plot.title = element_text(size = 11, face = "bold")) +
+  ggtitle("Anticipating elimination over a moving window")
+
+cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = "AUTO", label_size = 12)
+```
+
+# References
