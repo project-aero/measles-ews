@@ -1,8 +1,17 @@
 # fetch-clean-data.R:
 #  Script to load and clean up raw data, which are weekly incidence of measles 
-#  in 40 regions of Niger. This script adds some date information and then
-#  subsets out just the major cities (four of the 40 regions). The data are
-#  saved as a tibble in .RDS format.
+#  in 40 regions of Niger. This script reads in the raw case data and reformats
+#  it to include date information. Annual birth rate (national) and total
+#  population size (regional) are also read in, interpolated to be match
+#  the weekly time interval of case reports and added to the data frame.
+#  Note that we only save output for our four focal cities: Agadez, Maradi,
+#  Niamey, and Zinder.
+#
+#  Two outputs are produced:
+#    demog_data: Birth rates and population size for each city at each week.
+#      file: ../data/clean-data/annual-demographic-data-niger-cities-clean.RDS
+#    measles_data: Timestamped case reports for each week, by city.
+#      file: ../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS
 #
 # Author:
 #  Andrew Tredennick (atredenn@gmail.com)
@@ -16,23 +25,27 @@ library(lubridate)
 
 # Read in data and format -------------------------------------------------
 
-file_name <- "../data/raw-data/niger_regional_1995_2005.csv"  # from the AERO data repo
-niger_measles_raw <- suppressWarnings(
-  read_csv(file_name, col_types = cols())
-) 
+# From the AERO data repo
+file_name <- "../data/raw-data/niger_regional_1995_2005.csv"
+
+niger_measles_raw <- read_csv(
+  file_name, 
+  col_types = cols(X1 = col_character(), .default = col_integer()),
+  col_names = FALSE)
 
 
 # Generate some information based on the data
 num_regions <- nrow(niger_measles_raw)  # one region per row (columns are weeks)
-num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because first column are regions
-weeks_per_year <- num_weeks/11  # we know where are 11 years
+num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because 
+                                          # first column are regions
+weeks_per_year <- num_weeks/11  # we know there are 11 years
 weeks <- rep(1:52, times = 11)  # data preformatted to all years having 52 weeks
 
 # Create a vector of years for all num_weeks
 years <- rep(1995:2005, each = weeks_per_year)
 
 # Function for calculating start of week based on week number and year
-calculate_start_of_week = function(week, year) {
+calculate_start_of_week = function(week, year){
   date <- ymd(paste(year, 1, 1, sep="-"))
   week(date) = week
   return(date)
@@ -55,7 +68,7 @@ measles_data <- niger_measles_raw %>%
     time = decimal_date(date)
   )
 
-# Make tibble with initial conditions NA row
+# Make tibble with initial conditions NA row, 1 week before data start
 initial_conditions_datarow <- tibble(
   region = unique(measles_data$region),
   date = min(measles_data$date) - 7,
@@ -88,7 +101,8 @@ time_tbl <- tibble(
 birth_file <- "../data/raw-data/niger_crude_birth_rates.csv"
 birth_data <- read_csv(birth_file, col_types = cols()) %>%
   mutate(
-    date = mdy(date),  # lubridate prefixes any 2digit year 00-68 with 20, not a problem for us though
+    date = mdy(date),  # lubridate prefixes any 2digit year 00-68 with 20, 
+                       # not a problem for us though
     year = as.character(year(date)),
     rate_per_person_per_year = births_per_thousand/1000
   ) %>%
@@ -97,6 +111,7 @@ birth_data <- read_csv(birth_file, col_types = cols()) %>%
   filter(year > 1990 & year < 2010) %>%
   mutate(time = year+0.000)
 
+# Interpolate birth rates
 birth_spline <- predict(
   smooth.spline(x = birth_data$time, y = birth_data$rate_per_person_per_year), 
   x = time_tbl$time)$y
@@ -106,8 +121,7 @@ birth_rates <- time_tbl %>%
     birth_per_person_per_year = birth_spline
   )
 
-
-# Population
+# Population size
 pop_file <- "../data/raw-data/district_pops.csv"
 city_strings <- str_sub(unique(measles_data$region), start = 1, end = 6)
 pop_data <- suppressWarnings(
@@ -118,7 +132,7 @@ pop_data <- suppressWarnings(
   mutate(
     region = ifelse(region == "Niamey I", "Niamey", region),
     year = as.numeric(year),
-    time = year + 0.000
+    time = year + 0.000  # make time double
   ) %>%
   filter(region %in% city_strings)
 
@@ -129,6 +143,7 @@ for(do_city in unique(pop_data$region)){
   tmp <- pop_data %>%
     filter(region == do_city)
   
+  # Interpolate population size
   N <- predict(
     smooth.spline(x = tmp$time, y = tmp$population), 
     x = all_times)$y
