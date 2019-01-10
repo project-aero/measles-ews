@@ -187,7 +187,7 @@ In this model, the basic reproduction number can be calculated as:
 $$
 R_0 = \frac{\eta \beta \mu}{\nu (\eta + \nu)(\gamma + \nu)}.
 $$
-The model described above was implemented in the R package `pomp` [@King2016; @King2018] to simulate the re-emergence and elimination scenarios.
+The model described above was implemented in the `R` package `pomp` [@King2016; @King2018] to simulate the re-emergence and elimination scenarios.
 
 # Estimating the timing of critical transitions
 To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.
