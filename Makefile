@@ -60,6 +60,16 @@ $(POMP_TARG): $(POMP_DEPS)
 
 LOGLIKS = $(RESDIR)/initial-mif-lls-*.csv
 
+
+## Fit bootstrapped simulations for parameter uncertainty estimates.
+## NOTE: much like the primary model fitting above, this round of fitting
+## was also done on a high performance computing cluster, using 1000s
+## of cores. Therefore, this Makefile skips over fitting of the bootstrap
+## simulations, but the R script bootstrap-fit-mif.R can be interrogated
+## by interested users.
+.INTERMEDIATE = $(RESDIR)/bootstrap-mif-lls-*.csv
+BOOT_LOGLIKS = $(RESDIR)/bootstrap-mif-lls-*.csv
+
 ## Make one-week-ahead predictions
 PRED_DEPS := $(LOGLIKS)
 PRED_DEPS += $(CODEDIR)/estimate-transmission-state.R
@@ -122,11 +132,12 @@ $(EL_EWS_TARG): $(EL_EWS_DEPS)
 
 ## Make the manuscript
 MS_DEPS := $(MSDIR)/measles-ews-manuscript.Rmd
-MS_DEPS += $(POMP_TARG)
-MS_DEPS += $(PRED_TARG)
-MS_DEPS += $(BOOT_TARG)
-MS_DEPS += $(EM_EWS_TARG)
-MS_DEPS += $(EL_EWS_TARG)
+MS_DEPS += $(POMP_TARG)     # pomp model objects
+MS_DEPS += $(PRED_TARG)     # fitted model predictions
+MS_DEPS += $(LOGLIKS)       # MLE parameter estimates
+MS_DEPS += $(BOOT_LOGLIKS)  # bootstrapped MLEs
+MS_DEPS += $(EM_EWS_TARG)   # emergence EWS and AUCs
+MS_DEPS += $(EL_EWS_TARG)   # elimination EWS and AUCs
 
 $(MSDIR)/measles-ews-manuscript.pdf: $(MS_DEPS)
 	Rscript -e 'rmarkdown::render("$<")'
