@@ -107,6 +107,88 @@ ggplot() +
   theme_minimal()
 ```
 
+# Long-run simulations from the fitted the SEIR models
+For fitting the SEIR model, we used known population size interpolated between years.
+This meant we were able to ignore certain demographic processes.
+For example, we ignored deaths from the susceptible pool under the assumption that the infection rate was much faster than death rate.
+We also ignored the recovered class completely because their dynamics, outside of the contribution to population size (which we assumed to be known), do not impact the $S, E, \text{or } I$ compartments.
+However, we needed to include births and deaths from all compartments, including $R$, when simulating the model over arbitrarily long time periods that do not necessarily represent real times for which we would have information on population size.
+
+We added a few terms to the *SEIR* model presented in the main text to account for births and deaths in all compartments.
+Our strategy was to simulate a population at a dynamic equilibrium, where total population was neither increasing or decreasing over time, but it does fluctuate.
+Our *simulating model* (in contrast to the *fitting model* in the main text) is as follows.
+
+As in the main text, the *SEIR* model is specified as a set of difference equations,
+
+\begin{align}
+S_{t+dt} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
+E_{t+dt} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
+I_{t+dt} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
+R_{t+dt} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
+\end{align}
+
+\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
+Parameter definitions are in Table S1.
+
+| Random variable | Transition | $\left(\Delta S, \Delta E, \Delta I, \Delta R\right)$ |
+| ---------- | ----------------------------| ---------- |
+| $n_{0S}$ | Births into the *S* compartment, not vaccinated | (1, 0, 0, 0) |
+| $n_{SE}$ | Number of people transitioning from *S* to *E* | (-1, 1, 0, 0) |
+| $n_{SO}$ | Number of deaths leaving *S* | (-1,0,0,0) |
+| $n_{EI}$ | Number of people transitioning from *E* to *I* | (0, -1, 1, 0) |
+| $n_{E0}$ | Number of deaths leaving *E* | (0, -1, 0, 0) |
+| $n_{0I}$ | Number of imported infections | (0, 0, 1, 0) |
+| $n_{IR}$ | Number of people transitioning from *I* to *R* | (0, 0, -1, 1) |
+| $n_{I0}$ | Number of deaths leaving *I* | (0, 0, -1, 0) |
+| $n_{0R}$ | Births into the *R* compartment, vaccinated | (0, 0, 0, 1) |
+| $n_{R0}$ | Number of deaths leaving *R* | (0, 0, 0, -1) |
+
+Table: Caption here.
+
+The stochastic random variables are specified as follows:
+
+\begin{align}
+n_{0S,t} &\sim \text{Poisson}((1-p)\mu N_t \times dt) \\
+n_{SE,t} &\sim \text{Binomial}(\lambda_{SE,t}, S_{t}) \\
+n_{S0,t} &\sim \text{Binomial}(\lambda_{d}, S_t) \\
+n_{EI,t} &\sim \text{Binomial}(\lambda_{EI,t}, E_{t}) \\
+n_{E0,t} &\sim \text{Binomial}(\lambda_{d}, E_t) \\
+n_{IR,t} &\sim \text{Binomial}(\lambda_{IR,t}, I_{t}) \\
+n_{I0,t} &\sim \text{Poisson}(\psi \times dt) \\
+n_{0R,t} &\sim \text{Poisson}(p\mu N_t \times dt) \\
+n_{R0,t} &\sim \text{Binomial}(\lambda_{d}, R_t),
+\end{align}
+
+\noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $\psi$ is the rate of imported infections (estimated by the model), and $\lambda_d$, $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of death, exposure, becoming infectious, and recovery, respectively.
+These probabilities are modeled as:
+
+\begin{align}
+\lambda_{SE,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
+\lambda_{EI,t} &= 1 - e^{-\eta E_{t} dt} \\
+\lambda_{IR,t} &= 1 - e^{-\gamma I_{t} dt} \\
+\lambda_d &= 1 - e^{-\nu N_t dt}
+\end{align}
+
+\noindent{}where $\beta_t$ is time-varying rate of transmission, $\eta$ is time-invariant rate from the exposed class to the infectious class, $\gamma$ is time-invariant recovery rate, and $\nu$ is the constant death rate.
+We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = \mu = 0.05$.
+Recall that we set birth rate equal to death rate ($\nu = \mu = 0.05$) to achieve a relatively constant equilibrium population size.
+We modeled rate of transmission as:
+
+\begin{equation}
+\beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t.
+\end{equation}
+
+$\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
+The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
+
+In this model, the basic reproduction number can be calculated as:
+
+$$
+R_0 = \frac{\eta \beta \mu}{\nu (\eta + \nu)(\gamma + \nu)}.
+$$
+The model described above was implemented in the R package `pomp` [@King2016; @King2018] to simulate the re-emergence and elimination scenarios.
+
 # Estimating the timing of critical transitions
 To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.
 For re-emergence, we defined the year of the critical transition as the year just after the effective reproduction number ($R_E$) reaches or exceeds the critical value of 1. 
