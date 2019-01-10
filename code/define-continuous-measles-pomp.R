@@ -80,7 +80,6 @@ measles_dmeasure <- Csnippet(
     lik = (give_log) ? 0 : 1;
   } else {
     f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
-    // f = dpois(reports, mean, give_log);
   }
 
   lik = (give_log) ? log(f) : f;
@@ -93,7 +92,6 @@ measles_dmeasure <- Csnippet(
 measles_rmeasure <- Csnippet(
   "
   reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
-  // reports = rpois(rho*cases);
 
   if (reports > 0.0) {
     reports = nearbyint(reports);
@@ -147,7 +145,7 @@ initial_values <- Csnippet(
 
 # Make data tables --------------------------------------------------------
 
-do_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+do_file <- "./data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 
 all_cities <- readRDS(do_file) %>%
   pull(region) %>%
@@ -168,7 +166,7 @@ for(do_city in all_cities){
     obs_data$reports[276] <- round(mean(obs_data$reports[c(275,277)]))
   }
   
-  covar_file <- "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
+  covar_file <- "./data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
   covar_data <- readRDS(covar_file) %>%
     dplyr::filter(region == do_city) %>%
     dplyr::select(time, population_size, birth_per_person_per_year) %>%
@@ -226,7 +224,7 @@ for(do_city in all_cities){
   )
 
   city_abb <- substr(do_city, start = 1, stop = 6)
-  outfile <- paste0("measles-pomp-object-", city_abb, ".RDS")
+  outfile <- paste0("./code/measles-pomp-object-", city_abb, ".RDS")
   saveRDS(object = measles_pomp, file = outfile)
 }
 

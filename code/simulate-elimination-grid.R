@@ -6,6 +6,22 @@
 # Author:
 #  Andrew Tredennick (atredenn@gmail.com)
 
+# Load libraries ----------------------------------------------------------
+
+library(tidyverse)
+library(pomp)
+library(foreach)
+library(doParallel)  # functions for parallel computing
+source("./code/make-pomp-simulator-function.R")
+
+
+# Get number of reps from command line ------------------------------------
+
+args <- commandArgs(trailingOnly = F)
+myargument <- args[length(args)]
+myargument <- sub("-","",myargument)
+nreps <- as.numeric(myargument)
+
 
 # Define function for vaccination campaign --------------------------------
 
@@ -32,26 +48,26 @@ calc_R0 <- function(beta, qis, season, eta = (365/8),
 
 # Make example plot of vaccination curve ----------------------------------
 
-vacc_ex_tbl <- tibble(
-  week = 0:520,
-  coverage = sapply(0:520, FUN = rho_curve_ramp)
-)
-
-ggplot(vacc_ex_tbl, aes(week, coverage)) +
-  geom_line(color = "dodgerblue4", size = 1) +
-  geom_hline(aes(yintercept = 0.7), linetype = 2, 
-             size = 0.25, color = "grey45") +
-  geom_hline(aes(yintercept = 0.95), linetype = 2, 
-             size = 0.25, color = "grey45") +
-  labs(x = "Week", y = "Vaccination coverage") +
-  annotate(geom = "text", x = 420, y = 0.71, color = "grey45",
-           label = "Current vaccination coverage in Niger", size = 3) +
-  annotate(geom = "text", x = 125, y = 0.94, color = "grey45",
-           label = "Vaccination coverage for herd immunity", size = 3) +
-  theme_classic(base_size = 14)
-ggsave(filename =  "../figures/vaccination-coverage-example.pdf", 
-       width = 6, height = 3.5, units = "in")
-  
+# vacc_ex_tbl <- tibble(
+#   week = 0:520,
+#   coverage = sapply(0:520, FUN = rho_curve_ramp)
+# )
+# 
+# ggplot(vacc_ex_tbl, aes(week, coverage)) +
+#   geom_line(color = "dodgerblue4", size = 1) +
+#   geom_hline(aes(yintercept = 0.7), linetype = 2, 
+#              size = 0.25, color = "grey45") +
+#   geom_hline(aes(yintercept = 0.95), linetype = 2, 
+#              size = 0.25, color = "grey45") +
+#   labs(x = "Week", y = "Vaccination coverage") +
+#   annotate(geom = "text", x = 420, y = 0.71, color = "grey45",
+#            label = "Current vaccination coverage in Niger", size = 3) +
+#   annotate(geom = "text", x = 125, y = 0.94, color = "grey45",
+#            label = "Vaccination coverage for herd immunity", size = 3) +
+#   theme_classic(base_size = 14)
+# ggsave(filename =  "../figures/vaccination-coverage-example.pdf", 
+#        width = 6, height = 3.5, units = "in")
+#   
 
 
 # Set up grid of vaccination roll out speeds ------------------------------
@@ -59,33 +75,24 @@ ggsave(filename =  "../figures/vaccination-coverage-example.pdf",
 # speed_grid <- seq(-5e-04, -1e-04, length.out = 6)  # exponential
 speed_grid <- seq(0.000015, 0.0001, length.out = 6)  # linear
 
-
-# Load libraries ----------------------------------------------------------
-
-library(tidyverse)
-library(pomp)
-library(foreach)
-library(doParallel)  # functions for parallel computing
-
 if(parallel::detectCores() <= length(speed_grid)){
   registerDoParallel(cores = detectCores() - 1)
 } else{
   registerDoParallel()
 }
 
-source("make-pomp-simulator-function.R")
 
 for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   # Load fitted parameters and pomp model -----------------------------------
   
-  mle_file <- paste0("../results/initial-mif-lls-", do_city, ".csv")
+  mle_file <- paste0("./results/initial-mif-lls-", do_city, ".csv")
   mles <- read.csv(mle_file) %>% 
     slice(2:n()) %>%  # ignore first row of storage NAs
     filter(loglik == max(loglik, na.rm = TRUE)) %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
   
-  pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
+  pomp_file <- paste0("./code/measles-pomp-object-", do_city, ".RDS")
   fitted_pomp <- readRDS(pomp_file)
   
   # Calculte R0 -------------------------------------------------------------
@@ -137,7 +144,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 500,
+      nsim = nreps,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble() 
@@ -190,7 +197,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       ) %>%
       dplyr::select(-vacc_discount)
 
-    outfile <- paste0("../simulations/elimination-simulations-grid-",
+    outfile <- paste0("./simulations/elimination-simulations-grid-",
                       do_city, "-", i, ".RDS")
     saveRDS(object = tmp_re_sims, file = outfile)
   }

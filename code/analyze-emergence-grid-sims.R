@@ -21,7 +21,7 @@ library(spaero)
 # discounting, but focus this analysis on discount factors that are less
 # than 0.6. 
 
-all_files <- list.files("../simulations/")
+all_files <- list.files("./simulations/")
 sim_file_ids <- grep("emergence-simulations-grid", all_files)
 sim_files <- all_files[sim_file_ids]
 ignore_id <- grep("0.6|0.7|0.8|0.9|-1.RDS", sim_files)
@@ -29,7 +29,7 @@ sim_files_reduced <- sim_files[-ignore_id]
 all_sims_list <- list()
 counter <- 1
 for(do_file in sim_files_reduced){
-  tmp_file <- paste0("../simulations/", do_file)
+  tmp_file <- paste0("./simulations/", do_file)
   tmp <- readRDS(tmp_file) %>%
     filter(time > 0)
   all_sims_list[[counter]] <- tmp
@@ -88,31 +88,31 @@ re_one_year <- all_sims %>%
 plot_sims <- all_sims %>% 
   filter(sim < 21 & time <= 25)  # just plot 20 reps for 25 years
 
-re_series <- ggplot() +
-  geom_hline(data = re_one_year, aes(yintercept = 1), linetype = 2) +
-  geom_segment(
-    data = re_one_year,
-    aes(x = year, xend = year, y = 0, yend = 1),
-    color = ptol_pal()(2)[2]
-  ) +
-  geom_line(
-    data = plot_sims,
-    aes(x = time, y = RE_seas, group = sim),
-    alpha = 0.1,
-    color = "grey55",
-    size = 0.3
-  ) +
-  labs(x = "Simulation year", y = expression(R[E](t))) +
-  facet_grid(susc_discount~city) +
-  theme_minimal() 
-
-ggsave(
-  filename = "../figures/effective-r-emergence-grid.pdf", 
-  plot = re_series, 
-  width = 8.5, 
-  height = 5, 
-  units = "in"
-)
+# re_series <- ggplot() +
+#   geom_hline(data = re_one_year, aes(yintercept = 1), linetype = 2) +
+#   geom_segment(
+#     data = re_one_year,
+#     aes(x = year, xend = year, y = 0, yend = 1),
+#     color = ptol_pal()(2)[2]
+#   ) +
+#   geom_line(
+#     data = plot_sims,
+#     aes(x = time, y = RE_seas, group = sim),
+#     alpha = 0.1,
+#     color = "grey55",
+#     size = 0.3
+#   ) +
+#   labs(x = "Simulation year", y = expression(R[E](t))) +
+#   facet_grid(susc_discount~city) +
+#   theme_minimal() 
+# 
+# ggsave(
+#   filename = "./figures/effective-r-emergence-grid.pdf", 
+#   plot = re_series, 
+#   width = 8.5, 
+#   height = 5, 
+#   units = "in"
+# )
 
 
 # Format data for 2-window EWS --------------------------------------------
@@ -250,7 +250,7 @@ for(do_city in unique(data_for_ews$city)){
 }  # end city loop
 
 # Save the results
-write.csv(x = ews_out, file = "../results/ews-emergence.csv", row.names = FALSE)
+write.csv(x = ews_out, file = "./results/ews-emergence.csv", row.names = FALSE)
 
 
 
@@ -304,7 +304,7 @@ for(do_city in unique(ews_long$city)){
   }
 }
 
-write.csv(x = auc_tbl, "../results/emergence-grid-aucs.csv")
+write.csv(x = auc_tbl, "./results/emergence-grid-aucs.csv")
 
 
 

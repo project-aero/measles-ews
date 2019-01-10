@@ -9,9 +9,9 @@
 #
 #  Two outputs are produced:
 #    demog_data: Birth rates and population size for each city at each week.
-#      file: ../data/clean-data/annual-demographic-data-niger-cities-clean.RDS
+#      file: ./data/clean-data/annual-demographic-data-niger-cities-clean.RDS
 #    measles_data: Timestamped case reports for each week, by city.
-#      file: ../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS
+#      file: ./data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS
 #
 # Author:
 #  Andrew Tredennick (atredenn@gmail.com)
@@ -26,7 +26,7 @@ library(lubridate)
 # Read in data and format -------------------------------------------------
 
 # From the AERO data repo
-file_name <- "../data/raw-data/niger_regional_1995_2005.csv"
+file_name <- "./data/raw-data/niger_regional_1995_2005.csv"
 
 niger_measles_raw <- read_csv(
   file_name, 
@@ -98,7 +98,7 @@ time_tbl <- tibble(
   dplyr::select(-date)
 
 # Births
-birth_file <- "../data/raw-data/niger_crude_birth_rates.csv"
+birth_file <- "./data/raw-data/niger_crude_birth_rates.csv"
 birth_data <- read_csv(birth_file, col_types = cols()) %>%
   mutate(
     date = mdy(date),  # lubridate prefixes any 2digit year 00-68 with 20, 
@@ -122,7 +122,7 @@ birth_rates <- time_tbl %>%
   )
 
 # Population size
-pop_file <- "../data/raw-data/district_pops.csv"
+pop_file <- "./data/raw-data/district_pops.csv"
 city_strings <- str_sub(unique(measles_data$region), start = 1, end = 6)
 pop_data <- suppressWarnings(
   read_csv(pop_file, col_types = cols())
@@ -170,11 +170,11 @@ demog_data <- population_sizes %>%
 
 saveRDS(
   object = demog_data,
-  file = "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
+  file = "./data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
 )
 
 saveRDS(
   object = measles_data,
-  file = "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+  file = "./data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 )
 

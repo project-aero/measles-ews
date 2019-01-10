@@ -15,27 +15,27 @@ do_grid <- as.numeric(myargument)
 # Load libraries ----------------------------------------------------------
 
 # On PC
-# library(tibble)
-# library(magrittr)
-# library(pomp)
-# library(foreach)
-# library(doParallel)
-# library(dplyr)
-# library(lhs)
+library(tibble)
+library(magrittr)
+library(pomp)
+library(foreach)
+library(doParallel)
+library(dplyr)
+library(lhs)
 
 # On HPC
-library("tibble", lib.loc="~/myRlib/")
-library("magrittr", lib.loc="~/myRlib/")
-library("pomp", lib.loc="~/myRlib/")
-library("foreach", lib.loc="~/myRlib/")
-library("doParallel", lib.loc="~/myRlib/")
-library("dplyr", lib.loc="~/myRlib/")
-library("lhs", lib.loc="~/myRlib/")
+# library("tibble", lib.loc="~/myRlib/")
+# library("magrittr", lib.loc="~/myRlib/")
+# library("pomp", lib.loc="~/myRlib/")
+# library("foreach", lib.loc="~/myRlib/")
+# library("doParallel", lib.loc="~/myRlib/")
+# library("dplyr", lib.loc="~/myRlib/")
+# library("lhs", lib.loc="~/myRlib/")
 
 
 # Load pomp object --------------------------------------------------------
 
-measles_pomp <- readRDS("measles-pomp-object-Zinder.RDS")
+measles_pomp <- readRDS("./code/measles-pomp-object-Agadez.RDS")
 start_population <- as.numeric(measles_pomp@covar[1,1])
 
 
@@ -97,8 +97,8 @@ colnames(lhs_grid) <- names(coef(measles_pomp))
 
 # Perform initial MIF -----------------------------------------------------
 
-particles <- 10000
-mif_iters <- 100
+particles <- 100
+mif_iters <- 10
 
 mf <- measles_pomp %>% 
   mif2(
@@ -149,7 +149,7 @@ mf <- measles_pomp %>%
     )
   )
 
-ll <- logmeanexp(replicate(50, logLik(pfilter(mf, Np = particles))), se=TRUE)
+ll <- logmeanexp(replicate(5, logLik(pfilter(mf, Np = particles))), se=TRUE)
 coef_ests <- data.frame(t(coef(mf)))
 
 outdf <- data.frame(
@@ -162,17 +162,17 @@ outdf <- data.frame(
 
 # Write results to file ---------------------------------------------------
 
-ll_file <- "initial-mif-lls.csv"
+ll_file <- "./results/initial-mif-lls.csv"
 write.table(outdf, ll_file, sep = ",", col.names = F, append = T, row.names = FALSE)
 
-outmif <- data.frame(
-  do_grid = rep(do_grid, mif_iters+1),
-  iteration = seq(0:mif_iters)
-) %>%
-  bind_cols(as.data.frame(conv.rec(mf)))
+# outmif <- data.frame(
+#   do_grid = rep(do_grid, mif_iters+1),
+#   iteration = seq(0:mif_iters)
+# ) %>%
+#   bind_cols(as.data.frame(conv.rec(mf)))
 
-trace_file <- "initial-mif-traces.csv"
-write.table(outmif, trace_file, sep = ",", col.names = F, append = T, row.names = FALSE)
+# trace_file <- "initial-mif-traces.csv"
+# write.table(outmif, trace_file, sep = ",", col.names = F, append = T, row.names = FALSE)
 
 # saveRDS(object = mf, file = paste0("./mif-objects/mifobject-", do_grid, ".RDS"))
 

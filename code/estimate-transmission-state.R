@@ -8,8 +8,13 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
-DO_CITY <- "Niamey"
-pomp_city <- "Niamey (City)"
+args <- commandArgs(trailingOnly = F)
+myargument <- args[length(args)]
+myargument <- sub("-","",myargument)
+
+cities <- c("Agadez", "Maradi", "Niamey", "Zinder")
+DO_CITY <- cities[as.numeric(myargument)]
+pomp_city <- paste(DO_CITY, "(City)")
 
 # Load libraries ----------------------------------------------------------
 
@@ -21,7 +26,7 @@ library(ggthemes)
 
 # Load MLEs ---------------------------------------------------------------
 
-mles <- read.csv(paste0("../results/initial-mif-lls-", DO_CITY, ".csv")) %>%
+mles <- read.csv(paste0("./results/initial-mif-lls-", DO_CITY, ".csv")) %>%
   filter(loglik == max(loglik, na.rm = T)) %>%
   dplyr::select(-do_grid, -loglik, -loglik_se)
 
@@ -41,13 +46,10 @@ measles_process <- Csnippet(
   double dW;              // white noise
   double seas;            // seasonality term
   double dN0S, dN0I, dNSE, dNEI, dNIR;  // transitions
-
-  // Beta random walk
-  beta_t *= rgammawn(0.001, dt)/dt;
   
   // Calculate force of infection
   seas = (1 + exp(dot_product(K, &xi1, &b1)));
-  beta = beta_t*seas;
+  beta = beta_mu*seas;
   lambda = beta*I/N;
   
   // Gamma noise, mean=dt, variance=(beta_sd^2 dt)
@@ -77,7 +79,6 @@ measles_process <- Csnippet(
   
   cases += dNIR;  // caseas are cumulative reports at end of infectious period (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
-  RE = (beta_t / gamma) * (S / N);
   RE_seas = (beta / gamma) * (S / N);
   cases_state = rnbinom_mu(1/tau, rho*cases);
   "
@@ -95,7 +96,6 @@ measles_dmeasure <- Csnippet(
   lik = (give_log) ? 0 : 1;
   } else {
   f = dnbinom_mu(reports, 1/tau, mean, give_log);  // negative binomial likelihood
-  // f = dpois(reports, mean, give_log);
   }
   
   lik = (give_log) ? log(f) : f;
@@ -108,7 +108,6 @@ measles_dmeasure <- Csnippet(
 measles_rmeasure <- Csnippet(
   "
   reports = rnbinom_mu(1/tau, rho*cases);  // negative binomial measurement process
-  // reports = rpois(rho*cases);
   
   if (reports > 0.0) {
   reports = nearbyint(reports);
@@ -157,14 +156,13 @@ initial_values <- Csnippet(
   W = 0;
   RE = 0;
   RE_seas = 0;
-  beta_t = beta_mu;
   "
 )
 
 
 # Make data tables --------------------------------------------------------
 
-do_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+do_file <- "./data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 measles_data <- readRDS(do_file) %>%
   dplyr::filter(region == pomp_city)
 
@@ -179,7 +177,7 @@ if(pomp_city == "Niamey (City)"){
   obs_data$reports[275] <- round(mean(obs_data$reports[c(274,276)]))
 }
 
-covar_file <- "../data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
+covar_file <- "./data/clean-data/annual-demographic-data-niger-cities-clean.RDS"
 covar_data <- readRDS(covar_file) %>%
   dplyr::filter(region == pomp_city) %>%
   dplyr::select(time, population_size, birth_per_person_per_year) %>%
@@ -212,7 +210,7 @@ measles_pomp <- pomp(
   rmeasure = measles_rmeasure,
   dmeasure = measles_dmeasure,
   initializer = initial_values,
-  statenames = c("S", "E", "I", "cases", "cases_state", "W", "RE", "RE_seas", "beta_t"),
+  statenames = c("S", "E", "I", "cases", "cases_state", "W", "RE", "RE_seas"),
   toEstimationScale = to_estimation,
   fromEstimationScale = from_estimation,
   paramnames = names(params),
@@ -224,7 +222,8 @@ measles_pomp <- pomp(
 
 # Run particle filter -----------------------------------------------------
 
-measles_filter <- pfilter(object = measles_pomp, Np=50000, save.states = TRUE, pred.mean = TRUE, pred.var = TRUE)
+measles_filter <- pfilter(object = measles_pomp, Np=50000, save.states = TRUE, 
+                          pred.mean = TRUE, pred.var = TRUE)
 states <- measles_filter@saved.states  # filtering distribution of states
 predicted_means <- measles_filter@pred.mean  # prediction distribution of states
 predicted_vars <- measles_filter@pred.var  # prediction variance of states
@@ -276,7 +275,7 @@ predictive_distribution <- tibble(
   sdev_cases = pred_stdev
 )
 
-pred_outfile <- paste0("../results/predictive-dist-states-", DO_CITY, ".RDS")
+pred_outfile <- paste0("./results/predictive-dist-states-", DO_CITY, ".RDS")
 saveRDS(
   object = predictive_distribution, 
   file = pred_outfile
@@ -285,91 +284,91 @@ saveRDS(
 
 
 # Extract and summarize states --------------------------------------------
-
-state_names <- names(states[[1]][,1])
-
-eff_rep_nonseasonal <- extract_from_list(
-  filter_list =  states, 
-  state_number = which(state_names == "RE")
-) %>%
-  summarise_filtered_state(
-    state_name = "effective_r_nonseasonal",
-    observations = NA
-  )
-
-eff_rep_seasonal <- extract_from_list(
-  filter_list =  states, 
-  state_number = which(state_names == "RE_seas")
-) %>%
-  summarise_filtered_state(
-    state_name = "effective_r_seasonal",
-    observations = NA
-  )
-
-transmission_rate <- extract_from_list(
-  filter_list =  states, 
-  state_number = which(state_names == "beta_t")
-) %>%
-  summarise_filtered_state(
-    state_name = "transmission_rate",
-    observations = NA
-  )
-
-susceptibles <- extract_from_list(
-  filter_list =  states, 
-  state_number = which(state_names == "S")
-) %>%
-  summarise_filtered_state(
-    state_name = "susceptibles",
-    observations = NA
-  )
-
-exposed <- extract_from_list(
-  filter_list =  states, 
-  state_number = which(state_names == "E")
-) %>%
-  summarise_filtered_state(
-    state_name = "exposed",
-    observations = NA
-  )
-
-infected <- extract_from_list(
-  filter_list =  states, 
-  state_number = which(state_names == "I")
-) %>%
-  summarise_filtered_state(
-    state_name = "infected",
-    observations = NA
-  )
-
-cases <- extract_from_list(
-  filter_list =  states, 
-  state_number = which(state_names == "cases_state")
-) %>%
-  summarise_filtered_state(
-    state_name = "cases",
-    observations = measles_data$cases[2:nrow(measles_data)]
-  )
-
-
-# Combine state dfs and save ----------------------------------------------
-
-all_states <- eff_rep_nonseasonal %>%
-  bind_rows(eff_rep_seasonal) %>%
-  bind_rows(transmission_rate) %>%
-  bind_rows(susceptibles) %>%
-  bind_rows(exposed) %>%
-  bind_rows(infected) %>%
-  bind_rows(cases) %>%
-  ungroup() %>%
-  group_by(state) %>%
-  nest()
-
-outfile <- paste0("../results/filtered-states-", DO_CITY, ".RDS")
-saveRDS(
-  object = all_states, 
-  file = outfile
-)
+# 
+# state_names <- names(states[[1]][,1])
+# 
+# eff_rep_nonseasonal <- extract_from_list(
+#   filter_list =  states, 
+#   state_number = which(state_names == "RE")
+# ) %>%
+#   summarise_filtered_state(
+#     state_name = "effective_r_nonseasonal",
+#     observations = NA
+#   )
+# 
+# eff_rep_seasonal <- extract_from_list(
+#   filter_list =  states, 
+#   state_number = which(state_names == "RE_seas")
+# ) %>%
+#   summarise_filtered_state(
+#     state_name = "effective_r_seasonal",
+#     observations = NA
+#   )
+# 
+# transmission_rate <- extract_from_list(
+#   filter_list =  states, 
+#   state_number = which(state_names == "beta_t")
+# ) %>%
+#   summarise_filtered_state(
+#     state_name = "transmission_rate",
+#     observations = NA
+#   )
+# 
+# susceptibles <- extract_from_list(
+#   filter_list =  states, 
+#   state_number = which(state_names == "S")
+# ) %>%
+#   summarise_filtered_state(
+#     state_name = "susceptibles",
+#     observations = NA
+#   )
+# 
+# exposed <- extract_from_list(
+#   filter_list =  states, 
+#   state_number = which(state_names == "E")
+# ) %>%
+#   summarise_filtered_state(
+#     state_name = "exposed",
+#     observations = NA
+#   )
+# 
+# infected <- extract_from_list(
+#   filter_list =  states, 
+#   state_number = which(state_names == "I")
+# ) %>%
+#   summarise_filtered_state(
+#     state_name = "infected",
+#     observations = NA
+#   )
+# 
+# cases <- extract_from_list(
+#   filter_list =  states, 
+#   state_number = which(state_names == "cases_state")
+# ) %>%
+#   summarise_filtered_state(
+#     state_name = "cases",
+#     observations = measles_data$cases[2:nrow(measles_data)]
+#   )
+# 
+# 
+# # Combine state dfs and save ----------------------------------------------
+# 
+# all_states <- eff_rep_nonseasonal %>%
+#   bind_rows(eff_rep_seasonal) %>%
+#   bind_rows(transmission_rate) %>%
+#   bind_rows(susceptibles) %>%
+#   bind_rows(exposed) %>%
+#   bind_rows(infected) %>%
+#   bind_rows(cases) %>%
+#   ungroup() %>%
+#   group_by(state) %>%
+#   nest()
+# 
+# outfile <- paste0("../results/filtered-states-", DO_CITY, ".RDS")
+# saveRDS(
+#   object = all_states, 
+#   file = outfile
+# )
 
 # ggplot(all_states %>% unnest(), aes(x = date)) +
 #   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), fill = ptol_pal()(2)[1], alpha = 0.3) +
@@ -380,24 +379,24 @@ saveRDS(
 
 
 # Calculate log-likelihood of “new” model and save ------------------------
-ll <- logmeanexp(
-  replicate(
-    n = 10,
-    logLik(
-      object = pfilter(
-        object = measles_pomp, 
-        Np = 10000
-      )
-    )
-  ), 
-  se=TRUE
-)
-
-ll_tbl <- ll %>%
-  as_tibble() %>%
-  mutate(
-    var = c("loglik", "loglik_se")
-  )
-
-ll_file <- paste0("../results/time-vary-beta-loglik-", DO_CITY, ".csv")
-write.csv(x = ll_tbl, file = ll_file)
+# ll <- logmeanexp(
+#   replicate(
+#     n = 10,
+#     logLik(
+#       object = pfilter(
+#         object = measles_pomp, 
+#         Np = 10000
+#       )
+#     )
+#   ), 
+#   se=TRUE
+# )
+# 
+# ll_tbl <- ll %>%
+#   as_tibble() %>%
+#   mutate(
+#     var = c("loglik", "loglik_se")
+#   )
+# 
+# ll_file <- paste0("../results/time-vary-beta-loglik-", DO_CITY, ".csv")
+# write.csv(x = ll_tbl, file = ll_file)

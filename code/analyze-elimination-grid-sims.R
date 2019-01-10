@@ -12,6 +12,19 @@ library(tidyverse)
 library(ggthemes)
 library(pROC)
 library(spaero)
+library(doParallel)
+library(parallel)
+library(foreach)
+
+
+# Set number of cores based on machine ------------------------------------
+
+avail_cores <- detectCores()
+if(avail_cores <= 4){
+  n_cores <- 3  # on PC
+} else{
+  n_cores <- 20  # on lab monster
+}
 
 
 # Define function to calculate R0 from seasonal params --------------------
@@ -30,13 +43,13 @@ vacc_thresholds <- {}
 for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   # Load fitted parameters and pomp model 
-  mle_file <- paste0("../results/initial-mif-lls-", do_city, ".csv")
+  mle_file <- paste0("./results/initial-mif-lls-", do_city, ".csv")
   mles <- read.csv(mle_file) %>% 
     slice(2:n()) %>%  # ignore first row of storage NAs
     filter(loglik == max(loglik, na.rm = TRUE)) %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
   
-  pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
+  pomp_file <- paste0("./code/measles-pomp-object-", do_city, ".RDS")
   fitted_pomp <- readRDS(pomp_file)
   
   # Calculte R0 
@@ -76,13 +89,13 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
 
 # Load simulations --------------------------------------------------------
 
-all_files <- list.files("../simulations/")
+all_files <- list.files("./simulations/")
 sim_file_ids <- grep("elimination-simulations-grid", all_files)
 sim_files <- all_files[sim_file_ids]
 all_sims_list <- list()
 counter <- 1
 for(do_file in sim_files){
-  tmp_file <- paste0("../simulations/", do_file)
+  tmp_file <- paste0("./simulations/", do_file)
   tmp <- readRDS(tmp_file) %>%
     filter(time > 0) %>%
     left_join(vacc_thresholds, by = "city") %>%
@@ -177,7 +190,7 @@ ews_data_example <- data_for_ews %>%
 
 min_time <- min(ews_data_example$time)
 
-example_file <- "../simulations/elimination-simulations-grid-Maradi-1.5e-05.RDS"
+example_file <- "./simulations/elimination-simulations-grid-Maradi-1.5e-05.RDS"
 example_data <- readRDS(example_file) %>%
   filter(sim == 2) %>%
   left_join(vacc_thresholds, by = "city") %>%
@@ -187,21 +200,7 @@ example_data <- readRDS(example_file) %>%
   filter(use_it == FALSE) %>%
   mutate(group = ifelse(time < 50, 1, 2))
 
-saveRDS(list(example_data, ews_data_example), "../simulations/single-elimination-example.RDS")
-
-# ggplot() +
-#   geom_line(data = example_data, aes(x = time, y = reports, group = group), color = "tan", alpha = 0.4, size = 0.3) +
-#   geom_vline(data = ews_data_example, aes(xintercept = max(time)), color = "dodgerblue4",  linetype = 2) +
-#   geom_vline(data = ews_data_example, aes(xintercept = min(time)), color = "dodgerblue4",  linetype = 2) +
-#   geom_vline(data = ews_data_example, aes(xintercept = 50), color = "grey45", linetype = 1) +
-#   geom_line(data = ews_data_example, aes(x = time, y = reports), color = "tan", size = 0.3) +
-#   annotate(geom = "text", x = 28, y = 1450, label = "Null window") +
-#   annotate(geom = "text", x = 70, y = 1450, label = "Test window") +
-#   annotate(geom = "text", x = 38, y = 900, label = "start of\nvaccination campaign", size = 3, color = "grey25") +
-#   annotate(geom = "text", x = 81, y = 900, label = "coverage reaches\nherd immunity", size = 3, color = "dodgerblue4") +
-#   labs(x = "Simulation time (year)", y = "Reported cases") +
-#   theme_classic(base_size = 14)
-# ggsave(filename = "../figures/elimination-series-example.pdf", height = 3, width = 7, units = "in")
+saveRDS(list(example_data, ews_data_example), "./simulations/single-elimination-example.RDS")
 
 
 # Calculate EWS -----------------------------------------------------------
@@ -255,25 +254,39 @@ for(do_city in unique(data_for_ews$city)){
       filter(city == do_city & vacc_speed == do_speed) %>%
       pull(bandwidth)
     
-    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_stats, 
-                       bw = window_bandwidth)
+    # Calculate EWS for each sim of first half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_first <- foreach(i=1:ncol(first_half), .combine=cbind) %dopar%
+      my_get_stats(first_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
     
-    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_stats, 
-                        bw = window_bandwidth)
+    # Calculate EWS for each sim of second half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_second <- foreach(i=1:ncol(second_half), .combine=cbind) %dopar%
+      my_get_stats(second_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
     
     first_tbl <- tibble(
       metric = row.names(ews_first)
     ) %>%
       bind_cols(as_tibble(ews_first)) %>%
       gather(key = sim, value = value, - metric) %>%
-      mutate(half = "first")
+      mutate(half = "first") %>%
+      separate(col = sim, into = c("trash", "sim"), sep = "[.]") %>%
+      dplyr::select(-trash) %>%
+      mutate(sim = as.integer(sim))
     
     second_tbl <- tibble(
       metric = row.names(ews_second)
     ) %>%
       bind_cols(as_tibble(ews_second)) %>%
       gather(key = sim, value = value, - metric) %>%
-      mutate(half = "second")
+      mutate(half = "second") %>%
+      separate(col = sim, into = c("trash", "sim"), sep = "[.]") %>%
+      dplyr::select(-trash) %>%
+      mutate(sim = as.integer(sim))
     
     tmp_out <- bind_rows(first_tbl, second_tbl) %>%
       mutate(
@@ -288,7 +301,7 @@ for(do_city in unique(data_for_ews$city)){
 }  # end city loop
 
 # Save the results
-write.csv(x = ews_out, file = "../results/ews-elimination.csv", row.names = FALSE)
+write.csv(x = ews_out, file = "./results/ews-elimination.csv", row.names = FALSE)
 
 
 # Format results ----------------------------------------------------------
@@ -341,7 +354,7 @@ for(do_city in unique(ews_long$city)){
   }
 }
 
-write.csv(x = auc_tbl, "../results/elimination-grid-aucs.csv")
+write.csv(x = auc_tbl, "./results/elimination-grid-aucs.csv")
 
 
 

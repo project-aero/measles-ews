@@ -7,6 +7,13 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
+# Get number of reps from command line ------------------------------------
+
+args <- commandArgs(trailingOnly = F)
+myargument <- args[length(args)]
+myargument <- sub("-","",myargument)
+nreps <- as.numeric(myargument)
+
 # Set up grid of susceptible depletions -----------------------------------
 
 discount_grid <- c(0.0001, seq(0.1, 1, length.out = 10))
@@ -19,8 +26,15 @@ library(pomp)
 library(foreach)
 library(doParallel)  # functions for parallel computing
 
-registerDoParallel()
-source("make-pomp-simulator-function.R")
+source("./code/make-pomp-simulator-function.R")
+
+# Set number of cores based on machine ------------------------------------
+
+if(parallel::detectCores() <= length(discount_grid)){
+  registerDoParallel(cores = detectCores() - 1)
+} else{
+  registerDoParallel()
+}
 
 
 all_sims <- tibble()
@@ -29,13 +43,13 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   # Load fitted parameters and pomp model -----------------------------------
   
-  mle_file <- paste0("../results/initial-mif-lls-", do_city, ".csv")
+  mle_file <- paste0("./results/initial-mif-lls-", do_city, ".csv")
   mles <- read.csv(mle_file) %>% 
     slice(2:n()) %>%  # ignore first row of storage NAs
     filter(loglik == max(loglik, na.rm = TRUE)) %>%
     dplyr::select(-do_grid, -loglik, -loglik_se)
   
-  pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
+  pomp_file <- paste0("./code/measles-pomp-object-", do_city, ".RDS")
   fitted_pomp <- readRDS(pomp_file)
   
   
@@ -56,7 +70,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     
     model_sims <- simulate(
       simulator_pomp,
-      nsim = 500,
+      nsim = nreps,
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble()
@@ -68,7 +82,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
         susc_discount = i
       )
     
-    outfile <- paste0("../simulations/emergence-simulations-grid-", do_city, "-", i, ".RDS")
+    outfile <- paste0("./simulations/emergence-simulations-grid-", do_city, "-", i, ".RDS")
     saveRDS(object = tmp_re_sims, file = outfile)
   }
   

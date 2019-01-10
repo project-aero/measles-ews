@@ -18,11 +18,11 @@ library(lubridate)
 
 for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   # Load pomp object 
-  pomp_file <- paste0("measles-pomp-object-", do_city, ".RDS")
+  pomp_file <- paste0("./code/measles-pomp-object-", do_city, ".RDS")
   measles_pomp <- readRDS(pomp_file)
 
   # Load MLEs
-  mle_file <- paste0("../results/initial-mif-lls-", do_city, ".csv")
+  mle_file <- paste0("./results/initial-mif-lls-", do_city, ".csv")
   mles <- read.csv(mle_file) %>%
     as_tibble() %>%
     filter(loglik == max(loglik, na.rm = TRUE)) %>%
@@ -48,6 +48,6 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
     ) %>%
     nest(-sim)
 
-  out_file <- paste0("../simulations/bootstrap-sims-", do_city, ".RDS")
+  out_file <- paste0("./simulations/bootstrap-sims-", do_city, ".RDS")
   saveRDS(object = sims, file = out_file)
 }
