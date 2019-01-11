@@ -1,67 +1,102 @@
 ---
+title: "Supporting Information for:"
+subtitle: "Critical slowing down anticipates emergence and elimination of measles"
+author: "Andrew T. Tredennick, Eamon O'Dea, TBD, Pejman Rohani, John M. Drake"
+output: pdf_document
+date: "`r Sys.Date()`"
 csl: science-without-titles.csl
-fontsize: 11pt
-geometry: margin=1in
-header-includes:
- - \usepackage{amsmath,amssymb}
- - \usepackage{changepage}
- - \usepackage{textcomp,marvosym}
- - \usepackage{cite}
- - \usepackage{nameref,hyperref}
- - \usepackage[left]{lineno}
- - \usepackage{microtype}
- - \DisableLigatures[f]{encoding = *, family = * }
- - \usepackage[table]{xcolor}
- - \usepackage{array}
- - \usepackage[font=small,labelfont=bf]{caption}
- - \usepackage{lastpage,fancyhdr,graphicx}
- - \usepackage{epstopdf}
- - \usepackage{mathptmx} 
- - \usepackage{longtable,booktabs}
- - \usepackage[symbol]{footmisc}
- - \usepackage{float}
- - \floatplacement{figure}{H}
-layout: 11pt
-linkcolor: black
-output:
-  pdf_document:
-    fig_caption: yes
-    keep_tex: no
-urlcolor: black
 bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
+header-includes:
+  - \renewcommand{\thefootnote}{\fnsymbol{footnote}}
+  - \renewcommand{\theequation}{S.\arabic{equation}}
+  - \renewcommand{\thetable}{S\arabic{table}}
+  - \renewcommand{\thefigure}{S\arabic{figure}}
+  - \renewcommand{\thesection}{Section S\arabic{section}}
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
+  - \usepackage{amsmath,amssymb}
 ---
-\renewcommand{\thefootnote}{\fnsymbol{footnote}}
-\renewcommand{\theequation}{S.\arabic{equation}}
-\renewcommand{\thetable}{S\arabic{table}}
-\renewcommand{\thefigure}{S\arabic{figure}}
-\renewcommand{\thesection}{Section S\arabic{section}}
 
-\raggedright
-\vspace*{0.2in}
-
-\begin{centering}
-
-{\LARGE
-\textbf\newline{SUPPLEMENTAL INFORMATION FOR:\\Title} 
-}
-
-\vspace{2em}
-
-Andrew T. Tredennick, others
-
-\end{centering}
-
-
-# Stochastic simulations from the fitted models
-
-Here we show stochastic simulations from the fitted models.
-Simulations are all initialized from the same initial conditions, which were estimated as part of model fitting.
-
-```{r stoch-sims, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Stochastic simulations from the fitted models. Each colored line is a single realization of the model from the same initial conditions. Ten simulations are shown. The black lines are the observed data. We do not expect model simulations to perfectly align with the data because of the multiple sources of stochasticity present. Thus, these simulations should be judged by their ability to reproduce dynamical features of the data.", fig.width=8.5, fig.height=4}
+```{r libraries, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, cache = FALSE)
 library(tidyverse)
+library(lubridate)
 library(stringr)
 library(dplyr)
 library(pomp)
+library(ggthemes)
+library(cowplot)
+```
+
+# Demographic data used in model fitting
+We used two sources of demographic data to help constrain model fitting: total population size (*N*) and birth rate ($\mu$).
+Both sets of data are reported on an annual basis.
+To incorporate the data in our model, we fit splines through the annual observations to interpolate daily values (Fig. \ref{demog-plot}).
+Note that the daily interpolated birth rate is still in units of "per year," which is why births are modeled as $\mu N \times dt$ to include the effect of the daily time step *dt*.
+
+```{r demo-data, fig.width=8.5, fig.height=3, fig.cap="Plots of the demographic data used for model fitting. The points are the actual data and the lines are the interpolated spline fits. Population data is at the disrict level, meaning we have different data for each focal city. Birth rate data is national, meaning each city shares the same birth rates. \\label{demog-plot}"}
+
+annual_pop <- read_csv("../data/raw-data/district_pops.csv")
+annual_births <- read_csv("../data/raw-data/niger_crude_birth_rates.csv")
+demog_clean <- readRDS("../data/clean-data/annual-demographic-data-niger-cities-clean.RDS")
+
+# Births
+birth_data <- annual_births %>%
+  mutate(
+    date = mdy(date),  # lubridate prefixes any 2digit year 00-68 with 20, 
+                       # not a problem for us though
+    year = as.character(year(date)),
+    rate_per_person_per_year = births_per_thousand/1000
+  ) %>%
+  dplyr::select(year, rate_per_person_per_year) %>%
+  mutate(year = as.numeric(year)) %>%
+  filter(year > 1994 & year < 2006) %>%
+  mutate(time = year+0.000)
+
+ggplot() +
+  geom_line(data = filter(demog_clean, time <= 2005), aes(x = time, y = birth_per_person_per_year)) +
+  geom_point(data = birth_data, aes(x = time, y = rate_per_person_per_year)) +
+  labs(x = "Time", y = expression(paste("Annual per capita birth rate (", mu, ")"))) +
+  scale_color_colorblind(name = NULL) +
+  theme_minimal() -> birth_plot
+
+# Population
+pop_data <- annual_pop %>%
+  gather(key = year, value = population, -X1) %>%
+  rename(region = X1) %>%
+  mutate(
+    region = ifelse(region == "Niamey I", "Niamey", region),
+    year = as.numeric(year),
+    time = year + 0.000  # make time double
+  ) %>%
+  filter(region %in% c("Agadez", "Maradi", "Niamey", "Zinder"))
+
+demog_clean <- demog_clean %>%
+  mutate(
+    region = ifelse(region == "Agadez (City)", "Agadez", region),
+    region = ifelse(region == "Maradi (City)", "Maradi", region),
+    region = ifelse(region == "Niamey (City)", "Niamey", region),
+    region = ifelse(region == "Zinder (City)", "Zinder", region)
+  )
+
+ggplot() +
+  geom_line(data = filter(demog_clean, time <= 2005), aes(x = time, y = population_size/1000, color = region)) +
+  geom_point(data = pop_data, aes(x = time, y = population/1000, color = region)) +
+  labs(x = "Time", y = expression(paste("Population size (", italic(N), " x 1000)"))) +
+  scale_color_colorblind(name = NULL) +
+  theme_minimal() +
+  theme(legend.position = c(0.2, 0.9),
+        legend.key.size = unit(1, 'lines')) -> pop_plot
+
+plot_grid(birth_plot, pop_plot, nrow = 1, align = "h")
+```
+
+# Stochastic simulations from the fitted models
+
+Here we show stochastic simulations from the fitted models (Fig. \ref{stoch-sims}).
+Simulations are all initialized from the same initial conditions, which were estimated as part of model fitting.
+
+```{r stoch-sims, fig.cap="Stochastic simulations from the fitted models. Each colored line is a single realization of the model from the same initial conditions. Ten simulations are shown. The black lines are the observed data. We do not expect model simulations to perfectly align with the data because of the multiple sources of stochasticity present. Thus, these simulations should be judged by their ability to reproduce dynamical features of the data. \\label{stoch-sims}", fig.width=8.5, fig.height=4}
 
 code_files <- list.files("../code/")
 pomp_ids <- grep("measles-pomp-object", code_files)
@@ -134,7 +169,7 @@ Parameter definitions are in Table S1.
 | ---------- | ----------------------------| ---------- |
 | $n_{0S}$ | Births into the *S* compartment, not vaccinated | (1, 0, 0, 0) |
 | $n_{SE}$ | Number of people transitioning from *S* to *E* | (-1, 1, 0, 0) |
-| $n_{SO}$ | Number of deaths leaving *S* | (-1,0,0,0) |
+| $n_{SO}$ | Number of deaths leaving *S* | (-1, 0, 0, 0) |
 | $n_{EI}$ | Number of people transitioning from *E* to *I* | (0, -1, 1, 0) |
 | $n_{E0}$ | Number of deaths leaving *E* | (0, -1, 0, 0) |
 | $n_{0I}$ | Number of imported infections | (0, 0, 1, 0) |
@@ -181,6 +216,8 @@ We modeled rate of transmission as:
 $\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
+
+Finally, observations were simulated from the model on a weekly time step by drawing cases from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days (*x*), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $\text{cases} \sim \text{Negative binomial}(\rho x, \tau)$.
 
 In this model, the basic reproduction number can be calculated as:
 
