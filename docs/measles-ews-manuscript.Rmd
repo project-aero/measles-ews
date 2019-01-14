@@ -116,7 +116,7 @@ for(do_file in pred_files){
 
 Forecasts of the emergence and re-emergence of infectious diseases have the potential to save lives, money, and human productivity by allowing for proactive, rather than reactive, preparedness measures [@Han2016].
 Similarly, indicators of the elimination of infectious diseases can signal the effectiveness of ``end game'' strategies aimed at disease eradication [@Drake2017].
-Predicting (re)emergence and elimination is possible with complex mathematical models of disease transmission, but their success relies on detailed understanding of the underlying transmission and pathogen dynamics.
+Predicting (re)emergence and elimination is possible with complex mathematical models of disease transmission, but their success relies on detailed understanding of the underlying transmission dynamics and adequate data [@Metcalf2017].
 We often do not have enough information to parameterize such models.
 An alternative approach is to use model-independent statistical signals that portend infectious disease (re)emergence and elimination by detecting critical slowing down as the system approaches a critical transition [@ORegan2013].
 
