@@ -2,7 +2,10 @@
 title: "Supporting Information for:"
 subtitle: "Critical slowing down anticipates emergence and elimination of measles"
 author: "Andrew T. Tredennick, Eamon O'Dea, TBD, Pejman Rohani, John M. Drake"
-output: pdf_document
+output: 
+  pdf_document:
+    number_sections: true
+    toc_depth: 2
 date: "`r Sys.Date()`"
 csl: science-without-titles.csl
 bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
@@ -18,7 +21,7 @@ header-includes:
 ---
 
 ```{r libraries, include=FALSE, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, cache = FALSE)
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE)
 library(tidyverse)
 library(lubridate)
 library(stringr)
@@ -233,9 +236,9 @@ For example, if $R_E$ reaches or exceeds 1 at some point during the fifth year o
 Thus, the simulated data for calculating early warning signals ends at the end of the fifth year.
 We call this year the ``critical year.''
 From this full window, from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $R_E = 1$) and the test interval as the second half of the full window (near $R_E = 1$).
-Figure Sx shows a typical example.
+Figure \ref{emerge-sim} shows a typical example.
 
-```{r emerge-windows, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was discounted by 1e-04. (**A**) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (**B**) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals.", fig.width=6}
+```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was discounted by 1e-04. (**A**) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (**B**) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
 
@@ -284,9 +287,8 @@ cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports))
   labs(x = "Simulation time (year)", y = "Reported cases") +
   theme_classic(base_size = 12)
 
-outplot <- cowplot::plot_grid(re_series, cases_series, nrow = 2, align = "v", 
-                              scale = 0.9, labels = "AUTO", label_size = 12)
-print(outplot)
+plot_grid(re_series, cases_series, nrow = 2, align = "v", 
+          scale = 0.9, labels = "AUTO", label_size = 12)
 ```
 
 For simulations of disease elimination by increasing the vaccination coverage of the population, we define the critical time as the time at which vaccination coverage reaches the threshold needed for herd immunity.
@@ -298,9 +300,9 @@ We set the time at which vaccination coverage is equal to *p* as the endpoint fo
 All elimination simulations had vaccination campaigns that started at year 50.
 So, we define the test interval as the times between year 50 and the year at which vaccination coverage is equal to *p*.
 We then defined the null interval as window with length equal to test interval and ending at year 49.
-Figure Sx shows a typical example.
+Figure \ref{elimin-sim} shows a typical example.
 
-```{r elim-ex,  message=FALSE, warning=FALSE, echo = FALSE, fig.cap="A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval.", fig.width=6}
+```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
 
 example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
 ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
@@ -354,11 +356,9 @@ ts_plot <- ggplot() +
   labs(x = "Simulation time (year)", y = "Reported cases") +
   theme_classic(base_size = 14)
 
-cowplot::plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
+plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
 
 ```
-
-<!-- ![ A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (left-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. ](../figures/elimination-series-example.pdf){ width=\textwidth } -->
 
 # Early warning signals
 
@@ -493,7 +493,7 @@ print(ews_hists)
 
 We used a bootstrap approach to estimate approximate 95\% confidence intervals for all parameters.
 Below we show summary statistics for all parameters except the B-splines.
-For B-splines, and transmission rate more gerenally, we plot the seasonal transmission rate function for all bootstrap replicates.
+For B-splines, and transmission rate more gerenally, we plot the seasonal transmission rate function for all bootstrap replicates (Figure \ref{season-trans}).
 
 ```{r param-summaries, message=FALSE, warning=FALSE, echo = FALSE, results = "asis"}
 
@@ -650,7 +650,7 @@ for(do_city in unique(param_summaries$city)){
 }
 ```
 
-```{r plot-seasonal-transmission, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Bootstrap replicates of estimated seasonal transmission functions.", fig.width=8.5, fig.height=3}
+```{r plot-seasonal-transmission, fig.cap="Bootstrap replicates of estimated seasonal transmission functions. \\label{season-trans}", fig.width=8.5, fig.height=3}
 
 seasonal_functions <- seasonal_functions %>%
   mutate(
@@ -670,9 +670,9 @@ ggplot(seasonal_functions, aes(x = date, y = beta, group = boot)) +
 
 In the main text we show EWS performance across the range of susceptible discounting factors and vaccination campaign speeds we modeled.
 To put these values into context, here we show the corresponding bandwidths for each simulation.
-These bandwidths are the number of weeks that occur in the null and test intervals.
+These bandwidths are the number of weeks that occur in the null and test intervals (Figure \ref{bws}).
 
-```{r bw-weeks, fig.width=8.5, fig.height=4, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Length of null and test intervals (in weeks) for emergence and elimination simulations at different parameter values."}
+```{r bw-weeks, fig.width=8.5, fig.height=4, fig.cap="Length of null and test intervals (in weeks) for emergence and elimination simulations at different parameter values.  \\label{bws}"}
 read_csv("../results/emergence-bandwidths.csv") %>%
   ggplot(aes(x = susc_discount, y = bandwidth, color = city)) +
   geom_line() +
@@ -709,7 +709,7 @@ We used the distributions of Kendall's $\tau$ over the 500 replicate simulations
 For the approach to elimination, the results are similar to those for the fixed window analysis (Figure \ref{mvw-ews}B).
 For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure \ref{mvw-ews}A).
 
-```{r plot-aucs, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
+```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
 library(viridis)
 emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
 elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")
