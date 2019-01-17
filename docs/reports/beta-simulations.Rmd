@@ -1,0 +1,42 @@
+---
+title: "Simulations for measles-ews"
+output: html_notebook
+---
+
+One of the things emerging from the EWS analysis from the measles models is that EWS perform worse when dynamics are relatively "fast" or relatively "slow."
+This makes intuitive sense, I think, because fast dynamics result in short intervals where estimating the EWS is difficult.
+On the flip side, slow dynamics result in null and test intervals that aren't all that different.
+But, this is all just conjecture.
+I'm hoping some simple simulations can prove the point.
+
+My plan is to use the simulator function in `spaero` to do some quick simulations across a grid of transmission rates, from small (slow dynamics) to large (fast dynamics).
+There may also be some analytical results for this that Eamon already knows about.
+
+## Set up pomp simulator
+
+```{r set-sim}
+library(pomp)
+library(spaero)
+library(tidyverse)
+
+sim_sir <- function(do_beta = 24e-04, sim_type = "emergence") {
+  betas <- switch(sim_type,
+                  emergence = c(0, do_beta),
+                  elimination = c(do_beta, 0))
+  
+  params <- c(gamma=24, mu=0.014, d=0.014, eta=1e-4, beta=0,
+            rho=0.9, S_0=1, I_0=0, R_0=0, N_0=1e5, p=0)
+  
+  covar <- data.frame(gamma_t=c(0, 0), mu_t=c(0, 0), d_t=c(0, 0), eta_t=c(0, 0),
+                      beta_t=betas, p_t = c(0, 0), time=c(0, 300))
+  
+  times <- seq(0, 50, by=1/52)
+  sim <- create_simulator(params=params, times=times, covar=covar)
+  so <- pomp::simulate(sim, as.data.frame=TRUE, seed=272)
+  return(so)
+}
+
+sim_out <- sim_sir(do_beta = 1/365, sim_type = "emergence")
+plot(ts(sim_out[, "cases"], freq=52), ylab="No. reports")
+Rnot <- (sim_out$beta_t) / (25 + 0.014)
+```
