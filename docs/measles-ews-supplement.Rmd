@@ -739,4 +739,100 @@ eliminate_plot <- ggplot() +
 cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = "AUTO", label_size = 12)
 ```
 
+
+# Susceptible depletion after outbreaks
+
+We *a priori* defined the magnitude of susceptible depletion in our models of measles re-emergence after an outbreak.
+Thus, a potential limit to our study is that the actual magnitudes of susceptible depletion are less than the values we modeled.
+That is, maybe we modeled very unrealistic levels of susceptible depletion, making our results interesting but not useful.
+To test the importance of this limitation, we calculated the relative decline of the susceptible class after outbreak years.
+We used the 100 replicate simulations that were used for parametric bootstrapping.
+These simulations adequately reproduce the general dynamics of measles in each city, including outbreak size.
+We used the simulations because the replicates gave us more outbreaks to work with than the observed data alone.
+
+For each of the 100 replicates for each city, we defined an "outbreak year" as any year in which the cumulative number of reported cases exceeded 80% of the maximum number of cumulative cases observed across all years.
+We then calculated susceptible depletion (i.e., the susceptible discounting fraction used in our modeling study) as the minimum number of susceptible individuals in the outbreak year divided by the maximum number of susceptible individuals in the previous year.
+For example, let year *t* be an outbreak year where the cumulative number of cases exceeded 80% of the maximum cumulative cases observed.
+The level of susceptible depletion between year $t-1$ and year $t$ is then: $\text{min}(S_t)/\text{max}(S_{t-1})$.
+Essentially, this metric tells us the discounting fraction that would need to be applied to *S* to simulate an outbreak of the size in year *t*.
+Histograms for each city are in Figure \ref{susc-disc}.
+
+```{r, fig.width=4, fig.height=3, fig.cap="Histograms of susceptible depletion discounting factors for each city. Values were calculated by comparing the number of susceptible individuals before and after large outbreaks from 100 replicate simulations from the fitted models for each city.  \\label{susc-disc}"}
+# Define threshold for outbreak year --------------------------------------
+
+# Outbreaks defined as: an annual case count exceeding x% of the maximum
+# annual case count for a region, where x is the threshold set below.
+outbreak_threshold <- 0.8  # 80% of max = outbreak year
+
+
+# Load simulated data -----------------------------------------------------
+
+cities <- c("Agadez", "Maradi", "Niamey", "Zinder")
+sim_data <- tibble()
+for(do_city in cities){
+  tmp_file <- paste0("../simulations/bootstrap-sims-", do_city, ".RDS")
+  tmp_data <- readRDS(tmp_file) %>%
+    unnest() %>%
+    mutate(city = do_city)
+  sim_data <- bind_rows(sim_data, tmp_data)
+}
+
+
+# Identify outbreak years and calculate S depletion -----------------------
+
+outbreak_years <- sim_data %>%
+  mutate(year = trunc(time)) %>%
+  group_by(city, sim, year) %>%
+  summarise(total_cases = sum(reports),
+            max_S = max(S),
+            min_S = min(S)) %>%
+  mutate(outbreak = ifelse(total_cases > outbreak_threshold*max(total_cases), 
+                           TRUE, FALSE),
+         max_S_t_minus_1 = lag(max_S),
+         susc_depletion = min_S / max_S_t_minus_1) %>%
+  filter(outbreak == TRUE) %>%
+  drop_na()
+
+
+# Calculate fraction of depletions less than 0.5 --------------------------
+
+fracs_less_than_half <- outbreak_years %>%
+  ungroup() %>%
+  group_by(city) %>%
+  mutate(
+    deplete_half = ifelse(susc_depletion < 0.5, TRUE, FALSE)
+  ) %>%
+  group_by(city, deplete_half) %>%
+  count() %>%
+  group_by(city) %>%
+  mutate(
+    frac_less = n/sum(n)
+  ) %>%
+  filter(deplete_half == TRUE) %>%
+  dplyr::select(city, frac_less)
+
+
+# Plot boxplots of susceptible depletion ----------------------------------
+
+ggplot() +
+  geom_histogram(data = filter(outbreak_years, city == "Agadez"), 
+                 aes(x = susc_depletion, fill = city), 
+                 color = "white", binwidth = 0.05) +
+  geom_histogram(data = filter(outbreak_years, city == "Maradi"), 
+                 aes(x = susc_depletion, fill = city), 
+                 color = "white", binwidth = 0.05) +
+  geom_histogram(data = filter(outbreak_years, city == "Niamey"), 
+                 aes(x = susc_depletion, fill = city), 
+                 color = "white", binwidth = 0.05) +
+  geom_histogram(data = filter(outbreak_years, city == "Zinder"), 
+                 aes(x = susc_depletion, fill = city), 
+                 color = "white", binwidth = 0.05) +
+  geom_vline(aes(xintercept = 0.5), color = "grey25", linetype = 2) +
+  labs(y = "Number of outbreaks", x = "Level of susceptible depletion") +
+  scale_fill_colorblind(name = NULL) +
+  theme_minimal(base_size = 12)
+```
+
+
+
 # References
