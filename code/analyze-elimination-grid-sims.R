@@ -188,6 +188,9 @@ example_data <- readRDS(example_file) %>%
   mutate(group = ifelse(time < 50, 1, 2))
 
 saveRDS(list(example_data, ews_data_example), "../simulations/single-elimination-example.RDS")
+bws %>%
+  arrange(city, vacc_speed) %>%
+  write.csv(file = "../results/elimination-bandwidths.csv")
 
 # ggplot() +
 #   geom_line(data = example_data, aes(x = time, y = reports, group = group), color = "tan", alpha = 0.4, size = 0.3) +
