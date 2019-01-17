@@ -106,13 +106,13 @@ re_series <- ggplot() +
   facet_grid(susc_discount~city) +
   theme_minimal() 
 
-ggsave(
-  filename = "../figures/effective-r-emergence-grid.pdf", 
-  plot = re_series, 
-  width = 8.5, 
-  height = 5, 
-  units = "in"
-)
+# ggsave(
+#   filename = "../figures/effective-r-emergence-grid.pdf", 
+#   plot = re_series, 
+#   width = 8.5, 
+#   height = 5, 
+#   units = "in"
+# )
 
 
 # Format data for 2-window EWS --------------------------------------------
@@ -165,6 +165,9 @@ for(do_city in unique(all_sims$city)){
   }
 }
 
+bws %>%
+  arrange(city, susc_discount) %>%
+  write.csv(file = "../results/emergence-bandwidths.csv")
 
 # Calculate EWS -----------------------------------------------------------
 
