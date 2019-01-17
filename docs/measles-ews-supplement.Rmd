@@ -666,6 +666,39 @@ ggplot(seasonal_functions, aes(x = date, y = beta, group = boot)) +
 
 ```
 
+# Length of null and test intervals
+
+In the main text we show EWS performance across the range of susceptible discounting factors and vaccination campaign speeds we modeled.
+To put these values into context, here we show the corresponding bandwidths for each simulation.
+These bandwidths are the number of weeks that occur in the null and test intervals.
+
+```{r bw-weeks, fig.width=8.5, fig.height=4, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Length of null and test intervals (in weeks) for emergence and elimination simulations at different parameter values."}
+read_csv("../results/emergence-bandwidths.csv") %>%
+  ggplot(aes(x = susc_discount, y = bandwidth, color = city)) +
+  geom_line() +
+  geom_point(size = 3) +
+  labs(x = "Susceptible discounting factor", 
+       y = "Number of weeks in interval",
+       title = "Length of emergence intervals") +
+  scale_color_colorblind(name = NULL) +
+  guides(color = FALSE) +
+  theme_minimal() -> emerge_ints
+
+read_csv("../results/elimination-bandwidths.csv") %>%
+  ggplot(aes(x = vacc_speed, y = bandwidth, color = city)) +
+  geom_line() +
+  geom_point(size = 3) +
+  labs(x = "Speed of vaccination campaign", 
+       y = "Number of weeks in interval",
+       title = "Length of elimination intervals") +
+  scale_color_colorblind(name = NULL) +
+  theme_minimal() +
+  theme(legend.position = c(0.8,0.8)) -> elimin_ints
+
+cowplot::plot_grid(emerge_ints, elimin_ints, nrow = 1, align = "h")
+
+```
+
 # Moving window analysis
 
 To complement our fixed window analysis presented in the main text, we conducted a moving window analysis as might be conducted on real surveilance data.
@@ -673,10 +706,10 @@ We used the same null and test intervals as described above for the emergence an
 However, instead of calculating a single value for each EWS over the entire window of the interval, we calculated EWS in the intervals over moving windows of 35 weeks.
 We then calculated the Kendall's rank correlation ($\tau$) between each EWS and time in each of the null and test intervals.
 We used the distributions of Kendall's $\tau$ over the 500 replicate simulations to then calculate the Area Under the Curve (AUC) metric for each EWS.
-For the approach to elimination, the results are similar to those for the fixed window analysis (Figure S7B).
-For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure S7A).
+For the approach to elimination, the results are similar to those for the fixed window analysis (Figure \ref{mvw-ews}B).
+For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure \ref{mvw-ews}A).
 
-```{r plot-aucs, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition."}
+```{r plot-aucs, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
 library(viridis)
 emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
 elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")
