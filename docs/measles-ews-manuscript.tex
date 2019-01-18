@@ -501,7 +501,9 @@ critical transition. The asterisks in (A) for Niamey note EWS with high
 AUC but for the wrong reason: skewness and kurtosis \emph{decrease} as
 \(R_E(t)\) approaches 1 rather than increase. This occurs because of the
 negative binomial sampling in the measurement component of our SEIR
-model (\emph{13}). \label{aucs}}
+model (\emph{13}). See Fig. Sx for visualization of how susceptible
+discounting factor and the vaccination speed map to number of weeks in
+the null and test intervals. \label{aucs}}
 \end{figure}
 
 In the approach to re-emergence, the EWS generally perform as expected,
@@ -521,11 +523,12 @@ as the amount of susceptible depletion decreases. This is expected
 because more rapid returns to \(R_E(t)=1\) result in shorter null and
 test intervals, making estimates of EWS less precise (\emph{12}).
 Moreover, as the time to reach \(R_E(t)=1\) decreases, the chance of a
-bifurcation delay (\emph{10}) increases due to the changing equilibrium
-of \(R_0\) and demographic stochasticity (\emph{12}). Thus, re-emergence
-may prove difficult to anticipate in ``fast'' transmission systems, as
-demonstrated theoretically by (\emph{12}) and seen empirically here in
-the Niamey dynamics (Figs. \ref{scatters}B, \ref{aucs}A).
+bifurcation delay increases due to the changing equilibrium of \(R_0\)
+combined with demographic stochasticity (\emph{10}, \emph{12}). Thus,
+re-emergence may prove difficult to anticipate in ``fast'' transmission
+systems, as demonstrated theoretically by (\emph{12}) and seen
+empirically here in the Niamey dynamics (Figs. \ref{scatters}B,
+\ref{aucs}A).
 
 The EWS did not perform as well when anticipating elimination, relative
 to emergence (Fig. \ref{aucs}B). Only three metrics are reliable: mean,
@@ -553,6 +556,20 @@ The variance decreases on the approach to elimination, which is counter
 to generic theory but in line with expectations specific to an SIR
 disease transmission model (\emph{4}).
 
+\begin{figure}
+\centering
+\includegraphics{measles-ews-manuscript_files/figure-latex/var-ews-1.pdf}
+\caption{Boxplots of the variance in null (far from \(R_E\) = 1) and
+test (close to \(R_E\) = 1) intervals. As expected by theory, the
+variance decreases on the approach to elimination and the variance
+increases on the approach to emergence. Greater separation between the
+null and test distributions leads to higher AUC values in Fig. 3. The
+plotted results from emergence simulations where the susceptible
+discounting factor is 1E-04 and from elimination simulations where the
+speed to herd immunity is 1.5E-05. Variance is log transformed for
+visual purposes. \label{var-ex}}
+\end{figure}
+
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
 
@@ -576,17 +593,6 @@ in some cases than in others. For example, AUC values for emergence at
 the 0.5 level of susceptible depletion are already low for most cities
 (Fig. \ref{aucs}A). Thus, EWS are not practical for cities that rarely
 experience levels of susceptible depletion below 0.5 (e.g., Agadez).
-
-\begin{figure}
-\centering
-\includegraphics{measles-ews-manuscript_files/figure-latex/var-ews-1.pdf}
-\caption{Boxplots of the variance in null (far from \(R_E\) = 1) and
-test (close to \(R_E\) = 1) intervals. As expected by theory, the
-variance decreases on the approach to elimination and the variance
-increases on the approach to emergence. Greater separation between the
-null and test distributions leads to higher AUC values in Fig. 3.
-Variance is log transformed for visual purposes. \label{var-ex}}
-\end{figure}
 
 Our results should encourage efforts to develop model-independent early
 warning systems for infectious diseases (\emph{1}). We have shown that

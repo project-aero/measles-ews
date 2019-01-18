@@ -165,6 +165,7 @@ the_map <- ggplot(region_boundaries)+
     point.padding = 0.3,
     size = 2
   ) + 
+  annotate("text", x = 12, y = 20, label = "Niger", fontface = 3, size = 5) +
   labs(x = "Longitude", y = "Latitude") +
   theme_minimal()
 
@@ -524,7 +525,7 @@ plot_grid(scatters, rnaughts, labels = NULL, scale = 0.9, label_size = 12)
 ```
 
 
-```{r aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over fixed windows. EWS were calculated over two windows, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition. The asterisks in (A) for Niamey note EWS with high AUC but for the wrong reason: skewness and kurtosis *decrease* as $R_E(t)$ approaches 1 rather than increase. This occurs because of the negative binomial sampling in the measurement component of our SEIR model [@Brett2018]. \\label{aucs}"}
+```{r aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over fixed windows. EWS were calculated over two windows, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition. The asterisks in (A) for Niamey note EWS with high AUC but for the wrong reason: skewness and kurtosis *decrease* as $R_E(t)$ approaches 1 rather than increase. This occurs because of the negative binomial sampling in the measurement component of our SEIR model [@Brett2018]. See Fig. Sx for visualization of how susceptible discounting factor and the vaccination speed map to number of weeks in the null and test intervals.  \\label{aucs}"}
 library(viridis)
 
 emergence_aucs <- read.csv("../results/emergence-grid-aucs.csv")
@@ -572,7 +573,7 @@ Thus, these metrics are unreliable.
 For the other cities, variance, mean, index of dispersion, decay time, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (Fig. \ref{aucs}A).
 Their performance declines as the amount of susceptible depletion decreases.
 This is expected because more rapid returns to $R_E(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise [@Brett2017].
-Moreover, as the time to reach $R_E(t)=1$ decreases, the chance of a bifurcation delay [@Dibble2016] increases due to the changing equilibrium of $R_0$ and demographic stochasticity [@Brett2017].
+Moreover, as the time to reach $R_E(t)=1$ decreases, the chance of a bifurcation delay increases due to the changing equilibrium of $R_0$ combined with demographic stochasticity [@Dibble2016; @Brett2017].
 Thus, re-emergence may prove difficult to anticipate in "fast" transmission systems, as demonstrated theoretically by @Brett2017 and seen empirically here in the Niamey dynamics (Figs. \ref{scatters}B, \ref{aucs}A).
 <!-- In part, this is because susceptible replenishment is linear in our model. -->
 <!-- Nonlinear increases in the susceptible pool would lead to different dynamics. -->
@@ -591,6 +592,41 @@ A change in the variance of a dynamical system is one of the most well-studied e
 Thus, we show the distributions of the variance in the null and test intervals for each city as an example of the changes expected (Fig. \ref{var-ex}).
 In many cases, the variance is expected to increase as a critical transition is approached [@Carpenter2006; @Dakos2012a; @ORegan2013], and we find this to be the case for re-emergence.
 The variance decreases on the approach to elimination, which is counter to generic theory but in line with expectations specific to an SIR disease transmission model [@ORegan2013].
+
+```{r var-ews, fig.width=4, fig.height=4, fig.cap="Boxplots of the variance in null (far from $R_E$ = 1) and test (close to $R_E$ = 1) intervals. As expected by theory, the variance decreases on the approach to elimination and the variance increases on the approach to emergence. Greater separation between the null and test distributions leads to higher AUC values in Fig. 3. The plotted results from emergence simulations where the susceptible discounting factor is 1E-04 and from elimination simulations where the speed to herd immunity is 1.5E-05. Variance is log transformed for visual purposes. \\label{var-ex}"}
+do_metric <- "variance"
+
+emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
+  filter(metric == do_metric & susc_discount == 1e-04)  %>%
+  mutate(
+    metric = as.character(metric),
+    metric = ifelse(metric == "variance", "Variance", metric),
+    type = "Emerge."
+  )
+
+elimin_ews <- read.csv("../results/ews-elimination.csv") %>%
+  filter(metric == do_metric & vacc_speed == 1.5e-05)  %>%
+  mutate(
+    metric = as.character(metric),
+    metric = ifelse(metric == "variance", "Variance", metric),
+    type = "Elimin."
+  )
+
+all_ews <- bind_rows(emerge_ews, elimin_ews)
+
+mycols <- c("#91CDF0", "#EF6677")
+
+ggplot(all_ews, aes(x = type, y = log(value), fill = half)) +
+  geom_boxplot(outlier.size = 0.6, outlier.shape = 1, width = 0.5, lwd = 0.2) +
+  facet_wrap(~city, scales = "free", nrow = 2) +
+  scale_fill_manual(values = mycols, name = "Interval", labels = c("Null", "Test")) +
+  labs(x = NULL, y = "log(Variance)") +
+  theme_classic(base_size = 10) +
+  theme(panel.spacing = unit(1, "lines"),
+        strip.background = element_blank(),
+        strip.text = element_text(face = "bold"),
+        plot.title = element_text(face = "bold"))
+```
 
 # Discussion
 
@@ -660,40 +696,6 @@ We found that susceptible depletion was less than 0.5, the smallest susceptible 
 These statistics do not detract from our main findings of CSD in measles dynamics, but they do suggest that EWS might be less useful in some cases than in others.
 For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (Fig. \ref{aucs}A).
 Thus, EWS are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
-
-```{r var-ews, fig.width=4, fig.height=4, fig.cap="Boxplots of the variance in null (far from $R_E$ = 1) and test (close to $R_E$ = 1) intervals. As expected by theory, the variance decreases on the approach to elimination and the variance increases on the approach to emergence. Greater separation between the null and test distributions leads to higher AUC values in Fig. 3. Variance is log transformed for visual purposes. \\label{var-ex}"}
-do_metric <- "variance"
-
-emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
-  filter(metric == do_metric & susc_discount == 1e-04)  %>%
-  mutate(
-    metric = as.character(metric),
-    metric = ifelse(metric == "variance", "Variance", metric),
-    type = "Emerge."
-  )
-
-elimin_ews <- read.csv("../results/ews-elimination.csv") %>%
-  filter(metric == do_metric & vacc_speed == 1.5e-05)  %>%
-  mutate(
-    metric = as.character(metric),
-    metric = ifelse(metric == "variance", "Variance", metric),
-    type = "Elimin."
-  )
-
-all_ews <- bind_rows(emerge_ews, elimin_ews)
-
-mycols <- c("#91CDF0", "#EF6677")
-
-ggplot(all_ews, aes(x = type, y = log(value), fill = half)) +
-  geom_boxplot(outlier.size = 0.6, outlier.shape = 1, width = 0.5, lwd = 0.2) +
-  facet_wrap(~city, scales = "free", nrow = 2) +
-  scale_fill_manual(values = mycols, name = "Interval", labels = c("Null", "Test")) +
-  labs(x = NULL, y = "log(Variance)") +
-  theme_classic(base_size = 10) +
-  theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
-        strip.text = element_text(face = "bold"),
-        plot.title = element_text(face = "bold"))
-```
 
 Our results should encourage efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
 We have shown that critical slowing down precedes tipping points in real disease dynamics, but how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
