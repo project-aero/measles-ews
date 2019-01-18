@@ -40,7 +40,7 @@ preamble: |
   \journal{Journal Name}
   \usepackage{lineno}
   \linenumbers
-  \usepackage{tgtermes}
+  \usepackage{mathptmx}
   \renewcommand{\theaffn}{\arabic{affn}}
 extra: \usepackage[nomarkers]{endfloat}
 ---
@@ -571,10 +571,11 @@ Thus, these metrics are unreliable.
 
 For the other cities, variance, mean, index of dispersion, decay time, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (Fig. \ref{aucs}A).
 Their performance declines as the amount of susceptible depletion decreases.
-This is expected because more rapid returns to $R_E(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise.
-Likewise, as the total time to reach $R_E(t)=1$ decreases, the null and test intervals start to behave more similarly.
-In part, this is because susceptible replenishment is linear in our model.
-Nonlinear increases in the susceptible pool would lead to different dynamics.
+This is expected because more rapid returns to $R_E(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise [@Brett2017].
+Moreover, as the time to reach $R_E(t)=1$ decreases, the chance of a bifurcation delay [@Dibble2016] increases due to the changing equilibrium of $R_0$ and demographic stochasticity [@Brett2017].
+Thus, re-emergence may prove difficult to anticipate in "fast" transmission systems, as demonstrated theoretically by @Brett2017 and seen empirically here in the Niamey dynamics (Figs. \ref{scatters}B, \ref{aucs}A).
+<!-- In part, this is because susceptible replenishment is linear in our model. -->
+<!-- Nonlinear increases in the susceptible pool would lead to different dynamics. -->
 
 The EWS did not perform as well when anticipating elimination, relative to emergence (Fig. \ref{aucs}B).
 Only three metrics are reliable: mean, autocovariance, and variance.
@@ -586,7 +587,7 @@ In all, the suite of EWS suggest that critical slowing down does occur in measle
 We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, Fig. S7).
 But, all EWS performed worse when predicting the approach to emergence over the moving window (Fig. S7).
 
-A change in the variance of a dynamical system is one of the most well-studied early warning signals [@Scheffer2012], and it performed well here Fig. \ref{aucs}.
+A change in the variance of a dynamical system is one of the most well-studied early warning signals [@Scheffer2012], and it performed well here (Fig. \ref{aucs}).
 Thus, we show the distributions of the variance in the null and test intervals for each city as an example of the changes expected (Fig. \ref{var-ex}).
 In many cases, the variance is expected to increase as a critical transition is approached [@Carpenter2006; @Dakos2012a; @ORegan2013], and we find this to be the case for re-emergence.
 The variance decreases on the approach to elimination, which is counter to generic theory but in line with expectations specific to an SIR disease transmission model [@ORegan2013].
@@ -693,6 +694,12 @@ ggplot(all_ews, aes(x = type, y = log(value), fill = half)) +
         strip.text = element_text(face = "bold"),
         plot.title = element_text(face = "bold"))
 ```
+
+Our results should encourage efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
+We have shown that critical slowing down precedes tipping points in real disease dynamics, but how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
+Emerging technologies like artifical intelligence might offer new ways to find optimal detection thresholds for early warning signals.
+But there will always be a role for expert judgement.
+Early warning signals, though powerful and now accompanied with robust empirical support, will likely be just one part of a decision-support toolkit.
 
 # Acknowledgments
 This research was funded by the National Institute of General Medical Sciences of the National Institutes of Health (Award Number U01GM110744).
