@@ -77,8 +77,8 @@ measles_process <- Csnippet(
   
   cases += dNIR;  // caseas are cumulative reports at end of infectious period (I->R)
   if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
-  RE = (beta_t / gamma) * (S / N);
-  RE_seas = (beta / gamma) * (S / N);
+  RE = (beta_t / (gamma + eta)) * (S / N);
+  RE_seas = (beta / (gamma + eta)) * (S / N);
   cases_state = rnbinom_mu(1/tau, rho*cases);
   "
 )

@@ -98,12 +98,14 @@ ggplot(ews_reffs, aes(x = med, y = value, color = region)) +
   facet_wrap(~ews, scales = "free") +
   ggthemes::scale_color_colorblind()
 
-ggplot(filter(ews_reffs, region == "Maradi (City)" & ews == "variance"), 
+for(do_region in unique(ews_reffs$region)){
+  print(ggplot(filter(ews_reffs, region == do_region & ews == "variance"), 
        aes(x = med, y = value, color = lubridate::week(date))) +
-  geom_point() +
-  facet_wrap(~lubridate::year(date), scales = "free") +
-  labs(x = expression(R[E]), y = "EWS value") +
-  scale_color_viridis_c(name = "week of year", direction = 1)
+    geom_point() +
+    facet_wrap(~lubridate::year(date), scales = "free") +
+    labs(x = expression(R[E]), y = "EWS value", title = do_region) +
+    scale_color_viridis_c(name = "week of year", direction = 1))
+}
 ```
 
 So those plots are pretty weird because of the temporal cycling.
@@ -116,6 +118,56 @@ test <- filter(ews_reffs, region == "Maradi (City)" & ews == "variance") %>%
 test_reff <- diff(test$med)
 test_ews <- diff(test$value) 
 
-plot(test_reff, test_ews, ylim = c(-100,100), xlim = c(0,0.4))
+plot(test_reff, test_ews)
 cor(test_reff, test_ews, method = "spearman", use = "pairwise.complete.obs")
+```
+
+# Rolling correlation?
+The region-specific plots of $R_E$ and variance over time make it look like they are correlated at some points and not correlated at others.
+Wonder if a rolling correlation can do the trick?
+
+```{r roll-corr}
+do_region <- "Zinder (City)"
+variances <- ews_reffs %>%
+  filter(ews == "variance" & region == do_region) %>%
+  pull(value)
+
+reffs <- ews_reffs %>%
+  filter(ews == "variance" & region == do_region) %>%
+  pull(med)
+
+cases <- measles_data %>%
+    filter(region == do_region) %>%
+    pull(cases)
+
+par(mfrow = c(2, 1))
+plot(reffs, type = "l")
+plot(variances, type = "l")
+
+test <- zoo::rollapply(data.frame(variances,reffs), 10, function(x) cor(x[,1],x[,2]), by.column=FALSE)
+
+df <- tibble(x = test, y = reffs[10:length(reffs)])
+ggplot(df, aes(x = seq_along(x), y = y, color = x)) +
+  geom_line(color = "grey35", size = 0.3) +
+  geom_point() +
+  geom_hline(aes(yintercept = 1), linetype = 2, color = "grey45") +
+  scale_color_viridis_c(limits = c(-1,1), name = expression(paste("cor(", R[E], ", var)"))) +
+  labs(x = "time", y = expression(R[E]))
+
+# df <- tibble(x = variances[10:length(reffs)], y = reffs[10:length(reffs)])
+# ggplot(df, aes(x = seq_along(x), y = y, color = sqrt(x))) +
+#   geom_line(color = "grey35", size = 0.3) +
+#   geom_point() +
+#   geom_hline(aes(yintercept = 1), linetype = 2, color = "grey45") +
+#   scale_color_viridis_c(name = "variance") +
+#   labs(x = "time", y = expression(R[E]))
+# 
+# df <- tibble(x = variances, y = cases)
+# ggplot(df, aes(x = seq_along(x), y = y, color = sqrt(x))) +
+#   geom_line(color = "grey35", size = 0.3) +
+#   geom_point() +
+#   geom_hline(aes(yintercept = 1), linetype = 2, color = "grey45") +
+#   scale_color_viridis_c(name = "variance") +
+#   labs(x = "time", y = "cases")
+
 ```
