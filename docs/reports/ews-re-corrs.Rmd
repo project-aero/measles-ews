@@ -1,0 +1,121 @@
+---
+title: "Correlations between EWS and effective reproduction number"
+output: html_notebook
+---
+
+To complement the fixed window analysis focused on emergence and elimination events, we also want to show that the dynamics of EWS reflect those of $R_E$.
+I estimated $R_E$ over the observations via particle filtering and state estimation.
+Here, I read in those values for each city and correlate them with top-performing EWS.
+Top-performing EWS are those with high AUC in the emergence and elimination scenarios.
+Note that $R_E$ was calculated as:
+
+$$
+R_E = \frac{\beta_t}{(\gamma + \eta)} \frac{S_t}{N_t}.
+$$
+
+```{r load-re}
+library(tidyverse)
+
+cities <- c("Agadez", "Maradi", "Niamey", "Zinder")  # the four city names
+reffs <- tibble()  # empty tibble for storage
+
+for(do_city in cities){
+  fname <- paste0("../../results/filtered-states-", do_city, ".RDS")
+  raw_filter <- readRDS(fname)
+  reff_id <- which(raw_filter$state == "effective_r_seasonal")
+  tmp_reff <- raw_filter$data[[reff_id]] %>%
+    dplyr::select(time, med, week, date) %>%
+    dplyr::mutate(city = do_city)
+  
+  reffs <- bind_rows(reffs, tmp_reff)
+}
+
+ggplot(reffs, aes(x = date, y = med, color = city)) +
+  geom_hline(aes(yintercept = 1), linetype = 2, color = "grey35") +
+  geom_line() +
+  labs(x = "date", y = expression(italic(R)[E]), 
+       title = "Effective reproduction number over time") +
+  ggthemes::scale_color_colorblind()
+```
+
+Now I calculate the EWS at each observation time using the `spaero::get_stats()` function.
+I use a bandwidth of 35 weeks and set `backward_only = TRUE` so that only past data are used when calculating EWS.
+
+```{r ews-calc}
+library(spaero)
+
+fname <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+measles_data <- readRDS(fname) %>%
+  filter(year > 1994)  # drop first NA year, only used for modeling
+
+all_stats <- tibble()  # empty tibble for storage
+
+for(do_region in unique(measles_data$region)){
+  
+  cases <- measles_data %>%
+    filter(region == do_region) %>%
+    pull(cases)
+  
+  city_stats <- spaero::get_stats(
+    x = cases,
+    center_trend = "local_constant", 
+    center_kernel = "uniform", 
+    center_bandwidth = 35, 
+    stat_trend = "local_constant", 
+    stat_kernel = "uniform", 
+    stat_bandwidth = 35, 
+    lag = 1, 
+    backward_only = TRUE
+  )$stats
+  
+  city_stats_tb <- as_tibble(city_stats) %>%
+    mutate(
+      time_iter = 1:n(),
+      date = unique(measles_data$date)
+    ) %>%
+    gather(key = ews, value = value, -time_iter, -date) %>%
+    mutate(region = do_region)
+  
+  all_stats <- bind_rows(all_stats, city_stats_tb)
+}
+
+best_ews <- c("autocorrelation", "autocovariance", "mean", "variance")
+all_stats <- all_stats %>%
+  dplyr::filter(ews %in% best_ews)
+```
+
+Now I look at scatterplots of $R_E$ versus EWS.
+
+```{r scatters}
+reffs <- reffs %>%
+  dplyr::mutate(region = paste0(city, " (City)")) %>%
+  dplyr::select(-city)
+
+ews_reffs <- left_join(all_stats, reffs)
+
+ggplot(ews_reffs, aes(x = med, y = value, color = region)) +
+  geom_point(alpha = 0.6) +
+  facet_wrap(~ews, scales = "free") +
+  ggthemes::scale_color_colorblind()
+
+ggplot(filter(ews_reffs, region == "Maradi (City)" & ews == "variance"), 
+       aes(x = med, y = value, color = lubridate::week(date))) +
+  geom_point() +
+  facet_wrap(~lubridate::year(date), scales = "free") +
+  labs(x = expression(R[E]), y = "EWS value") +
+  scale_color_viridis_c(name = "week of year", direction = 1)
+```
+
+So those plots are pretty weird because of the temporal cycling.
+What if I remove the seasonal component via differencing?
+
+```{r rm-seas}
+test <- filter(ews_reffs, region == "Maradi (City)" & ews == "variance") %>% 
+  dplyr::mutate(value = dplyr::lag(value, n = 20))
+
+test_reff <- diff(test$med)
+test_ews <- diff(test$value) 
+
+plot(test_reff, test_ews, ylim = c(-100,100), xlim = c(0,0.4))
+cor(test_reff, test_ews, method = "spearman", use = "pairwise.complete.obs")
+```
