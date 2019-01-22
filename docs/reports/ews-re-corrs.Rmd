@@ -127,7 +127,7 @@ The region-specific plots of $R_E$ and variance over time make it look like they
 Wonder if a rolling correlation can do the trick?
 
 ```{r roll-corr}
-do_region <- "Zinder (City)"
+do_region <- "Maradi (City)"
 variances <- ews_reffs %>%
   filter(ews == "variance" & region == do_region) %>%
   pull(value)
@@ -162,12 +162,29 @@ ggplot(df, aes(x = seq_along(x), y = y, color = x)) +
 #   scale_color_viridis_c(name = "variance") +
 #   labs(x = "time", y = expression(R[E]))
 # 
-# df <- tibble(x = variances, y = cases)
-# ggplot(df, aes(x = seq_along(x), y = y, color = sqrt(x))) +
-#   geom_line(color = "grey35", size = 0.3) +
-#   geom_point() +
-#   geom_hline(aes(yintercept = 1), linetype = 2, color = "grey45") +
-#   scale_color_viridis_c(name = "variance") +
-#   labs(x = "time", y = "cases")
+df <- tibble(x = reffs, y = cases)
+ggplot(df, aes(x = seq_along(x), y = y, color = sqrt(x))) +
+  geom_line(color = "grey35", size = 0.3) +
+  geom_point() +
+  geom_hline(aes(yintercept = 1), linetype = 2, color = "grey45") +
+  scale_color_viridis_c(name = expression(R[E]), limits = c(1,1.5)) +
+  labs(x = "time", y = "cases")
 
+```
+
+# Differencing before correlating
+
+```{r diffing}
+do_region <- "Maradi (City)"
+variances <- ews_reffs %>%
+  filter(ews == "variance" & region == do_region) %>%
+  pull(value)
+
+reffs <- ews_reffs %>%
+  filter(ews == "variance" & region == do_region) %>%
+  pull(med)
+
+reff_diffs <- diff(log(reffs))
+var_diffs <- diff(variances)
+cor(var_diffs, reff_diffs)
 ```
