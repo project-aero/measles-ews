@@ -1,6 +1,7 @@
 ---
 title: "Correlations between EWS and effective reproduction number"
 output: html_notebook
+date: 2019-01-22
 ---
 
 To complement the fixed window analysis focused on emergence and elimination events, we also want to show that the dynamics of EWS reflect those of $R_E$.
@@ -167,7 +168,7 @@ ggplot(df, aes(x = seq_along(x), y = y, color = sqrt(x))) +
   geom_line(color = "grey35", size = 0.3) +
   geom_point() +
   geom_hline(aes(yintercept = 1), linetype = 2, color = "grey45") +
-  scale_color_viridis_c(name = expression(R[E]), limits = c(1,1.5)) +
+  scale_color_viridis_c(name = expression(R[E])) +
   labs(x = "time", y = "cases")
 
 ```
