@@ -86,9 +86,9 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     double f;
     mean = cases*rho;
     if (ISNA(reports)) {  // for catching missing observations
-    lik = (give_log) ? 0 : 1;
+      lik = (give_log) ? 0 : 1;
     } else {
-    f = dnbinom_mu(reports, 1/tau, mean, give_log);  // neg binomial likelihood
+      f = dnbinom_mu(reports, 1/tau, mean, give_log);  // neg binomial likelihood
     }
     
     lik = (give_log) ? log(f) : f;
@@ -103,9 +103,9 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     reports = rnbinom_mu(1/tau, rho*cases);  // neg binomial measurement process
     
     if (reports > 0.0) {
-    reports = nearbyint(reports);
+      reports = nearbyint(reports);
     } else {
-    reports = 0.0;
+      reports = 0.0;
     }
     "
   )
