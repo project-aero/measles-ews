@@ -12,6 +12,9 @@ library(tidyverse)
 library(ggthemes)
 library(pROC)
 library(spaero)
+library(doParallel)
+library(parallel)
+library(foreach)
 
 
 # Define function to calculate R0 from seasonal params --------------------
