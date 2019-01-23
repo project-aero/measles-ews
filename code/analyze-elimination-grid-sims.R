@@ -17,11 +17,12 @@ library(spaero)
 # Define function to calculate R0 from seasonal params --------------------
 
 calc_R0 <- function(beta, qis, season, eta = (365/8), 
-                    mu = 0.05, nu = 0.05, gamma = (365/5)){
+                    mu = 0.05, nu = 0.05, gamma = (365/5), p = 0.7){
   B <- as.numeric((1 + exp(season %*% qis)) * beta)
-  R0 <- (eta*B*mu) / (nu*(eta + nu)*(gamma + nu))
+  R0 <- (eta*B*mu*(1-p)) / (nu*(eta + nu)*(gamma + nu))
   return(R0)
 }
+
 
 # Calculate vaccination thresholds for each city --------------------------
 

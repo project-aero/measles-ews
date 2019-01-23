@@ -23,34 +23,34 @@ rho_curve_ramp <- function(t, start = 52*4, speed = 0.0015){
 # Define function to calculate R0 from seasonal params --------------------
 
 calc_R0 <- function(beta, qis, season, eta = (365/8), 
-                    mu = 0.05, nu = 0.05, gamma = (365/5)){
+                    mu = 0.05, nu = 0.05, gamma = (365/5), p = 0.7){
   B <- as.numeric((1 + exp(season %*% qis)) * beta)
-  R0 <- (eta*B*mu) / (nu*(eta + nu)*(gamma + nu))
+  R0 <- (eta*B*mu*(1-p)) / (nu*(eta + nu)*(gamma + nu))
   return(R0)
 }
 
 
 # Make example plot of vaccination curve ----------------------------------
 
-vacc_ex_tbl <- tibble(
-  week = 0:520,
-  coverage = sapply(0:520, FUN = rho_curve_ramp)
-)
-
-ggplot(vacc_ex_tbl, aes(week, coverage)) +
-  geom_line(color = "dodgerblue4", size = 1) +
-  geom_hline(aes(yintercept = 0.7), linetype = 2, 
-             size = 0.25, color = "grey45") +
-  geom_hline(aes(yintercept = 0.95), linetype = 2, 
-             size = 0.25, color = "grey45") +
-  labs(x = "Week", y = "Vaccination coverage") +
-  annotate(geom = "text", x = 420, y = 0.71, color = "grey45",
-           label = "Current vaccination coverage in Niger", size = 3) +
-  annotate(geom = "text", x = 125, y = 0.94, color = "grey45",
-           label = "Vaccination coverage for herd immunity", size = 3) +
-  theme_classic(base_size = 14)
-ggsave(filename =  "../figures/vaccination-coverage-example.pdf", 
-       width = 6, height = 3.5, units = "in")
+# vacc_ex_tbl <- tibble(
+#   week = 0:520,
+#   coverage = sapply(0:520, FUN = rho_curve_ramp)
+# )
+# 
+# ggplot(vacc_ex_tbl, aes(week, coverage)) +
+#   geom_line(color = "dodgerblue4", size = 1) +
+#   geom_hline(aes(yintercept = 0.7), linetype = 2, 
+#              size = 0.25, color = "grey45") +
+#   geom_hline(aes(yintercept = 0.95), linetype = 2, 
+#              size = 0.25, color = "grey45") +
+#   labs(x = "Week", y = "Vaccination coverage") +
+#   annotate(geom = "text", x = 420, y = 0.71, color = "grey45",
+#            label = "Current vaccination coverage in Niger", size = 3) +
+#   annotate(geom = "text", x = 125, y = 0.94, color = "grey45",
+#            label = "Vaccination coverage for herd immunity", size = 3) +
+#   theme_classic(base_size = 14)
+# ggsave(filename =  "../figures/vaccination-coverage-example.pdf", 
+#        width = 6, height = 3.5, units = "in")
   
 
 
