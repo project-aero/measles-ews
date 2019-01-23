@@ -118,3 +118,58 @@ for(do_ews in unique(all_stats$ews)){
 }
 ```
 
+# Post-outbreak EWS
+
+As the plots above show, most EWS get swamped out by the "memory" of outbreaks.
+To try and get around this, I am going to look at EWS after resetting them following outbreaks.
+I don't think this is too contrived because real-world early detection systems would have to do the same thing.
+
+## How to ID outbreaks
+Following Toby's suggestion, I am going to look at the distribution of outbreak sizes (i.e., cumulative cases in each year).
+
+```{r}
+pop_data <- tibble(
+  region = c("Agadez (City)", "Maradi (City)", "Niamey (City)", "Zinder (City)"),
+  pop = c(118224, 267249, 1027000, 322935)
+)
+
+cusum_data <- measles_data %>%
+  group_by(region, year) %>%
+  summarise(cases = sum(cases)) %>%
+  left_join(pop_data)
+
+ggplot(cusum_data, aes(x = cases/pop)) +
+  geom_histogram(aes(fill = region))
+
+cusum_cases <- sort(cusum_data$cases / cusum_data$pop)
+fit1 <- MASS::fitdistr(cusum_cases, "exponential") 
+
+x <- cusum_cases
+mixexplik <- function(p,lambda1,lambda2) {
+  z <- p*dexp(x,lambda1) + (1-p)*dexp(x,lambda2)
+  return(-sum(log(z)))
+}
+
+mle_fit <- stats4::mle(minuslogl=mixexplik, 
+                       start= list(p=0.2,
+                                   lambda1 = as.numeric(fit1$estimate), 
+                                   lambda2 = as.numeric(fit1$estimate)), 
+                       method="Nelder-Mead")
+
+z1 <- rexp(1000, rate = mle_fit@coef["lambda1"])
+z2 <- rexp(1000, rate = mle_fit@coef["lambda2"])
+zall <- mle_fit@coef["p"]*z1 + (1-mle_fit@coef["p"])*z2
+plot(density(zall))
+lines(density(z1), col = "red")
+lines(density(z2), col = "blue")
+
+hist(x, breaks = 25, freq = FALSE, main = NULL, ylim = c(0,1300),
+     xlab = "incidence (reports/person)", col = "grey")
+lines(density(z1), col = "red", lwd = 2)
+lines(density(z2), col = "blue", lwd = 2)
+legend(0.0025, 800, legend=c("small outbreaks", "large outbreaks"),
+       col=c("red", "blue"), lty = 1, cex = 0.8, lwd = 2)
+
+```
+
+
