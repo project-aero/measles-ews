@@ -64,8 +64,10 @@ for(do_city in cities){
   
   # Make data table
   do_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
-  obs_data <- readRDS(do_file) %>%
-    dplyr::filter(region == paste(do_city, "(City)")) %>%
+  measles_data <- readRDS(do_file) %>%
+    dplyr::filter(region == paste(do_city, "(City)")) 
+  
+  obs_data <- measles_data %>%
     dplyr::select(time, cases) %>%
     dplyr::rename(reports = cases)
   
@@ -116,7 +118,7 @@ for(do_city in cities){
     sdev_cases = pred_stdev
   )
   
-  pred_outfile <- paste0("../results/predictive-dist-states-", DO_CITY, ".RDS")
+  pred_outfile <- paste0("../results/predictive-dist-states-", do_city, ".RDS")
   saveRDS(
     object = predictive_distribution, 
     file = pred_outfile
