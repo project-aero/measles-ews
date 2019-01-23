@@ -63,9 +63,8 @@ make_pomp_filter <- function(obs_data, covar_data, mles)
     I += dN0I        + dNEI - dNIR;
     
     cases += dNIR;  // cases are cumulative reports at end of infectious period (I->R)
-    if (beta_sd > 0.0)  W += (dW-dt)/beta_sd;
-    RE = (beta_t / (gamma + eta)) * (S / N);
-    RE_seas = (beta / (gamma + eta)) * (S / N);
+    RE = (beta_t / gamma) * (S / N);
+    RE_seas = (beta / gamma) * (S / N);
     cases_state = rnbinom_mu(1/tau, rho*cases);
     "
   )
@@ -139,7 +138,6 @@ make_pomp_filter <- function(obs_data, covar_data, mles)
     I = nearbyint(N*I_0);
     cases = nearbyint(N*I_0);
     cases_state = nearbyint(N*I_0);
-    W = 0;
     RE = 0;
     RE_seas = 0;
     beta_t = beta_mu;
@@ -159,13 +157,13 @@ make_pomp_filter <- function(obs_data, covar_data, mles)
     dmeasure = measles_dmeasure,
     initializer = initial_values,
     statenames = c("S", "E", "I", "cases", "cases_state", 
-                   "W", "RE", "RE_seas", "beta_t"),
+                   "RE", "RE_seas", "beta_t"),
     toEstimationScale = to_estimation,
     fromEstimationScale = from_estimation,
     paramnames = names(params),
     params = params,
     globals = "int K = 6;",
-    zeronames = c("cases", "W", "cases_state")
+    zeronames = c("cases", "cases_state")
   )
   
   return(filtering_pomp)
