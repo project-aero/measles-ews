@@ -159,14 +159,15 @@ mle_fit <- stats4::mle(minuslogl=mixexplik,
 z1 <- rexp(1000, rate = mle_fit@coef["lambda1"])
 z2 <- rexp(1000, rate = mle_fit@coef["lambda2"])
 zall <- mle_fit@coef["p"]*z1 + (1-mle_fit@coef["p"])*z2
-plot(density(zall))
-lines(density(z1), col = "red")
-lines(density(z2), col = "blue")
 
-hist(x, breaks = 25, freq = FALSE, main = NULL, ylim = c(0,1300),
+bound <- qexp(p=0.5, rate = mle_fit@coef["lambda1"], lower.tail = TRUE, log.p = FALSE)
+
+hist(x, breaks = 30, freq = FALSE, main = NULL, ylim = c(0,1300),
      xlab = "incidence (reports/person)", col = "grey")
-lines(density(z1), col = "red", lwd = 2)
-lines(density(z2), col = "blue", lwd = 2)
+lines(density(z1), col = "red", lwd = 1)
+lines(density(z2), col = "blue", lwd = 1)
+lines(density(zall), col = "black", lwd = 2)
+abline(v = bound, lty = 2, col = "grey25", lwd = 2)
 legend(0.0025, 800, legend=c("small outbreaks", "large outbreaks"),
        col=c("red", "blue"), lty = 1, cex = 0.8, lwd = 2)
 
