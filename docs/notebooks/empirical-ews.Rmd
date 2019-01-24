@@ -222,7 +222,29 @@ Let's look at a test case of Niamey post 1995 leading up to the outbreak in 1999
 
 ```{r}
 niamey_test <- measles_data %>%
-  filter(region == "Maradi (City)") 
+  filter(region == "Niamey (City)") %>%
+  filter(year > 1998 & year < 2000)
+
+cases <- niamey_test$cases
+variance <- spaero::get_stats(
+    x = cases,
+    center_trend = "local_constant", 
+    center_kernel = "uniform", 
+    center_bandwidth = 16, 
+    stat_trend = "local_constant", 
+    stat_kernel = "uniform", 
+    stat_bandwidth = 16, 
+    lag = 1, 
+    backward_only = TRUE
+  )$stats$variance
+
+plot_it(dates = niamey_test$date, cases = cases, ews = log(variance), lab = "log(variance)", title = NULL)
+
+```
+
+```{r}
+niamey_test <- measles_data %>%
+  filter(region == "Niamey (City)") 
 
 out_vars <- tibble()
 
@@ -253,11 +275,58 @@ for(do_year in unique(niamey_test$year)){
   out_vars <- bind_rows(out_vars, tmp_var)
 }
 
-ggplot(out_vars, aes(x = date, y = variance, color = outbreak_year)) +
-  geom_line() +
-  facet_wrap(~year, scales = "free")
+max_case_week <- niamey_test %>%
+  group_by(year) %>%
+  filter(cases == max(cases)) %>%
+  filter(week_of_year == min(week_of_year))
+
+ggplot() +
+  geom_line(data = out_vars, aes(x = lubridate::week(date), y = log(variance), 
+                                 group = year, color = outbreak_year)) +
+  geom_vline(data = max_case_week, aes(xintercept = week_of_year, color = outbreak_year), linetype = 2)
 ```
 
+Hmmm, this seems promising.
+Perhaps I can fit a GAM through the trajectories and use model selection to determine if an interaction model (outbreak year*time interaction effect) fits better than a GAM with no interaction.
+Then can use Gavin's methods for determining time points that are different.
+Model-based minimum time of difference would be the on-average indicator time, which could be compared to max cases within the year.
+Should do this with data (like above) and the simulations.
+
+```{r}
+gam_data <- out_vars %>%
+  dplyr::select(date, variance, outbreak_year) %>%
+  dplyr::mutate(
+    week_of_year = lubridate::week(date),
+    log_variance = log(variance+0.00001),
+    outbreak_year = as.factor(outbreak_year)
+  ) %>%
+  dplyr::select(-date)
+  
+test_formula <- as.formula(
+  log_variance ~ outbreak_year + s(week_of_year, by = outbreak_year, k = 2)
+)
+gam_model <- mgcv::gam(formula = test_formula, data = gam_data)
+
+pred_df <- tibble(
+  week_of_year = rep(1:52, times = 2),
+  outbreak_year = rep(as.factor(c(TRUE, FALSE)), each = 52)
+)
+
+preds <- predict(gam_model, newdata = pred_df, type = "response", se.fit = TRUE)
+ests <- as.numeric(preds[[1]])
+ses <- as.numeric(preds[[2]])
+pred_df <- pred_df %>%
+  mutate(preds = ests,
+         se = ses)
+
+ggplot(pred_df, aes(x = week_of_year, y = preds, color = outbreak_year)) +
+  geom_line() +
+  geom_line(aes(y = preds+(se*2)), linetype = 2) +
+  geom_line(aes(y = preds-(se*2)), linetype = 2)
+```
+
+
+# Extra
 Maybe there is a variance value that serves as an indicator?
 Look at high AUCs from the simulations to see what the variances are.
 
