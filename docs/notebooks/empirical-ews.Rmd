@@ -126,6 +126,8 @@ I don't think this is too contrived because real-world early detection systems w
 
 ## How to ID outbreaks
 Following Toby's suggestion, I am going to look at the distribution of outbreak sizes (i.e., cumulative cases in each year).
+I can then fit a mixture distribution of two weighted exponentials to the data, with one exponential explaining the large outbreaks and one the small outbreaks.
+This provides an objective way to define outbreaks for EWS detection.
 
 ```{r}
 pop_data <- tibble(
@@ -156,21 +158,85 @@ mle_fit <- stats4::mle(minuslogl=mixexplik,
                                    lambda2 = as.numeric(fit1$estimate)), 
                        method="Nelder-Mead")
 
-z1 <- rexp(1000, rate = mle_fit@coef["lambda1"])
-z2 <- rexp(1000, rate = mle_fit@coef["lambda2"])
-zall <- mle_fit@coef["p"]*z1 + (1-mle_fit@coef["p"])*z2
+get_prob <- function(x, rate1, rate2, p, x_scale){
+  p1 <- pexp((x+1)/x_scale, rate1) - pexp((x-1)/x_scale, rate1)
+  p2 <- pexp((x+1)/x_scale, rate2) - pexp((x-1)/x_scale, rate2)
+  mixp <- p*p1+(1-p)*p2
+  return(c(p1,p2,mixp))
+}
 
-bound <- qexp(p=0.5, rate = mle_fit@coef["lambda1"], lower.tail = TRUE, log.p = FALSE)
+x_scale <- 1e+05
+xstar <- round(x*x_scale)
+probs <- sapply(xstar, FUN = get_prob, rate1 = mle_fit@coef["lambda1"], 
+                rate2 = mle_fit@coef["lambda2"], p = mle_fit@coef["p"],
+                x_scale = x_scale)
 
-hist(x, breaks = 30, freq = FALSE, main = NULL, ylim = c(0,1300),
-     xlab = "incidence (reports/person)", col = "grey")
-lines(density(z1), col = "red", lwd = 1)
-lines(density(z2), col = "blue", lwd = 1)
-lines(density(zall), col = "black", lwd = 2)
-abline(v = bound, lty = 2, col = "grey25", lwd = 2)
-legend(0.0025, 800, legend=c("small outbreaks", "large outbreaks"),
-       col=c("red", "blue"), lty = 1, cex = 0.8, lwd = 2)
+bound <- qexp(p=(1-mle_fit@coef["p"]), rate = mle_fit@coef["lambda2"], 
+              lower.tail = FALSE, log.p = FALSE)
+
+probs_df <- t(log10(probs)) %>%
+  as_tibble() %>%
+  dplyr::rename(
+    "log10prob_large" = V2,
+    "log10prob_small" = V1,
+    "log10prob_mix" = p
+  ) %>%
+  dplyr::mutate(
+    incidence = x,
+    outbreak_size = ifelse(incidence < bound, "small", "large"),
+    plot_prob = ifelse(outbreak_size == "small", log10prob_small, log10prob_large)
+  )
+
+ggplot(probs_df, aes(x = incidence)) +
+  geom_line(aes(y = log10prob_mix, color = "forestgreen")) +
+  geom_point(aes(y = plot_prob, fill = outbreak_size), size = 3, shape = 21, color = "NA") +
+  geom_vline(aes(xintercept = bound), linetype = 2, color = "grey35") +
+  labs(x = "Case incidence (reports/person)", 
+       y = expression(paste(Log[10]," probability"))) +
+  scale_fill_discrete(name = NULL, labels = c("Large outbreaks", "Small outbreaks")) +
+  scale_color_manual(name = NULL, labels = "GMM fit", values = "forestgreen") +
+  theme_minimal(base_size = 12)
 
 ```
 
+OK, so now I can identify outbreak years in the untransformed (just cases) data for each city.
+
+```{r}
+outbreak_ids <- cusum_data %>%
+  dplyr::mutate(
+    incidence = cases/pop,
+    outbreak_year = ifelse(incidence < bound, FALSE, TRUE)
+  ) %>%
+  dplyr::select(region, year, outbreak_year)
+
+measles_data <- measles_data %>%
+  left_join(outbreak_ids)
+
+ggplot(measles_data, aes(x = date, y = cases, color = outbreak_year, group = year)) +
+  geom_line() +
+  facet_wrap(~region, scales = "free")
+```
+
+Let's look at a test case of Niamey post 1995 leading up to the outbreak in 1999.
+
+```{r}
+niamey_test <- measles_data %>%
+  filter(region == "Niamey (City)") %>%
+  filter(year > 1997 & year < 2000)
+
+test_stats <- spaero::get_stats(
+    x = log(niamey_test$cases+1),
+    center_trend = "local_constant", 
+    center_kernel = "uniform", 
+    center_bandwidth = 35, 
+    stat_trend = "local_constant", 
+    stat_kernel = "uniform", 
+    stat_bandwidth = 35, 
+    lag = 1, 
+    backward_only = TRUE
+  )$stats
+
+variance <- test_stats[["variance"]]
+plot_it(niamey_test$date, cases = niamey_test$cases, ews = variance, lab = "variance", title = NULL)
+```
 
