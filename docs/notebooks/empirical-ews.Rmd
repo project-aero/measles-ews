@@ -1,6 +1,7 @@
 ---
 title: "EWS in measles data"
 output: html_notebook
+date: 2019-01-22
 ---
 
 I use the `spaero::get_stats()` function to calculate EWS over a moving window for the measles case incidence data from four cities in Niger.
@@ -221,22 +222,54 @@ Let's look at a test case of Niamey post 1995 leading up to the outbreak in 1999
 
 ```{r}
 niamey_test <- measles_data %>%
-  filter(region == "Niamey (City)") %>%
-  filter(year > 1997 & year < 2000)
+  filter(region == "Maradi (City)") 
 
-test_stats <- spaero::get_stats(
-    x = log(niamey_test$cases+1),
+out_vars <- tibble()
+
+for(do_year in unique(niamey_test$year)){
+  tmp_cases <- niamey_test %>%
+    filter(year == do_year) %>%
+    pull(cases)
+  
+  tmp_stats <- spaero::get_stats(
+    x = tmp_cases,
     center_trend = "local_constant", 
     center_kernel = "uniform", 
-    center_bandwidth = 35, 
+    center_bandwidth = 16, 
     stat_trend = "local_constant", 
     stat_kernel = "uniform", 
-    stat_bandwidth = 35, 
+    stat_bandwidth = 16, 
     lag = 1, 
     backward_only = TRUE
   )$stats
+  
+  tmp_var <- tibble(
+    year = do_year,
+    date = filter(niamey_test, year == do_year)$date,
+    variance = tmp_stats$variance,
+    outbreak_year = filter(niamey_test, year == do_year)$outbreak_year
+  )
+  
+  out_vars <- bind_rows(out_vars, tmp_var)
+}
 
-variance <- test_stats[["variance"]]
-plot_it(niamey_test$date, cases = niamey_test$cases, ews = variance, lab = "variance", title = NULL)
+ggplot(out_vars, aes(x = date, y = variance, color = outbreak_year)) +
+  geom_line() +
+  facet_wrap(~year, scales = "free")
 ```
 
+Maybe there is a variance value that serves as an indicator?
+Look at high AUCs from the simulations to see what the variances are.
+
+```{r}
+ews <- read_csv("../../results/ews-emergence.csv") %>%
+  filter(city == "Maradi" & metric == "variance" & half == "second")
+
+ggplot(ews, aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(~susc_discount, scales = "free")
+
+med_var <- ews %>%
+  group_by(susc_discount) %>%
+  summarise(value = median(value))
+```
