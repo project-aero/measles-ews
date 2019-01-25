@@ -159,9 +159,9 @@ mle_fit <- stats4::mle(minuslogl=mixexplik,
                                    lambda2 = as.numeric(fit1$estimate)), 
                        method="Nelder-Mead")
 
-get_prob <- function(x, rate1, rate2, p, x_scale){
-  p1 <- pexp((x+1)/x_scale, rate1) - pexp((x-1)/x_scale, rate1)
-  p2 <- pexp((x+1)/x_scale, rate2) - pexp((x-1)/x_scale, rate2)
+get_prob <- function(x, rate1, rate2, p, x_scale, bin_width = 1){
+  p1 <- pexp((x+bin_width)/x_scale, rate1) - pexp((x-bin_width)/x_scale, rate1)
+  p2 <- pexp((x+bin_width)/x_scale, rate2) - pexp((x-bin_width)/x_scale, rate2)
   mixp <- p*p1+(1-p)*p2
   return(c(p1,p2,mixp))
 }
@@ -170,10 +170,9 @@ x_scale <- 1e+05
 xstar <- round(x*x_scale)
 probs <- sapply(xstar, FUN = get_prob, rate1 = mle_fit@coef["lambda1"], 
                 rate2 = mle_fit@coef["lambda2"], p = mle_fit@coef["p"],
-                x_scale = x_scale)
+                x_scale = x_scale, bin_width = 1)
 
-bound <- qexp(p=(1-mle_fit@coef["p"]), rate = mle_fit@coef["lambda2"], 
-              lower.tail = FALSE, log.p = FALSE)
+bound <- qexp(p = 0.5, rate = mle_fit@coef["p"]*mle_fit@coef["lambda1"])
 
 probs_df <- t(log10(probs)) %>%
   as_tibble() %>%
@@ -325,6 +324,12 @@ ggplot(pred_df, aes(x = week_of_year, y = preds, color = outbreak_year)) +
   geom_line(aes(y = preds-(se*2)), linetype = 2)
 ```
 
+# But first, look at just case trajectories
+
+```{r}
+ggplot(niamey_test, aes(x = week_of_year, y = sqrt(cases), color = outbreak_year, group = year)) +
+  geom_line()
+```
 
 # Extra
 Maybe there is a variance value that serves as an indicator?
