@@ -153,11 +153,13 @@ mixexplik <- function(p,lambda1,lambda2) {
   return(-sum(log(z)))
 }
 
-mle_fit <- stats4::mle(minuslogl=mixexplik, 
-                       start= list(p=0.2,
-                                   lambda1 = as.numeric(fit1$estimate), 
-                                   lambda2 = as.numeric(fit1$estimate)), 
-                       method="Nelder-Mead")
+mle_fit <- suppressWarnings(  # ignore warnings about bad guesses
+  stats4::mle(minuslogl = mixexplik, 
+              start= list(p = 0.2,
+                          lambda1 = as.numeric(fit1$estimate), 
+                          lambda2 = as.numeric(fit1$estimate)), 
+              method="Nelder-Mead")
+)
 
 get_prob <- function(x, rate1, rate2, p, x_scale, bin_width = 1){
   p1 <- pexp((x+bin_width)/x_scale, rate1) - pexp((x-bin_width)/x_scale, rate1)
@@ -166,7 +168,7 @@ get_prob <- function(x, rate1, rate2, p, x_scale, bin_width = 1){
   return(c(p1,p2,mixp))
 }
 
-x_scale <- 1e+05
+x_scale <- 1e05
 xstar <- round(x*x_scale)
 probs <- sapply(xstar, FUN = get_prob, rate1 = mle_fit@coef["lambda1"], 
                 rate2 = mle_fit@coef["lambda2"], p = mle_fit@coef["p"],
@@ -189,7 +191,7 @@ probs_df <- t(log10(probs)) %>%
 
 ggplot(probs_df, aes(x = incidence)) +
   geom_line(aes(y = log10prob_mix, color = "forestgreen")) +
-  geom_point(aes(y = plot_prob, fill = outbreak_size), size = 3, shape = 21, color = "NA") +
+  geom_point(aes(y = plot_prob, fill = outbreak_size), size = 3, shape = 21, color = "white") +
   geom_vline(aes(xintercept = bound), linetype = 2, color = "grey35") +
   labs(x = "Case incidence (reports/person)", 
        y = expression(paste(Log[10]," probability"))) +
@@ -243,7 +245,7 @@ plot_it(dates = niamey_test$date, cases = cases, ews = log(variance), lab = "log
 
 ```{r}
 niamey_test <- measles_data %>%
-  filter(region == "Maradi (City)") 
+  filter(region == "Niamey (City)") 
 
 out_vars <- tibble()
 
@@ -302,7 +304,7 @@ gam_data <- out_vars %>%
   dplyr::select(-date)
   
 test_formula <- as.formula(
-  log_variance ~ outbreak_year + s(week_of_year, by = outbreak_year, k = 2)
+  log_variance ~ outbreak_year + s(week_of_year, by = outbreak_year)
 )
 gam_model <- mgcv::gam(formula = test_formula, data = gam_data)
 
@@ -327,9 +329,42 @@ ggplot(pred_df, aes(x = week_of_year, y = preds, color = outbreak_year)) +
 # But first, look at just case trajectories
 
 ```{r}
-ggplot(niamey_test, aes(x = week_of_year, y = sqrt(cases), color = outbreak_year, group = year)) +
+ggplot(niamey_test, aes(x = week_of_year, y = cases, color = outbreak_year, group = year)) +
   geom_line()
+
+gam_data <- niamey_test %>%
+  dplyr::select(date, cases, outbreak_year) %>%
+  dplyr::mutate(
+    week_of_year = lubridate::week(date),
+    log_cases = log(cases+0.0001),
+    outbreak_year = as.factor(outbreak_year)
+  ) %>%
+  dplyr::select(-date)
+  
+test_formula <- as.formula(
+  log_cases ~ outbreak_year + s(week_of_year, by = outbreak_year)
+)
+gam_model <- mgcv::gam(formula = test_formula, data = gam_data)
+
+pred_df <- tibble(
+  week_of_year = rep(1:52, times = 2),
+  outbreak_year = rep(as.factor(c(TRUE, FALSE)), each = 52)
+)
+
+preds <- predict(gam_model, newdata = pred_df, type = "response", se.fit = TRUE)
+ests <- as.numeric(preds[[1]])
+ses <- as.numeric(preds[[2]])
+pred_df <- pred_df %>%
+  mutate(preds = ests,
+         se = ses)
+
+ggplot(pred_df, aes(x = week_of_year, y = preds, color = outbreak_year)) +
+  geom_line() +
+  geom_line(aes(y = preds+(se*2)), linetype = 2) +
+  geom_line(aes(y = preds-(se*2)), linetype = 2)
 ```
+
+
 
 # Extra
 Maybe there is a variance value that serves as an indicator?
