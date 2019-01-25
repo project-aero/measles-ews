@@ -243,7 +243,7 @@ plot_it(dates = niamey_test$date, cases = cases, ews = log(variance), lab = "log
 
 ```{r}
 niamey_test <- measles_data %>%
-  filter(region == "Niamey (City)") 
+  filter(region == "Maradi (City)") 
 
 out_vars <- tibble()
 
