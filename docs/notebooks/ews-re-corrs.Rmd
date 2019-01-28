@@ -11,7 +11,7 @@ Top-performing EWS are those with high AUC in the emergence and elimination scen
 Note that $R_E$ was calculated as:
 
 $$
-R_E = \frac{\beta_t}{(\gamma + \eta)} \frac{S_t}{N_t}.
+R_E = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}.
 $$
 
 ```{r load-re}
@@ -61,10 +61,10 @@ for(do_region in unique(measles_data$region)){
     x = cases,
     center_trend = "local_constant", 
     center_kernel = "uniform", 
-    center_bandwidth = 35, 
+    center_bandwidth = 16, 
     stat_trend = "local_constant", 
     stat_kernel = "uniform", 
-    stat_bandwidth = 35, 
+    stat_bandwidth = 16, 
     lag = 1, 
     backward_only = TRUE
   )$stats
@@ -113,14 +113,26 @@ So those plots are pretty weird because of the temporal cycling.
 What if I remove the seasonal component via differencing?
 
 ```{r rm-seas}
-test <- filter(ews_reffs, region == "Maradi (City)" & ews == "variance") %>% 
+test <- filter(ews_reffs, region == "Agadez (City)" & ews == "variance") %>% 
   dplyr::mutate(value = dplyr::lag(value, n = 20))
 
-test_reff <- diff(test$med)
-test_ews <- diff(test$value) 
+test_reff <- test$med
+test_ews <- log(test$value)
+reff_ts <- ts(test_reff, frequency = 52)
+ews_ts <- ts(test_ews, frequency = 52)
+ews_ts[abs(ews_ts)==Inf] <- NA
+ids <- which(!is.na(ews_ts))
 
-plot(test_reff, test_ews)
-cor(test_reff, test_ews, method = "spearman", use = "pairwise.complete.obs")
+ccf(ews_ts[ids], reff_ts[ids], type = "correlation", lag.max = 25, xlim = c(-25, 0)) 
+abline(v = 0, col = "red", lty = 3)
+plot(ews_ts[ids], reff_ts[ids])
+
+# plot(test_reff, test_ews)
+# cor.test(test_reff, test_ews, method = "spearman", use = "pairwise.complete.obs")
+# 
+# par(mfrow = c(2,1))
+# plot(test_reff, type = "l")
+# plot(test_ews, type = "l")
 ```
 
 # Rolling correlation?
@@ -133,7 +145,7 @@ variances <- ews_reffs %>%
   filter(ews == "variance" & region == do_region) %>%
   pull(value)
 
-reffs <- ews_reffs %>%
+reff_vec <- ews_reffs %>%
   filter(ews == "variance" & region == do_region) %>%
   pull(med)
 
@@ -142,12 +154,12 @@ cases <- measles_data %>%
     pull(cases)
 
 par(mfrow = c(2, 1))
-plot(reffs, type = "l")
+plot(reff_vec, type = "l")
 plot(variances, type = "l")
 
-test <- zoo::rollapply(data.frame(variances,reffs), 10, function(x) cor(x[,1],x[,2]), by.column=FALSE)
+test <- zoo::rollapply(data.frame(variances, reff_vec), 10, function(x) cor(x[,1],x[,2]), by.column=FALSE)
 
-df <- tibble(x = test, y = reffs[10:length(reffs)])
+df <- tibble(x = test, y = reff_vec[10:length(reff_vec)])
 ggplot(df, aes(x = seq_along(x), y = y, color = x)) +
   geom_line(color = "grey35", size = 0.3) +
   geom_point() +
@@ -163,7 +175,7 @@ ggplot(df, aes(x = seq_along(x), y = y, color = x)) +
 #   scale_color_viridis_c(name = "variance") +
 #   labs(x = "time", y = expression(R[E]))
 # 
-df <- tibble(x = reffs, y = cases)
+df <- tibble(x = reff_vec, y = cases)
 ggplot(df, aes(x = seq_along(x), y = y, color = sqrt(x))) +
   geom_line(color = "grey35", size = 0.3) +
   geom_point() +
@@ -171,6 +183,23 @@ ggplot(df, aes(x = seq_along(x), y = y, color = sqrt(x))) +
   scale_color_viridis_c(name = expression(R[E])) +
   labs(x = "time", y = "cases")
 
+max_reffs <- ews_reffs %>%
+  group_by(ews, region, lubridate::year(date)) %>%
+  filter(med == max(med))
+
+max_reffs <- ews_reffs %>%
+  mutate(year = lubridate::year(date)) %>%
+  group_by(year, ews, region) %>%
+  dplyr::mutate(
+    high_reff = ifelse(med > 1, TRUE, FALSE),
+    value = ifelse(ews != "autocorrelation", log(value), value)
+  )
+
+hist(ews_reffs$med)
+
+ggplot(max_reffs, aes(x = region, y = value, fill = high_reff)) +
+  geom_boxplot() +
+  facet_wrap(~ews, scales = "free_y")
 ```
 
 # Differencing before correlating
@@ -181,11 +210,93 @@ variances <- ews_reffs %>%
   filter(ews == "variance" & region == do_region) %>%
   pull(value)
 
-reffs <- ews_reffs %>%
+reff_vec <- ews_reffs %>%
   filter(ews == "variance" & region == do_region) %>%
   pull(med)
 
-reff_diffs <- diff(log(reffs))
+reff_diffs <- diff(log(reff_vec))
 var_diffs <- diff(variances)
 cor(var_diffs, reff_diffs)
+```
+
+# Calculate EWS separately for each year starting in September, then correlate
+
+```{r}
+measles_data <- measles_data %>%
+  mutate(month = lubridate::month(date),
+         season_year = ifelse(month < 8, year, year+1))
+
+all_yearly_stats <- tibble()  # empty storage tibble
+for(do_city in unique(measles_data$region)){
+  for(do_year in unique(measles_data$season_year)){
+    tmp_data <- measles_data %>%
+      filter(region == do_city) %>%
+      filter(season_year == do_year)
+    
+    tmp_cases <- tmp_data %>%
+      pull(cases)
+    
+    tmp_stats <- spaero::get_stats(x = tmp_cases, 
+                                   center_trend = "local_constant", 
+                                   center_kernel = "uniform", 
+                                   center_bandwidth = 16, 
+                                   stat_trend = "local_constant", 
+                                   stat_kernel = "uniform", 
+                                   stat_bandwidth = 16, 
+                                   lag = 1, backward_only = TRUE)$stats
+    
+    tmp_stats_tb <- as_tibble(tmp_stats) %>%
+      mutate(
+        time_iter = 1:n(),
+        date = tmp_data$date
+      ) %>%
+      gather(key = ews, value = value, -time_iter, -date) %>%
+      mutate(
+        date = rep(tmp_data$date, length(tmp_stats)),
+        season_year = do_year,
+        region = do_city
+      )
+  
+    all_yearly_stats <- bind_rows(all_yearly_stats, tmp_stats_tb)
+  }  # end year loop
+}  # end city loop
+
+# Merge in effective R estimates
+yearly_stats_ews <- all_yearly_stats %>%
+  filter(ews %in% c("autocorrelation", "mean", "variance")) %>%
+  left_join(reffs, by = c("date", "region")) %>%
+  dplyr::select(-time_iter, -time) %>%
+  left_join(measles_data, by = c("date", "season_year", "region")) %>%
+  mutate(lag_re = dplyr::lag(med, n = 5)) %>%
+  group_by(ews, region, year) %>%
+  mutate(total_cases = sum(cases))
+
+ggplot(filter(yearly_stats_ews, region == "Niamey (City)" & 
+                ews == "variance" &
+                month > 7,
+                season_year > 1995), 
+              aes(x = date, y = value, color = cases)) +
+  geom_point() +
+  scale_color_viridis_c() +
+  facet_wrap(~season_year, scales = "free")
+
+## LOOK AT THRESHOLDS AGAIN!!!!!!!!
+
+# Look at CCF for variance
+# var_tbl <- yearly_stats_ews %>%
+#   filter(region == "Niamey (City)") %>%
+#   filter(ews == "variance")
+# 
+# ews_ts <- ts(var_tbl$value, frequency = 52)
+# reff_ts <- ts(var_tbl$med, frequency = 52)
+# ccf(ews_ts, reff_ts, lag.max = 52, type = "correlation")
+
+```
+
+# Start time in September
+
+```{r}
+yearly_stats_ews <- yearly_stats_ews %>%
+  mutate(month = lubridate::month(date),
+         season_year = ifelse(month < 9, year, year+1))
 ```
