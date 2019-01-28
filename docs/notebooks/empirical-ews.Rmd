@@ -224,7 +224,7 @@ Let's look at a test case of Niamey post 1995 leading up to the outbreak in 1999
 ```{r}
 niamey_test <- measles_data %>%
   filter(region == "Niamey (City)") %>%
-  filter(year > 1998 & year < 2000)
+  filter(year > 1997 & year < 2000)
 
 cases <- niamey_test$cases
 variance <- spaero::get_stats(
@@ -364,6 +364,138 @@ ggplot(pred_df, aes(x = week_of_year, y = preds, color = outbreak_year)) +
   geom_line(aes(y = preds-(se*2)), linetype = 2)
 ```
 
+OK, question is, can the GAMs for EWS beat detection of a GAM for mean cases?
+
+```{r}
+
+# Functions for GAM fitting and comparison
+fit_gam <- function(gam_df) {
+  test_formula <- as.formula(
+    value ~ s(week, by = outbreak_year, k = 4, bs = "fs")
+  )
+  mgcv::gam(formula = test_formula, data = gam_df)
+}
+
+smooth_diff <- function(model, newdata, f1, f2, var, alpha = 0.05,
+                        unconditional = FALSE) {
+  xp <- predict(model, newdata = newdata, type = 'lpmatrix')
+  c1 <- grepl(f1, colnames(xp))
+  c2 <- grepl(f2, colnames(xp))
+  r1 <- newdata[[var]] == f1
+  r2 <- newdata[[var]] == f2
+  ## difference rows of xp for data from comparison
+  X <- xp[r1, ] - xp[r2, ]
+  ## zero out cols of X related to splines for other lochs
+  X[, ! (c1 | c2)] <- 0
+  ## zero out the parametric cols
+  X[, !grepl('^s\\(', colnames(xp))] <- 0
+  dif <- as.numeric(X %*% coef(model))
+  se <- sqrt(rowSums((X %*% vcov(model, unconditional = unconditional)) * X))
+  crit <- qt(alpha/2, df.residual(model), lower.tail = FALSE)
+  upr <- dif + (crit * se)
+  lwr <- dif - (crit * se)
+  tibble(pair = paste(f1, f2, sep = '-'),
+         diff = dif,
+         se = se,
+         upper = upr,
+         lower = lwr)
+}
+
+
+# Loop over data and calculate EWS
+city_ews_list <- list()
+for(do_city in unique(measles_data$region)){
+  tmp_ews_list <- list()
+  for(do_year in unique(measles_data$year)){
+    tmp_cases <- measles_data %>%
+      filter(region == do_city) %>%
+      filter(year == do_year) %>%
+      pull(cases)
+  
+    tmp_stats <- spaero::get_stats(
+      x = tmp_cases,
+      center_trend = "local_constant", 
+      center_kernel = "uniform", 
+      center_bandwidth = 16, 
+      stat_trend = "local_constant", 
+      stat_kernel = "uniform", 
+      stat_bandwidth = 16, 
+      lag = 1, 
+      backward_only = TRUE
+    )$stats
+  
+    tmp_ews_list[[as.character(do_year)]] <- tmp_stats
+  }
+  city_ews_list[[do_city]] <- tmp_ews_list
+}
+
+
+# Loop over data and fit and compare GAMs
+all_ews <- tibble()
+for(do_city in names(city_ews_list)){
+  tmp_city_ews <- city_ews_list[[do_city]]
+  
+  all_years_ews <- tibble()
+  for(do_year in names(tmp_city_ews)){
+    tmp_year_ews <- tmp_city_ews[[as.character(do_year)]]
+    this_years_ews <- tibble()
+    
+    for(do_ews in names(tmp_year_ews)){
+      tmp_ews <- tibble(
+        city = do_city,
+        ews = do_ews,
+        value = tmp_year_ews[[do_ews]],
+        year = as.numeric(do_year),
+        week = 1:52
+      )
+      this_years_ews <- bind_rows(this_years_ews, tmp_ews)
+    }  # end ews loop
+    
+    all_years_ews <- bind_rows(all_years_ews, this_years_ews)
+    
+  }  # end year loop
+  all_ews <- bind_rows(all_ews, all_years_ews)
+}  # end city loop
+
+
+# Fit GAMs for each city-EWS combination
+ews_to_fit <- c("autocorrelation", "mean", "variance")
+all_diffs <- tibble()
+for(do_city in unique(all_ews$city)){
+  for(do_ews in ews_to_fit){
+    gam_data <- all_ews %>%
+      filter(city == do_city) %>%
+      filter(ews == do_ews) %>%
+      left_join(filter(outbreak_ids, region == do_city), by = "year") %>%
+      dplyr::select(value, week, outbreak_year) %>%
+      mutate(outbreak_year = as.factor(outbreak_year))
+    
+    if(min(gam_data$value, na.rm = TRUE) >= 0){
+      gam_data$value <- log(gam_data$value + 0.0001)
+    }
+    
+    tmp_gam <- fit_gam(gam_df = gam_data)
+    pdata <- expand.grid(week = 1:52, outbreak_year = c("TRUE", "FALSE"))
+    tmp_diff <- smooth_diff(model = tmp_gam, newdata = pdata, 
+                            f1 = "TRUE", f2 = "FALSE", var = "outbreak_year")
+    tmp_diff <- tmp_diff %>%
+      mutate(
+        city = do_city,
+        ews = do_ews,
+        week = 1:52
+      )
+    all_diffs <- bind_rows(all_diffs, tmp_diff)
+  }
+}
+
+ggplot(all_diffs, aes(x = week, y = diff)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), color = NA, alpha = 0.3) +
+  geom_line() +
+  geom_hline(aes(yintercept = 0), linetype = 2) +
+  facet_grid(ews~city) +
+  theme_minimal()
+
+```
 
 
 # Extra
