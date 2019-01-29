@@ -159,8 +159,10 @@ signal_and_data <- long_ews %>%
 
 ggplot(signal_and_data, aes(x = date, y = cases)) +
   geom_line(size = 0.25) +
-  geom_vline(data = filter(signal_and_data, warning == TRUE), 
-             aes(xintercept = date), color = "red", size = 0.25, linetype = 2, alpha = 0.75) +
-  facet_wrap(ews_metric~region, scales = "free_y", ncol = 4)
+  geom_vline(data = filter(signal_and_data, !is.na(warning)), 
+             aes(xintercept = date, color = warning), size = 0.25, 
+             linetype = 3, alpha = 0.75) +
+  facet_wrap(ews_metric~region, scales = "free_y", ncol = 4) +
+  scale_color_manual(values = c("blue", "red"))
 
 ```
