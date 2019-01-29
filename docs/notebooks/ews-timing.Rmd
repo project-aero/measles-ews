@@ -116,7 +116,7 @@ knitr::kable(ews_thresholds)
 
 Now let's look at the variance plots again, this time with the threshold for signals layered in.
 
-```{r var-and-thresh, fig.height=8}
+```{r var-and-thresh}
 long_ews <- all_ews %>%
   gather(key = "ews_metric", value = "ews_value", 
          -region, -date, -year, -week_of_year, -obs_week, 
@@ -139,4 +139,28 @@ ggplot(data = long_ews %>% filter(ews_metric == "variance", season_year > 1995),
   scale_y_log10() +
   scale_x_continuous(breaks = seq(1, 52, by = 10),
                      labels = c(30,40,50,1,10,20))
+```
+
+Do a simple tally of years where the variance goes over the threshold before the new year (`week_of_ews = 1`).
+
+```{r get-signals}
+signal_tally <- long_ews %>%
+  filter(ews_metric == c("autocorrelation", "mean", "autocovariance", "variance")) %>%
+  filter(year > 1995) %>%
+  filter(week_of_year %in% c(30:52)) %>%
+  mutate(
+    warning = ifelse(ews_value >= threshold, TRUE, FALSE)
+  )
+
+signal_and_data <- long_ews %>%
+  left_join(signal_tally %>%
+              dplyr::select(region, date, week_of_ews, ews_metric, warning)) %>%
+  filter(ews_metric %in% c("autocorrelation", "mean", "variance"))
+
+ggplot(signal_and_data, aes(x = date, y = cases)) +
+  geom_line(size = 0.25) +
+  geom_vline(data = filter(signal_and_data, warning == TRUE), 
+             aes(xintercept = date), color = "red", size = 0.25, linetype = 2, alpha = 0.75) +
+  facet_wrap(ews_metric~region, scales = "free_y", ncol = 4)
+
 ```
