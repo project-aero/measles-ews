@@ -222,9 +222,13 @@ cor(var_diffs, reff_diffs)
 # Calculate EWS separately for each year starting in September, then correlate
 
 ```{r}
+ggplot(measles_data, aes(x = week_of_year, y = cases, group = year)) +
+  geom_line() +
+  facet_wrap(~region, scales = "free")
+
 measles_data <- measles_data %>%
   mutate(month = lubridate::month(date),
-         season_year = ifelse(month < 8, year, year+1))
+         season_year = ifelse(week_of_year < 29, year, year+1))
 
 all_yearly_stats <- tibble()  # empty storage tibble
 for(do_city in unique(measles_data$region)){
@@ -239,10 +243,10 @@ for(do_city in unique(measles_data$region)){
     tmp_stats <- spaero::get_stats(x = tmp_cases, 
                                    center_trend = "local_constant", 
                                    center_kernel = "uniform", 
-                                   center_bandwidth = 16, 
+                                   center_bandwidth = 35, 
                                    stat_trend = "local_constant", 
                                    stat_kernel = "uniform", 
-                                   stat_bandwidth = 16, 
+                                   stat_bandwidth = 35, 
                                    lag = 1, backward_only = TRUE)$stats
     
     tmp_stats_tb <- as_tibble(tmp_stats) %>%
@@ -271,14 +275,16 @@ yearly_stats_ews <- all_yearly_stats %>%
   group_by(ews, region, year) %>%
   mutate(total_cases = sum(cases))
 
-ggplot(filter(yearly_stats_ews, region == "Niamey (City)" & 
+ggplot(filter(yearly_stats_ews, 
+              region == "Zinder (City)" & 
                 ews == "variance" &
-                month > 7,
-                season_year > 1995), 
-              aes(x = date, y = value, color = cases)) +
-  geom_point() +
+                season_year > 1995 &
+                month %in% c(8:12)), 
+              aes(x = date, y = value)) +
+  geom_line(size = 0.25) +
+  geom_point(aes(color = med)) +
   scale_color_viridis_c() +
-  facet_wrap(~season_year, scales = "free")
+  facet_wrap(~year, scales = "free")
 
 ## LOOK AT THRESHOLDS AGAIN!!!!!!!!
 
@@ -293,10 +299,96 @@ ggplot(filter(yearly_stats_ews, region == "Niamey (City)" &
 
 ```
 
-# Start time in September
+# Look at emergence simulations to find typical variance values 
+
+First, identify outbreak and non-outbreak years.
 
 ```{r}
+pop_data <- tibble(
+  region = c("Agadez (City)", "Maradi (City)", "Niamey (City)", "Zinder (City)"),
+  pop = c(118224, 267249, 1027000, 322935)
+)
+
+cusum_data <- measles_data %>%
+  group_by(region, year) %>%
+  summarise(cases = sum(cases)) %>%
+  left_join(pop_data)
+
+cusum_cases <- sort(cusum_data$cases / cusum_data$pop)
+fit1 <- MASS::fitdistr(cusum_cases, "exponential") 
+
+x <- cusum_cases
+mixexplik <- function(p,lambda1,lambda2) {
+  z <- p*dexp(x,lambda1) + (1-p)*dexp(x,lambda2)
+  return(-sum(log(z)))
+}
+
+mle_fit <- suppressWarnings(  # ignore warnings about bad guesses
+  stats4::mle(minuslogl = mixexplik, 
+              start= list(p = 0.2,
+                          lambda1 = as.numeric(fit1$estimate), 
+                          lambda2 = as.numeric(fit1$estimate)), 
+              method="Nelder-Mead")
+)
+
+bound <- qexp(p = 0.5, rate = mle_fit@coef["p"]*mle_fit@coef["lambda1"])
+
+outbreak_ids <- cusum_data %>%
+  dplyr::mutate(
+    incidence = cases/pop,
+    outbreak_year = ifelse(incidence < bound, FALSE, TRUE)
+  ) %>%
+  dplyr::select(region, year, outbreak_year)
+
+outbreak_ids <- cusum_data %>%
+  ungroup() %>%
+  group_by(region) %>%
+  mutate(
+    max_cases = max(cases),
+    outbreak_year = ifelse(cases >= 0.2*max_cases, TRUE, FALSE)
+  ) 
+
+ggplot(outbreak_ids, aes(x = year, y = cases, fill = outbreak_year)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~region, scales = "free_y")
+
 yearly_stats_ews <- yearly_stats_ews %>%
-  mutate(month = lubridate::month(date),
-         season_year = ifelse(month < 9, year, year+1))
+  left_join(outbreak_ids %>%
+              dplyr::select(region, year, outbreak_year)) %>%
+  ungroup()
+```
+
+Now calculate variance threshold as the median from the emergence simulations when close to $R_E=1$.
+
+```{r}
+do_city <- "Maradi"
+do_ews <- "variance"
+
+emerge_ews <- read_csv("../../results/ews-emergence.csv") %>%
+  filter(susc_discount == 1e-04) %>%
+  filter(half == "second") %>%
+  filter(metric == do_ews)
+
+# ggplot(emerge_ews, aes(x = city, y = log(value))) +
+#   geom_boxplot()
+
+variance_thresholds <- emerge_ews %>%
+  group_by(city) %>%
+  summarise(
+    med_value = quantile(value, 0.5),
+    lo_value = quantile(value, 0.05),
+    hi_value = quantile(value, 0.95)
+  )
+
+ggplot() +
+  geom_hline(data = filter(variance_thresholds, city == do_city), aes(yintercept = lo_value), linetype = 2) +
+  geom_hline(data = filter(variance_thresholds, city == do_city), aes(yintercept = hi_value), linetype = 2) +
+  geom_hline(data = filter(variance_thresholds, city == do_city), aes(yintercept = med_value)) +
+  geom_point(data = filter(yearly_stats_ews, region == paste0(do_city," (City)") & 
+                ews == do_ews &
+                season_year > 1995 &
+                month > 8),
+              aes(x = date, y = value, color = outbreak_year)) +
+  scale_y_log10() +
+  facet_wrap(~year, scales = "free")
 ```

@@ -1,0 +1,142 @@
+---
+title: "When to calculate early warning signals"
+output: html_notebook
+date: 2019-01-29
+---
+
+Given the seasonal trend in measles cases in all four cities in Niger, early warning signals calculated over the entire time series, without "zeroing out", simply reproduce lagged dynamics.
+In other words, EWS calculated over the entire series are useless for prediction.
+So, the goal here is to calculate EWS just during troughs in transmission: the months after a seasonal outbreak (whether large or small) but before the next seasonal outbreak (whether large or small).
+EWS will be calculated for each season independently, meaning they are zeroed out at the beginning of each season.
+
+The first task is to determine the months of low tranmission and months of high transmission.
+
+```{r load-libs}
+library(tidyverse)
+library(lubridate)
+library(spaero)
+```
+
+```{r plot-data}
+data_file <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS" 
+measles_data <- readRDS(data_file) %>%
+  filter(year > 1994) %>%  # ignore first NA obs, just for modeling
+  dplyr::select(-time)  # remove time col, just for modeling
+
+ggplot(measles_data, aes(x = date, y = cases)) +
+  geom_line() +
+  facet_wrap(~region, scales = "free_y") +
+  ggtitle("Measles cases over time")
+
+ggplot(measles_data, aes(x = week_of_year, y = cases, group = year)) +
+  geom_line() +
+  geom_vline(aes(xintercept = 30), color = "red") +
+  facet_wrap(~region, scales = "free_y") +
+  ggtitle("Measles cases in each year, by week",
+          subtitle = "red line shows beginning of trough")
+```
+
+Based on visual inspection, I've decided the beginning of the trough will be week 30 in each year.
+So, for each year, I will calculate EWS starting at week 30 and running through until week 29.
+This requires creating a new `season_year` column, as follows.
+
+```{r season-year}
+season_year_data <- measles_data %>%
+  mutate(
+    season_year = ifelse(week_of_year > 29, year + 1, year)
+  )
+
+ggplot(season_year_data, aes(x = week_of_year, y = log(cases+1))) +
+  geom_line(aes(color = as.factor(season_year))) +
+  facet_grid(year~region)
+```
+
+Now I can calculate the EWS based on `season_year` rather than calendar year or for the entire time series.
+
+```{r calc-ews}
+regions <- unique(season_year_data$region)
+season_years <- unique(season_year_data$season_year)
+
+all_ews <- tibble()  # empty tibble for storage
+for(do_region in regions){
+  for(do_season in season_years){
+    tmp_data <- season_year_data %>%
+      filter(region == do_region) %>%
+      filter(season_year == do_season)
+    
+    tmp_cases <- tmp_data %>% pull(cases)
+    tmp_stats <- get_stats(x = tmp_cases, center_trend = "local_constant", 
+                           center_kernel = "uniform", center_bandwidth = 16,
+                           stat_trend = "local_constant", 
+                           stat_kernel = "uniform", stat_bandwidth = 16, 
+                           lag = 1, backward_only = TRUE)
+    
+    tmp_out <- tmp_data %>%
+      mutate(week_of_ews = 1:n()) %>%
+      bind_cols(as_tibble(tmp_stats$stats))
+    
+    all_ews <- bind_rows(all_ews, tmp_out)
+  }  # end season-year loop
+}  # end region loop
+```
+
+Here's what the EWS look like.
+Note that I am only focusing on a subset here: autocorrelation, variance, and mean.
+
+```{r ews-plot}
+ggplot(all_ews, aes(x = week_of_year, log(variance+1))) +
+  geom_line(aes(color = as.factor(season_year))) +
+  facet_grid(year~region)
+
+ggplot(all_ews, aes(x = week_of_ews, y = log(variance+1))) +
+  geom_line(aes(color = as.factor(year))) +
+  facet_grid(season_year~region) +
+  scale_x_continuous(breaks = seq(1, 52, by = 10),
+                     labels = c(30,40,50,1,10,20))
+```
+
+Now we need threshold values at which to signal an early warning.
+I will use the EWS values from the emergence simulations to define the threshold value for each EWS as the median value from the test interval where $R_E$ is approaching 1.
+
+```{r get-thresholds}
+ews_thresholds <- read_csv("../../results/ews-emergence.csv") %>%
+  filter(susc_discount == 1e-04) %>%
+  filter(half == "second") %>%
+  group_by(metric, city) %>%
+  summarise(
+    med_value = quantile(value, 0.5),
+    upr_value = quantile(value, 0.95),
+    lwr_value = quantile(value, 0.05)
+  ) %>%
+  mutate(region = paste0(city, " (City)")) %>%
+  dplyr::select(-city)
+
+knitr::kable(ews_thresholds)
+```
+
+Now let's look at the variance plots again, this time with the threshold for signals layered in.
+
+```{r var-and-thresh, fig.height=8}
+long_ews <- all_ews %>%
+  gather(key = "ews_metric", value = "ews_value", 
+         -region, -date, -year, -week_of_year, -obs_week, 
+         -cases, -season_year, -week_of_ews)
+
+just_med_threshold <- ews_thresholds %>%
+  dplyr::select(-med_value, -lwr_value) %>%
+  rename("threshold" = upr_value,
+         "ews_metric" = metric)
+
+long_ews <- long_ews %>%
+  left_join(just_med_threshold, by = c("region", "ews_metric"))
+
+ggplot(data = long_ews %>% filter(ews_metric == "variance", season_year > 1995), 
+       aes(x = week_of_ews, y = ews_value)) +
+  geom_line(aes(color = as.factor(year))) +
+  geom_hline(aes(yintercept = threshold), linetype = 2) +
+  geom_vline(aes(xintercept = 52-30+1), linetype = 2) +
+  facet_grid(season_year~region) +
+  scale_y_log10() +
+  scale_x_continuous(breaks = seq(1, 52, by = 10),
+                     labels = c(30,40,50,1,10,20))
+```
