@@ -169,6 +169,8 @@ For an omnibus statistic, I'm just going to sum the number of warnings at each p
 
 ```{r omni-stat}
 summed_signals <- signal_tally %>%
+  filter(ews_metric %in% c("variance", "autocovariance", "autocorrelation", 
+                           "decay_time", "mean", "index_of_dispersion")) %>%
   group_by(region, date, week_of_ews) %>%
   summarise(warnings = sum(as.numeric(warning), na.rm = TRUE))
 
@@ -180,7 +182,7 @@ ggplot(summed_signals_data, aes(x = date, y = cases)) +
   geom_vline(data = filter(summed_signals_data, !is.na(warnings) & warnings >0), 
              aes(xintercept = date, color = warnings), size = 0.2, 
              linetype = 1) +
-  scale_color_viridis_c(option = "A") +
+  scale_color_viridis_c(option = "A", name = "number of warnings\n(out of six possible)") +
   facet_wrap(~region, scales = "free_y", ncol = 1)
 ```
 
@@ -209,8 +211,8 @@ sim_data <- sim_data_all %>%
   mutate(
     year = trunc(time),
     season_year = ifelse(week_of_year > 29, year+1, year)
-  ) %>%
-  filter(sim < 51)
+  ) 
+  # filter(sim < 51) %>%
 
 # Calculate EWS for each season_year and simulation
 regions <- unique(sim_data$region)
@@ -252,6 +254,8 @@ long_sim_ews <- all_sim_ews %>%
   mutate(
     warning = ifelse(ews_value >= threshold, TRUE, FALSE)
   ) %>%
+  filter(ews_metric %in% c("variance", "autocovariance", "autocorrelation", 
+                           "decay_time", "mean", "index_of_dispersion")) %>%
   group_by(region, sim, season_year) %>%
   summarise(warnings = sum(warning, na.rm = TRUE))
 
@@ -268,7 +272,7 @@ sim_signals <- cusum_sim_data %>%
 
 # Plot
 ggplot(sim_signals, aes(x = log(warnings+1), y = log(total_cases+1))) +
-  geom_point(color = "grey30") +
+  geom_point(color = "grey40") +
   stat_smooth(method = "lm", se = FALSE) +
   facet_wrap(~region)
 
