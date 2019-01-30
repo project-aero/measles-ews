@@ -145,8 +145,7 @@ Do a simple tally of years where the variance goes over the threshold before the
 
 ```{r get-signals}
 signal_tally <- long_ews %>%
-  filter(ews_metric == c("autocorrelation", "mean", "autocovariance", "variance")) %>%
-  filter(year > 1995) %>%
+  filter(season_year > 1995) %>%
   filter(week_of_year %in% c(30:52)) %>%
   mutate(
     warning = ifelse(ews_value >= threshold, TRUE, FALSE)
@@ -155,7 +154,7 @@ signal_tally <- long_ews %>%
 signal_and_data <- long_ews %>%
   left_join(signal_tally %>%
               dplyr::select(region, date, week_of_ews, ews_metric, warning)) %>%
-  filter(ews_metric %in% c("autocorrelation", "mean", "variance"))
+  filter(ews_metric %in% c("autocorrelation", "mean", "variance", "index_of_dispersion"))
 
 ggplot(signal_and_data, aes(x = date, y = cases)) +
   geom_line(size = 0.25) +
@@ -164,5 +163,121 @@ ggplot(signal_and_data, aes(x = date, y = cases)) +
              linetype = 3, alpha = 0.75) +
   facet_wrap(ews_metric~region, scales = "free_y", ncol = 4) +
   scale_color_manual(values = c("blue", "red"))
+```
 
+For an omnibus statistic, I'm just going to sum the number of warnings at each point.
+
+```{r omni-stat}
+summed_signals <- signal_tally %>%
+  group_by(region, date, week_of_ews) %>%
+  summarise(warnings = sum(as.numeric(warning), na.rm = TRUE))
+
+summed_signals_data <- measles_data %>%
+  left_join(summed_signals)
+
+ggplot(summed_signals_data, aes(x = date, y = cases)) +
+  geom_line(size = 0.5, color = ggthemes::ptol_pal()(1)) +
+  geom_vline(data = filter(summed_signals_data, !is.na(warnings) & warnings >0), 
+             aes(xintercept = date, color = warnings), size = 0.2, 
+             linetype = 1) +
+  scale_color_viridis_c(option = "A") +
+  facet_wrap(~region, scales = "free_y", ncol = 1)
+```
+
+# Warnings in simulated series
+Now I will look at the simulated replicates to generate warnings from EWS using the same thresholds as above.
+I can then look at relationships like: number of warnings vs. time from peak vs. peak cases.
+
+```{r ews-on-sims}
+# Load simulations
+all_files <- list.files("../../simulations/")
+sim_files <- all_files[grep("bootstrap", all_files)]
+
+sim_data_all <- tibble()  # empty tibble for storage
+for(do_file in sim_files){
+  tmp_sim <- readRDS(paste0("../../simulations/", do_file)) %>% 
+    unnest() %>%
+    mutate(region = paste0(str_sub(do_file, 16, -5), " (City)")) %>%
+    mutate(week_of_year = rep(1:52, times = max(sim)*11)) %>%
+    dplyr::select(region, sim, time, week_of_year, reports)
+  
+  sim_data_all <- bind_rows(sim_data_all, tmp_sim)
+}
+
+# Make new year and season_year columns
+sim_data <- sim_data_all %>%
+  mutate(
+    year = trunc(time),
+    season_year = ifelse(week_of_year > 29, year+1, year)
+  ) %>%
+  filter(sim < 51)
+
+# Calculate EWS for each season_year and simulation
+regions <- unique(sim_data$region)
+sims <- unique(sim_data$sim)
+season_years <- unique(sim_data$season_year)
+
+all_sim_ews <- tibble()  # empty tibble for storage
+for(do_region in regions){
+  for(do_sim in sims){
+    for(do_season in season_years){
+      tmp_data <- sim_data %>%
+        filter(region == do_region) %>%
+        filter(sim == do_sim) %>%
+        filter(season_year == do_season)
+      
+      tmp_cases <- tmp_data %>% pull(reports)
+      tmp_stats <- get_stats(x = tmp_cases, center_trend = "local_constant", 
+                             center_kernel = "uniform", center_bandwidth = 16,
+                             stat_trend = "local_constant", 
+                             stat_kernel = "uniform", stat_bandwidth = 16, 
+                             lag = 1, backward_only = TRUE)
+      
+      tmp_out <- tmp_data %>%
+        mutate(week_of_ews = 1:n()) %>%
+        bind_cols(as_tibble(tmp_stats$stats))
+      
+      all_sim_ews <- bind_rows(all_sim_ews, tmp_out)
+    }  # end season-year loop
+  }  # end simulation loop
+}  # end region loop
+
+long_sim_ews <- all_sim_ews %>%
+  gather(key = "ews_metric", value = "ews_value", 
+         -region, -sim, -time, -week_of_year, -reports, 
+         -year, -season_year, -week_of_ews) %>%
+  left_join(just_med_threshold, by = c("region", "ews_metric")) %>%
+  filter(season_year > 1995) %>%
+  filter(week_of_year %in% c(30:52)) %>%
+  mutate(
+    warning = ifelse(ews_value >= threshold, TRUE, FALSE)
+  ) %>%
+  group_by(region, sim, season_year) %>%
+  summarise(warnings = sum(warning, na.rm = TRUE))
+
+# Calculate total number of cases in each season-year
+cusum_sim_data <- sim_data %>%
+  group_by(region, sim, season_year) %>%
+  mutate(total_cases = sum(reports)) %>%
+  filter(reports == max(reports)) %>%
+  filter(week_of_year == min(week_of_year))
+
+# Combine warning signals and data
+sim_signals <- cusum_sim_data %>%
+  left_join(long_sim_ews)
+
+# Plot
+ggplot(sim_signals, aes(x = log(warnings+1), y = log(total_cases+1))) +
+  geom_point(color = "grey30") +
+  stat_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~region)
+
+broom::glance(lm(log(warnings+1)~log(total_cases+1), 
+           data = sim_signals %>% filter(region == "Agadez (City)")))  
+broom::glance(lm(log(warnings+1)~log(total_cases+1), 
+           data = sim_signals %>% filter(region == "Maradi (City)")))  
+broom::glance(lm(log(warnings+1)~log(total_cases+1), 
+           data = sim_signals %>% filter(region == "Niamey (City)")))  
+broom::glance(lm(log(warnings+1)~log(total_cases+1), 
+           data = sim_signals %>% filter(region == "Zinder (City)")))  
 ```
