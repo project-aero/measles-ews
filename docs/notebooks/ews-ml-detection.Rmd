@@ -1,0 +1,262 @@
+---
+title: "Outbreak detection using machine learning and early warning signals"
+output: html_notebook
+author: "Andrew Tredennick"
+date: 2019-01-31
+---
+
+```{r libs, message = FALSE}
+library(tidyverse)
+library(dplyr)
+library(spaero)
+library(neuralnet)
+
+knitr::opts_chunk$set(message = FALSE)
+```
+
+# Motivation
+From my modeling work, we know that critical slowing down (as evidenced by early warning signals) anticipates measles emergence as $R_E$ approaches 1.
+This implies that CSD could be used to detect outbreaks, so long as the outbreaks are unique to $R_E$ being exceptionally large or exceeding 1.
+Unfortunately, my modeling work also shows that $R_E$ tends to fluctuate seasonally from below to above 1, and outbreaks tend to depend on sparking from external infections.
+So, CSD might not be able to detect outbreak (though it might) but it might be able to evaluate outbreak risk in terms of number of cases (there is some evidence of this in the `ews-timing.Rmd` notebook).
+
+I am going to start by fitting a neural network model aimed at classifying outbreaks based on EWS values in the interepidemic times.
+I will then move to a neural net regression aimed at predicting the future number of cases, which can serve as an outbreak risk factor.
+
+# Methods
+
+## Define outbreak years
+First, I need to define "outbreak" years in the observed data.
+To do this, I will fit an exponential mixture model to the distribution of cumulative cases in each year.
+The boundary between the two exponentials will serve as the cut-off for "outbreak" and "non-outbreak" years.
+I will fit the model using incidence data (cases/population size) so that data from all four cities can be pooled; this is helpful given the small sample size for each city (11 years).
+
+Here I read in the data, summarize the weekly data in cumulative yearly case counts, and then convert cases to incidence based on population size.
+
+```{r load-data}
+# Load measles data
+fname <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+measles_data <- readRDS(fname) %>%
+  filter(year > 1994)  # remove 1994 year, only used for modeling
+
+# Make population df
+pop_data <- tibble(
+  region = c("Agadez (City)", "Maradi (City)", 
+             "Niamey (City)", "Zinder (City)"),
+  pop = c(118224, 267249, 1027000, 322935)  # from Wikipedia
+)
+
+# Summarize to cumulative yearly cases
+cusum_data <- measles_data %>%
+  group_by(region, year) %>%
+  summarise(cases = sum(cases)) %>%
+  left_join(pop_data, by = "region") %>%  # add in population data
+  mutate(incidence = cases/pop)  # calculate incidence
+
+# Plot the distribution
+ggplot(cusum_data, aes(x = incidence)) +
+  geom_histogram(aes(fill = region), bins = 30)
+```
+
+Now I can sort the incidence data from smallest to largest and then fit the mized exponential distribution model.
+
+```{r fit-dists}
+x <- sort(cusum_data$incidence)  # extract incidence data
+
+# Fit null distribution for starting values
+fit1 <- MASS::fitdistr(x, "exponential")
+
+# Define likelihood of mixed exponential
+mixexplik <- function(p, lambda1, lambda2) {
+  z <- p*dexp(x,lambda1) + (1-p)*dexp(x,lambda2)
+  return(-sum(log(z)))
+}
+
+# Fit the model
+mle_fit <- suppressWarnings(  # ignore warnings about bad guesses
+  stats4::mle(minuslogl = mixexplik, 
+              start= list(p = 0.2,
+                          lambda1 = as.numeric(fit1$estimate), 
+                          lambda2 = as.numeric(fit1$estimate)), 
+              method="Nelder-Mead")
+)
+
+# Calculate the boundary incidence between small and large outbreaks
+boundary <- qexp(p = 0.5, rate = mle_fit@coef["p"]*mle_fit@coef["lambda1"])
+```
+
+Based on the mixed exponential model, the cut-off between small and large outbreaks is when incidence equals `r round(boundary,4)`.
+I will use this cut-off to define years as `outbreak_year = TRUE/FALSE`.
+
+```{r id-outbreaks}
+outbreak_ids <- cusum_data %>%
+  dplyr::mutate(
+    outbreak_year = ifelse(incidence < boundary, FALSE, TRUE)
+  ) %>%
+  dplyr::select(region, year, outbreak_year)
+
+measles_data <- measles_data %>%
+  left_join(outbreak_ids, by = c("region", "year"))
+
+ggplot(measles_data, aes(x = date, y = cases, color = outbreak_year, group = year)) +
+  geom_line() +
+  facet_wrap(~region, scales = "free_y")
+```
+
+## Calculate early warning signals
+I will not calculate EWS in the interepidemic periods.
+I've defined the interepidemic period as calendar weeks 30 through 52 (see plot below).
+This time period seems to work well for most cities, though Agadez continues to have a lot of action in the interepidemic period.
+
+```{r plot-trajectories}
+ggplot(measles_data, aes(x = week_of_year, y = cases, group = year)) +
+  geom_line() +
+  geom_vline(aes(xintercept = 29), color = "red", linetype = 2) +
+  facet_wrap(~region, scales = "free_y")
+```
+
+Now I will calculate early warning signals for the interepidemic periods, after first defining a new column `season_year` based on the beginning of the interepidemic period.
+Basically, I want each "season" to begin in week 30 of the calendar year and run through week 29 of the following calendar year.
+
+```{r calc-ews}
+measles_data <- measles_data %>%
+   mutate(
+    season_year = ifelse(week_of_year > 29, year + 1, year)
+  )
+
+regions <- unique(measles_data$region)
+season_years <- unique(measles_data$season_year)
+
+all_ews <- tibble()  # empty tibble for storage
+for(do_region in regions){
+  for(do_season in season_years){
+    tmp_data <- measles_data %>%
+      filter(region == do_region) %>%
+      filter(season_year == do_season)
+    
+    tmp_cases <- tmp_data %>% pull(cases)
+    tmp_stats <- get_stats(x = tmp_cases, center_trend = "local_constant", 
+                           center_kernel = "uniform", center_bandwidth = 16,
+                           stat_trend = "local_constant", 
+                           stat_kernel = "uniform", stat_bandwidth = 16, 
+                           lag = 1, backward_only = TRUE)
+    
+    tmp_out <- tmp_data %>%
+      mutate(week_of_ews = 1:n()) %>%
+      bind_cols(as_tibble(tmp_stats$stats))
+    
+    all_ews <- bind_rows(all_ews, tmp_out)
+  }  # end season-year loop
+}  # end region loop
+
+# Plot example EWS over time
+all_ews %>%
+  filter(region == "Maradi (City)") %>%
+  dplyr::select(region, date, season_year, cases, variance) %>%
+  gather(key = "variable", value = "value", -region, -date, -season_year) %>%
+  ggplot(aes(x = date, y = value)) +
+  geom_line(aes(color = as.factor(season_year))) +
+  facet_wrap(~variable, scales = "free_y", ncol = 1)
+```
+
+## Use neural net to classify outbreak years from EWS
+With the EWS calculated for each `season_year`, I will now try to classify outbreak and non-outbreak years based on EWS calculated in the interepiedemic period of weeks 40-52 before each seasonal trajectory.
+First I need to prepare the data.
+The `neuralnet` package requires that the response feature (`outbreak_year`) be a Boolean feature, which I already have.
+But I do need to preprocess the input features (EWS in each week).
+Specifically, I am going to have $w\times n$ length vector associated with each response feature (each season-year), where *w* is the number of weeks in the interepidemic period and *n* is the number of EWS calculated in each week.
+Then I'll stack these to create a large input feature matrix, **X**.
+
+```{r define-features}
+# Make super-wide dataframe
+feature_data <- all_ews %>%
+  dplyr::select(-year, -date, -obs_week, -cases, -time, -week_of_ews) %>%
+  filter(season_year > 1995) %>%
+  filter(week_of_year %in% c(30:52)) %>%
+  gather(key = "ews_metric", value = "ews_value", 
+         -region, -week_of_year, -outbreak_year, -season_year) %>%
+  filter(ews_metric %in% c("autocorrelation", "variance")) %>%
+  mutate(week_id = letters[week_of_year - 29]) %>%
+  dplyr::select(-week_of_year) %>%
+  unite(ews_week, week_id, ews_metric) %>%
+  spread(key = ews_week, value = ews_value) %>%
+  arrange(region, season_year) %>%
+  replace(., is.na(.), 0) 
+
+# Scale all input features to [0,1]
+scale01 <- function(x) {
+    (x - min(x))/(max(x) - min(x))
+}
+
+feature_data <- feature_data %>%
+  mutate_at(vars(a_autocorrelation:w_variance),
+            funs(scale01)) %>%
+  select_if(~sum(!is.na(.)) > 0)  # remove columns with only NA(N) values
+```
+
+Now I can fit the model.
+
+```{r fit-nnet}
+regions <- unique(feature_data$region)
+pred_df <- tibble() # empty tibble for storage
+for(do_region in regions){
+  hold_out_region <- do_region 
+  
+  train_data <- feature_data %>%
+    filter(region != hold_out_region) %>%
+    dplyr::select(-region, -season_year)
+
+  test_data <- feature_data %>%
+    filter(region == hold_out_region) %>%
+    dplyr::select(-region, -season_year)
+  
+  X_formula <- paste(colnames(train_data[2:ncol(train_data)]), collapse = "+")
+  y_formula <- "outbreak_year ~"
+  nnet_formula <- as.formula(paste(y_formula, X_formula))
+  mod1 <- neuralnet(formula = nnet_formula, data = train_data, 
+                    linear.output = FALSE, err.fct = "ce", 
+                    likelihood = TRUE, rep = 200)
+  
+  pr.nn <- compute(mod1, test_data[,2:ncol(test_data)])
+  pr.nn <- pr.nn$net.result
+  tmp_df <- tibble(
+    predicted_region = hold_out_region, 
+    observed = test_data$outbreak_year,
+    predicted = pr.nn[,1]
+  )
+  pred_df <- bind_rows(pred_df, tmp_df)
+}
+
+nn_pred <- ROCR::prediction(pred_df$predicted, pred_df$observed)
+perf <- ROCR::performance(nn_pred, measure = "auc")
+auc <- round(as.numeric(perf@y.values),digits = 2)
+pref <- ROCR::performance(nn_pred, "tpr", "fpr")
+ROCR::plot(pref, main = paste("AUC = ", auc))
+abline(0,1, col="red")
+
+table_df <- pred_df %>%
+  mutate(predicted = as.logical(round(predicted)))
+cmatrix <- table(table_df[,2:3])
+tpr <- cmatrix[2,2] / sum(cmatrix[2,])
+fpr <- cmatrix[1,1] / sum(cmatrix[1,])
+print(cmatrix)
+print(tpr)
+print(fpr)
+```
+
+```{r plot-cmatrix}
+assign_mat <- tibble(
+  value = as.numeric(cmatrix),
+  predicted_status = c("No outbreak", "Outbreak", "No outbreak", "Outbreak"),
+  true_status = c("No outbreak", "No outbreak", "Outbreak", "Outbreak")
+) %>%
+  mutate(value = value/sum(value))
+
+ggplot(assign_mat, aes(x = predicted_status, y = true_status)) +
+  geom_tile(aes(fill = value), color = "grey", size = 0.5) +
+  scale_fill_gradient(limits = c(0,1), low = "white", high = "steelblue",
+                      name = "Proportion of\noutbreak assignments") +
+  labs(x = "Predicted status", y = "True status") +
+  theme_minimal()
+
+```

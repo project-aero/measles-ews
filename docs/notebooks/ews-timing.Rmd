@@ -186,6 +186,10 @@ ggplot(summed_signals_data, aes(x = date, y = cases)) +
   facet_wrap(~region, scales = "free_y", ncol = 1)
 ```
 
+# Algorithm for outbreak risk
+1. Number of warnings must NOT decrease over the interepidemic period.
+2. 
+
 # Warnings in simulated series
 Now I will look at the simulated replicates to generate warnings from EWS using the same thresholds as above.
 I can then look at relationships like: number of warnings vs. time from peak vs. peak cases.
@@ -284,4 +288,60 @@ broom::glance(lm(log(warnings+1)~log(total_cases+1),
            data = sim_signals %>% filter(region == "Niamey (City)")))  
 broom::glance(lm(log(warnings+1)~log(total_cases+1), 
            data = sim_signals %>% filter(region == "Zinder (City)")))  
+```
+
+# Weight the numnber of warnings by time
+The idea here is to give more weight to warnings that occur closer to the beginning of the season.
+I want to reduce the influence of warnings early in the interepidemic period because they may just be transient signals from the last season.
+I also want to increase the influence of warnings late in the interepidemic period because these may be more representative of the state of the system leading in to the season.
+This may help reduce the variation around the linear log-log trends shown above.
+I am going to apply exponential weights to the value of time_index, which starts at 1 (`week_of_year = 30`) and goes to 23 (`week_of_year = 52`).
+
+```{r weight-scheme}
+time_index <- (30:52)-29
+time_weight <- exp(time_index/max(time_index)) - 1
+plot(time_index, time_weight)
+```
+
+```{r weight-ews}
+# Add weights to all EWS df
+weighted_sim_ews <- all_sim_ews %>%
+  gather(key = "ews_metric", value = "ews_value", 
+         -region, -sim, -time, -week_of_year, -reports, 
+         -year, -season_year, -week_of_ews) %>%
+  left_join(just_med_threshold, by = c("region", "ews_metric")) %>%
+  filter(season_year > 1995) %>%
+  filter(week_of_year %in% c(30:52)) %>%
+  mutate(
+    warning = ifelse(ews_value >= threshold, TRUE, FALSE)
+  ) %>%
+  filter(ews_metric %in% c("variance", "autocovariance", "autocorrelation", 
+                           "decay_time", "mean", "index_of_dispersion")) %>%
+  mutate(
+    time_index = week_of_year - 29,
+    time_weight = exp(time_index / max(time_index)) - 1
+  ) %>%
+  ungroup() %>%
+  group_by(region, sim, season_year) %>%
+  summarise(warnings = sum(warning*time_weight, na.rm = TRUE))
+
+
+# Combine warning signals and data
+sim_weighted_signals <- cusum_sim_data %>%
+  left_join(weighted_sim_ews)
+
+# Plot
+ggplot(sim_weighted_signals, aes(x = log(warnings+1), y = log(total_cases+1))) +
+  geom_point(color = "grey40") +
+  stat_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~region)
+
+broom::glance(lm(log(warnings+1)~log(total_cases+1), 
+           data = sim_weighted_signals %>% filter(region == "Agadez (City)")))  
+broom::glance(lm(log(warnings+1)~log(total_cases+1), 
+           data = sim_weighted_signals %>% filter(region == "Maradi (City)")))  
+broom::glance(lm(log(warnings+1)~log(total_cases+1), 
+           data = sim_weighted_signals %>% filter(region == "Niamey (City)")))  
+broom::glance(lm(log(warnings+1)~log(total_cases+1), 
+           data = sim_weighted_signals %>% filter(region == "Zinder (City)")))  
 ```
