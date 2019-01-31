@@ -231,8 +231,6 @@ nn_pred <- ROCR::prediction(pred_df$predicted, pred_df$observed)
 perf <- ROCR::performance(nn_pred, measure = "auc")
 auc <- round(as.numeric(perf@y.values),digits = 2)
 pref <- ROCR::performance(nn_pred, "tpr", "fpr")
-ROCR::plot(pref, main = paste("AUC = ", auc))
-abline(0,1, col="red")
 
 table_df <- pred_df %>%
   mutate(predicted = as.logical(round(predicted)))
@@ -250,7 +248,15 @@ assign_mat <- tibble(
   predicted_status = c("No outbreak", "Outbreak", "No outbreak", "Outbreak"),
   true_status = c("No outbreak", "No outbreak", "Outbreak", "Outbreak")
 ) %>%
-  mutate(value = value/sum(value))
+  group_by(true_status) %>%
+  mutate(sample_size = sum(value)) %>%
+  ungroup() %>%
+  mutate(value = value/sample_size)
+
+roc_df <- tibble(
+  fpr = as.numeric(pref@x.values[[1]]),
+  tpr = as.numeric(pref@y.values[[1]])
+)
 
 ggplot(assign_mat, aes(x = predicted_status, y = true_status)) +
   geom_tile(aes(fill = value), color = "grey", size = 0.5) +
@@ -258,5 +264,12 @@ ggplot(assign_mat, aes(x = predicted_status, y = true_status)) +
                       name = "Proportion of\noutbreak assignments") +
   labs(x = "Predicted status", y = "True status") +
   theme_minimal()
+
+ggplot(roc_df, aes(fpr, tpr)) +
+  geom_line() +
+  geom_abline(aes(intercept = 0, slope = 1), col = "red", alpha = 0.5, linetype = 2) +
+  labs(x = "False positive rate", y = "True positive rate") +
+  ggtitle(paste("AUC = ", auc)) +
+  theme_classic(base_size = 14) 
 
 ```
