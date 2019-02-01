@@ -124,6 +124,11 @@ measles_data <- measles_data %>%
     season_year = ifelse(week_of_year > 29, year + 1, year)
   )
 
+ggplot(filter(measles_data, week_of_year %in% 30:52), 
+       aes(x = week_of_year, y = cases, group = season_year)) +
+  geom_line(aes(color = outbreak_year)) +
+  facet_wrap(~region, scales = "free")
+
 regions <- unique(measles_data$region)
 season_years <- unique(measles_data$season_year)
 
@@ -175,7 +180,7 @@ feature_data <- all_ews %>%
   filter(week_of_year %in% c(30:52)) %>%
   gather(key = "ews_metric", value = "ews_value", 
          -region, -week_of_year, -outbreak_year, -season_year) %>%
-  filter(ews_metric %in% c("autocorrelation", "variance")) %>%
+  filter(ews_metric %in% c("autocorrelation", "variance", "mean")) %>%
   mutate(week_id = letters[week_of_year - 29]) %>%
   dplyr::select(-week_of_year) %>%
   unite(ews_week, week_id, ews_metric) %>%
@@ -198,7 +203,7 @@ Now I can fit the model.
 
 ```{r fit-nnet}
 regions <- unique(feature_data$region)
-pred_df <- tibble() # empty tibble for storage
+pred_df <- tibble()  # empty tibble for storage
 for(do_region in regions){
   hold_out_region <- do_region 
   
@@ -214,8 +219,8 @@ for(do_region in regions){
   y_formula <- "outbreak_year ~"
   nnet_formula <- as.formula(paste(y_formula, X_formula))
   mod1 <- neuralnet(formula = nnet_formula, data = train_data, 
-                    linear.output = FALSE, err.fct = "ce", 
-                    likelihood = TRUE, rep = 200)
+                    linear.output = FALSE, err.fct = "ce", rep = 200,
+                    likelihood = TRUE, hidden = 1)
   
   pr.nn <- compute(mod1, test_data[,2:ncol(test_data)])
   pr.nn <- pr.nn$net.result
@@ -260,6 +265,7 @@ roc_df <- tibble(
 
 ggplot(assign_mat, aes(x = predicted_status, y = true_status)) +
   geom_tile(aes(fill = value), color = "grey", size = 0.5) +
+  geom_text(aes(label = paste("N =", value*sample_size))) +
   scale_fill_gradient(limits = c(0,1), low = "white", high = "steelblue",
                       name = "Proportion of\noutbreak assignments") +
   labs(x = "Predicted status", y = "True status") +
@@ -272,4 +278,107 @@ ggplot(roc_df, aes(fpr, tpr)) +
   ggtitle(paste("AUC = ", auc)) +
   theme_classic(base_size = 14) 
 
+```
+
+Compare to a model using just mean cases.
+
+```{r mean-nnet}
+# Make super-wide dataframe
+feature_data <- all_ews %>%
+  dplyr::select(-year, -date, -obs_week, -cases, -time, -week_of_ews) %>%
+  filter(season_year > 1995) %>%
+  filter(week_of_year %in% c(30:52)) %>%
+  gather(key = "ews_metric", value = "ews_value", 
+         -region, -week_of_year, -outbreak_year, -season_year) %>%
+  filter(ews_metric %in% c("mean")) %>%
+  mutate(week_id = letters[week_of_year - 29]) %>%
+  dplyr::select(-week_of_year) %>%
+  unite(ews_week, week_id, ews_metric) %>%
+  spread(key = ews_week, value = ews_value) %>%
+  arrange(region, season_year) %>%
+  replace(., is.na(.), 0) 
+
+# Scale all input features to [0,1]
+scale01 <- function(x) {
+    (x - min(x))/(max(x) - min(x))
+}
+
+feature_data <- feature_data %>%
+  mutate_at(vars(a_mean:w_mean),
+            funs(scale01)) %>%
+  select_if(~sum(!is.na(.)) > 0)  # remove columns with only NA(N) values
+
+regions <- unique(feature_data$region)
+pred_df <- tibble()  # empty tibble for storage
+for(do_region in regions){
+  hold_out_region <- do_region 
+  
+  train_data <- feature_data %>%
+    filter(region != hold_out_region) %>%
+    dplyr::select(-region, -season_year)
+
+  test_data <- feature_data %>%
+    filter(region == hold_out_region) %>%
+    dplyr::select(-region, -season_year)
+  
+  X_formula <- paste(colnames(train_data[2:ncol(train_data)]), collapse = "+")
+  y_formula <- "outbreak_year ~"
+  nnet_formula <- as.formula(paste(y_formula, X_formula))
+  mod1 <- neuralnet(formula = nnet_formula, data = train_data, 
+                    linear.output = FALSE, err.fct = "ce", 
+                    likelihood = TRUE, rep = 200)
+  
+  pr.nn <- compute(mod1, test_data[,2:ncol(test_data)])
+  pr.nn <- pr.nn$net.result
+  tmp_df <- tibble(
+    predicted_region = hold_out_region, 
+    observed = test_data$outbreak_year,
+    predicted = pr.nn[,1]
+  )
+  pred_df <- bind_rows(pred_df, tmp_df)
+}
+
+nn_pred <- ROCR::prediction(pred_df$predicted, pred_df$observed)
+perf <- ROCR::performance(nn_pred, measure = "auc")
+auc <- round(as.numeric(perf@y.values),digits = 2)
+pref <- ROCR::performance(nn_pred, "tpr", "fpr")
+
+table_df <- pred_df %>%
+  mutate(predicted = as.logical(round(predicted)))
+cmatrix <- table(table_df[,2:3])
+tpr <- cmatrix[2,2] / sum(cmatrix[2,])
+fpr <- cmatrix[1,1] / sum(cmatrix[1,])
+print(cmatrix)
+print(tpr)
+print(fpr)
+
+assign_mat <- tibble(
+  value = as.numeric(cmatrix),
+  predicted_status = c("No outbreak", "Outbreak", "No outbreak", "Outbreak"),
+  true_status = c("No outbreak", "No outbreak", "Outbreak", "Outbreak")
+) %>%
+  group_by(true_status) %>%
+  mutate(sample_size = sum(value)) %>%
+  ungroup() %>%
+  mutate(value = value/sample_size)
+
+roc_df <- tibble(
+  fpr = as.numeric(pref@x.values[[1]]),
+  tpr = as.numeric(pref@y.values[[1]])
+)
+
+ggplot(assign_mat, aes(x = predicted_status, y = true_status)) +
+  geom_tile(aes(fill = value), color = "grey", size = 0.5) +
+  geom_text(aes(label = paste("N =", value*sample_size))) +
+  scale_fill_gradient(limits = c(0,1), low = "white", high = "steelblue",
+                      name = "Proportion of\noutbreak assignments") +
+  labs(x = "Predicted status", y = "True status") +
+  theme_minimal()
+
+ggplot(roc_df, aes(fpr, tpr)) +
+  geom_line() +
+  geom_abline(aes(intercept = 0, slope = 1), col = "red", alpha = 0.5, linetype = 2) +
+  labs(x = "False positive rate", y = "True positive rate") +
+  ggtitle(paste("AUC = ", auc)) +
+  theme_classic(base_size = 14) 
 ```
