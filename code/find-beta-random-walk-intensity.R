@@ -19,7 +19,7 @@ source("make-pomp-filtering-function.R")
 if(parallel::detectCores() <= 4){
   registerDoParallel(cores = detectCores() - 1)
 } else{
-  registerDoParallel()
+  registerDoParallel(25)
 }
 
 
@@ -79,7 +79,7 @@ for(do_city in cities){
       # Calculate log-likelihood of “new” model and save
       logmeanexp(
         replicate(n = 10,
-                  logLik(object = pfilter(object = measles_pomp, Np = 20000))), 
+                  logLik(object = pfilter(object = measles_pomp, Np = 10000))), 
         se=FALSE
       )
     }  # end dopar

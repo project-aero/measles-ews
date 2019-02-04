@@ -209,14 +209,35 @@ ews_reffs_diffed %>%
   labs(y = "Spearman's rank correlation", x = "EWS") +
   ggthemes::scale_fill_colorblind() +
   scale_y_continuous(limits = c(-0.6,0.6)) +
+  ggtitle("Spearman's rank correlations between\nEWS diffs and R_E") +
   coord_flip()
 
-testdf <- ews_reffs_diffed %>%
+ews_reffs_diffed %>%
   filter(Reff < 1) %>%
   filter(round(log_ratio_value,1) != 0) %>%
-  filter(ews == "variance")
-summary(lm(Reff~log_ratio_value, data = testdf))
-
+  group_by(ews, region) %>%
+  summarise(
+    spearman_value = cor(log_ratio_value, Reff, 
+                         use = "pairwise.complete.obs", 
+                         method = "spearman"),
+    spearman_pvalue = cor.test(log_ratio_value, Reff, 
+                               alternative = "two.sided", 
+                               method = "spearman", exact = FALSE, 
+                               conf.level = 0.05, continuity = TRUE, 
+                               use = "pairwise.complete.obs")$p.value
+  ) %>%
+  mutate(sig_cor = ifelse(spearman_pvalue < 0.05, TRUE, FALSE)) %>%
+  mutate(plot_value = ifelse(sig_cor == TRUE, spearman_value, 0)) %>%
+  ggplot(aes(x = ews, y = plot_value, fill = region)) +
+  geom_col(position = position_dodge(), width = 0.5) +
+  geom_hline(aes(yintercept = 0), col = "grey40") +
+  labs(y = "Spearman's rank correlation", x = "EWS") +
+  ggthemes::scale_fill_colorblind() +
+  scale_y_continuous(limits = c(-0.6,0.6)) +
+  coord_flip() +
+  ggtitle("Spearman's rank correlations between\nEWS diffs and R_E",
+          subtitle = "only significant correlations shown")
+  
 ```
 
 # Look at lag in dynamics
