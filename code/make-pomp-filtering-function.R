@@ -8,7 +8,7 @@
 # Author:
 #  Andrew Tredennick (atredenn@gmail.com)
 
-make_pomp_filter <- function(obs_data, covar_data, mles)
+make_pomp_filter <- function(obs_data, covar_data, mles, rw_value = 0.001)
 {
   library(tidyverse)
   library(pomp)
@@ -30,7 +30,7 @@ make_pomp_filter <- function(obs_data, covar_data, mles)
     double dN0S, dN0I, dNSE, dNEI, dNIR;  // transitions
     
     // Beta random walk
-    beta_t *= rgammawn(0.001, dt)/dt;
+    beta_t *= rgammawn(rw_intensity, dt)/dt;
 
     // Calculate force of infection
     seas = (1 + exp(dot_product(K, &xi1, &b1)));
@@ -146,6 +146,10 @@ make_pomp_filter <- function(obs_data, covar_data, mles)
   
   params <- unlist(mles)
   
+  global_str <- paste0(
+    "int K = 6;", " double rw_intensity = ", rw_value, ";"
+  )
+  
   filtering_pomp <- pomp(
     data = obs_data,
     times = "time",
@@ -162,7 +166,7 @@ make_pomp_filter <- function(obs_data, covar_data, mles)
     fromEstimationScale = from_estimation,
     paramnames = names(params),
     params = params,
-    globals = "int K = 6;",
+    globals = global_str,
     zeronames = c("cases", "cases_state")
   )
   
