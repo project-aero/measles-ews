@@ -12,7 +12,15 @@
 library(tidyverse)
 library(pomp)
 library(lubridate)
+library(foreach)
+library(doParallel)  # functions for parallel computing
 source("make-pomp-filtering-function.R")
+
+if(parallel::detectCores() <= 4){
+  registerDoParallel(cores = detectCores() - 1)
+} else{
+  registerDoParallel()
+}
 
 
 # Loop over cities and perform particle filter ----------------------------
@@ -62,27 +70,28 @@ for(do_city in cities){
   covar_data <- bind_cols(covar_data, bspline_basis)
   
   test_vals <- pretty(seq(0.00001, 0.01, length.out = 100), n = 40)[c(FALSE, TRUE)]
-  llcity <- tibble()
-  counter <- 1
-  for(rwval in test_vals){
-    measles_pomp <- make_pomp_filter(obs_data, covar_data, mles, rw_value = rwval)
-    
-    # Calculate log-likelihood of “new” model and save
-    ll <- logmeanexp(
-      replicate(n = 10,
-                logLik(object = pfilter(object = measles_pomp, Np = 20000))), 
-      se=FALSE
-    )
-    
-    llcity <- bind_rows(llcity, tibble(loglik = ll, rw_value = rwval))
-    print(counter)
-    counter <- counter+1
-  }  # end rw_value loop
+  lls <- foreach(i = test_vals,
+                     .packages = c("pomp", "tidyverse", "dplyr"), 
+                     .combine = "c") %dopar%
+    {
+      measles_pomp <- make_pomp_filter(obs_data, covar_data, mles, rw_value = i)
+      
+      # Calculate log-likelihood of “new” model and save
+      logmeanexp(
+        replicate(n = 10,
+                  logLik(object = pfilter(object = measles_pomp, Np = 20000))), 
+        se=FALSE
+      )
+    }  # end dopar
   
-  llcity <- llcity %>%
-    mutate(city = do_city)
+  tmp_df <- tibble(
+    city = do_city,
+    rw_value = test_vals,
+    loglik = lls
+  )
   
-  ll_all <- bind_rows(ll_all, llcity)
+  ll_all <- bind_rows(ll_all, tmp_df)
+  
 }  # end city loop
 
 write.csv(ll_all, file = "../results/gamma_rw_logliks.csv", row.names = FALSE)
