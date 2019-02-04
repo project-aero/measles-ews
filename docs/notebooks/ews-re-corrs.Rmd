@@ -96,9 +96,10 @@ ews_reffs <- left_join(all_stats, reffs)
 ews_reffs_subcrit <- ews_reffs %>%
   filter(med < 1)
 
-ggplot(ews_reffs_subcrit, aes(x = med, y = value, color = region)) +
+ggplot(ews_reffs_subcrit, aes(x = value, y = med, color = region)) +
   geom_point(alpha = 0.2) +
   facet_wrap(~ews, scales = "free") +
+  labs(x = "EWS value", y = expression(italic(R)[E])) +
   ggthemes::scale_color_colorblind()
 
 # for(do_region in unique(ews_reffs$region)){
@@ -135,12 +136,12 @@ ews_reffs_diffed <- ews_reffs %>%
 ```{r first-diff-scatters, fig.height=20, fig.width=8}
 ews_reffs_diffed %>%
   filter(Reff < 1) %>%
-  ggplot(aes(x = Reff, y = round(diff_value,1))) +
+  ggplot(aes(y = Reff, x = diff_value)) +
   geom_point(aes(color = lubridate::week(date)), alpha = 0.7) +
   facet_wrap(ews~region, scales = "free", ncol = 4) +
   scale_color_viridis_c(name = "Week of year", limits = c(1,52), 
                         breaks = c(1,26,52)) +
-  labs(y = "First difference of EWS", x = expression(R[E])) +
+  labs(x = "First difference of EWS", y = expression(R[E])) +
   theme(legend.position = "top")
 ```
 
@@ -149,12 +150,12 @@ ews_reffs_diffed %>%
 ```{r fig.height=20, fig.width=8}
 ews_reffs_diffed %>%
   filter(Reff < 1) %>%
-  ggplot(aes(x = Reff, y = round(ratio_value,1))) +
+  ggplot(aes(y = Reff, x = ratio_value)) +
   geom_point(aes(color = lubridate::week(date)), alpha = 0.7) +
   facet_wrap(ews~region, scales = "free", ncol = 4) +
   scale_color_viridis_c(name = "Week of year", limits = c(1,52), 
                         breaks = c(1,26,52)) +
-  labs(y = "First ratio of EWS", x = expression(R[E])) +
+  labs(x = "First ratio of EWS", y = expression(R[E])) +
   theme(legend.position = "top")
 ```
 
@@ -163,12 +164,12 @@ ews_reffs_diffed %>%
 ```{r fig.height=20, fig.width=8}
 ews_reffs_diffed %>%
   filter(Reff < 1) %>%
-  ggplot(aes(x = Reff, y = log_ratio_value)) +
+  ggplot(aes(y = Reff, x = log_ratio_value)) +
   geom_point(aes(color = lubridate::week(date)), alpha = 0.7) +
   facet_wrap(ews~region, scales = "free", ncol = 4) +
   scale_color_viridis_c(name = "Week of year", limits = c(1,52), 
                         breaks = c(1,26,52)) +
-  labs(y = "log(First ratio of EWS)", x = expression(R[E])) +
+  labs(x = "log(First ratio of EWS)", y = expression(R[E])) +
   theme(legend.position = "top")
 ```
 
@@ -182,14 +183,40 @@ Now some patterns emerge as expected.
 ews_reffs_diffed %>%
   filter(Reff < 1) %>%
   filter(round(log_ratio_value,1) != 0) %>%
-  ggplot(aes(x = Reff, y = log_ratio_value)) +
+  ggplot(aes(x = log_ratio_value, y = Reff)) +
   geom_point(aes(color = lubridate::week(date)), alpha = 0.7) +
   stat_smooth(method = "lm", se = FALSE, linetype = 1, color = "black") +
   facet_wrap(ews~region, scales = "free", ncol = 4) +
   scale_color_viridis_c(name = "Week of year", limits = c(1,52), 
                         breaks = c(1,26,52)) +
-  labs(y = "log(First ratio of EWS)", x = expression(R[E])) +
+  labs(x = "log(First ratio of EWS)", y = expression(R[E])) +
   theme(legend.position = "top")
+```
+
+## Calculate correlations after removing ~0 EWS diffs
+
+```{r calc-cors}
+ews_reffs_diffed %>%
+  filter(Reff < 1) %>%
+  filter(round(log_ratio_value,1) != 0) %>%
+  group_by(ews, region) %>%
+  summarise(corr_with_reff = cor(log_ratio_value, Reff, 
+                                 use = "pairwise.complete.obs", 
+                                 method = "spearman")) %>%
+  ggplot(aes(x = ews, y = corr_with_reff, fill = region)) +
+  geom_col(position = position_dodge(), width = 0.5) +
+  geom_hline(aes(yintercept = 0), col = "grey40") +
+  labs(y = "Spearman's rank correlation", x = "EWS") +
+  ggthemes::scale_fill_colorblind() +
+  scale_y_continuous(limits = c(-0.6,0.6)) +
+  coord_flip()
+
+testdf <- ews_reffs_diffed %>%
+  filter(Reff < 1) %>%
+  filter(round(log_ratio_value,1) != 0) %>%
+  filter(ews == "variance")
+summary(lm(Reff~log_ratio_value, data = testdf))
+
 ```
 
 # Look at lag in dynamics
@@ -258,6 +285,38 @@ for(do_city in unique(sim_ews$city)){
   plot(x, y2, type = "l", axes=F, xlab=NA, ylab=NA, lwd = 1.5)
   axis(side = 4)
   mtext(side = 4, line = 3, "Log variance")
+}
+
+for(do_city in unique(sim_ews$city)){
+  tmp <- filter(sim_ews, city == do_city)
+  x <- tmp$time
+  y <- tmp$RE_seas
+  y2 <- tmp$autocorrelation
+  color <- ifelse(tmp$critical == TRUE, "red", "blue")
+  
+  par(mar = c(5,5,2,5))
+  plot(x, y, type = "n", ylab = expression(italic(R)[E]), xlab = "Date", main = do_city)
+  segments(x0 = x, y0 = y, x1 = x+diff(x), y1 = y+diff(y), col = color)
+  par(new = T)
+  plot(x, y2, type = "l", axes=F, xlab=NA, ylab=NA, lwd = 1.5)
+  axis(side = 4)
+  mtext(side = 4, line = 3, "Autocorrelation")
+}
+
+for(do_city in unique(sim_ews$city)){
+  tmp <- filter(sim_ews, city == do_city)
+  x <- tmp$time
+  y <- tmp$RE_seas
+  y2 <- log(tmp$decay_time + 1)
+  color <- ifelse(tmp$critical == TRUE, "red", "blue")
+  
+  par(mar = c(5,5,2,5))
+  plot(x, y, type = "n", ylab = expression(italic(R)[E]), xlab = "Date", main = do_city)
+  segments(x0 = x, y0 = y, x1 = x+diff(x), y1 = y+diff(y), col = color)
+  par(new = T)
+  plot(x, y2, type = "l", axes=F, xlab=NA, ylab=NA, lwd = 1.5)
+  axis(side = 4)
+  mtext(side = 4, line = 3, "Log decay time (+1)")
 }
 
 
