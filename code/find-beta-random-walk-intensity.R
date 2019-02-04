@@ -18,7 +18,7 @@ source("make-pomp-filtering-function.R")
 # Loop over cities and perform particle filter ----------------------------
 
 cities <- c("Agadez", "Maradi", "Niamey", "Zinder")
-
+ll_all <- tibble()
 for(do_city in cities){
   # Load MLEs
   mles <- read.csv(paste0("../results/initial-mif-lls-", do_city, ".csv")) %>%
@@ -61,7 +61,7 @@ for(do_city in cities){
   
   covar_data <- bind_cols(covar_data, bspline_basis)
   
-  test_vals <- pretty(seq(0.01, 0.0001, length.out = 30), n = 20)[-1]
+  test_vals <- pretty(seq(0.00001, 0.01, length.out = 100), n = 40)[c(FALSE, TRUE)]
   llcity <- tibble()
   counter <- 1
   for(rwval in test_vals){
@@ -69,8 +69,8 @@ for(do_city in cities){
     
     # Calculate log-likelihood of “new” model and save
     ll <- logmeanexp(
-      replicate(n = 5,
-                logLik(object = pfilter(object = measles_pomp, Np = 5000))), 
+      replicate(n = 10,
+                logLik(object = pfilter(object = measles_pomp, Np = 20000))), 
       se=FALSE
     )
     
@@ -85,3 +85,4 @@ for(do_city in cities){
   ll_all <- bind_rows(ll_all, llcity)
 }  # end city loop
 
+write.csv(ll_all, file = "../results/gamma_rw_logliks.csv", row.names = FALSE)
