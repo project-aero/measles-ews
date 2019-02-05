@@ -244,6 +244,8 @@ ews_reffs_diffed %>%
 Due to the stochastic seasonal dynamics, there may be a lag between $R_E$ and EWS that are calculated from raw case data.
 To look at this, I will plot $R_E$ and each EWS on the same plot, with peaks in each year highlighted.
 These plots will come from simulated series where we know that the $R_E$ and the dynamics are explicitly linked (unlike $R_E$ estimates from particle filtering with the real data).
+In all the plots below, the red/blue lines show the $R_E$ trajectory, with red indicating when $R_E$ is supercritical (above 1).
+The black lines are the trajectory of the EWS as indicated on the right y-axis label.
 
 ```{r load-sims}
 all_sim_files <- list.files("../../simulations/")

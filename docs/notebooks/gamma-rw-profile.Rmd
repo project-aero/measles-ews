@@ -27,7 +27,7 @@ read_csv("../../results/gamma_rw_logliks.csv") %>%
 
 To get an idea of the kind of variation that is happening at such low `lambda` values, I can simulate a Markovian process where $x_t = x_{t-1} \times \varepsilon_t$, where $\varepsilon_t \sim \text{Gamma}(\lambda)$ as implemented with `pomp::rgammawn()`.
 
-```{r, message = FALSE, warning = FALSE}
+```{r, message = FALSE, warning = FALSE, fig.height=5}
 library(pomp)
 
 lambda <- read_csv("../../results/gamma_rw_logliks.csv") %>%
@@ -198,6 +198,7 @@ all_cities <- readRDS(do_file) %>%
   unique()
 
 pomp_objects <- list()  # empty list for storing pomp objects
+pomp_objects_null <- list()  # empty list for null pomp objects
 for(do_city in all_cities){
   measles_data <- readRDS(do_file) %>%
     dplyr::filter(region == do_city)
@@ -240,7 +241,7 @@ for(do_city in all_cities){
     filter(loglik == max(loglik, na.rm = TRUE)) %>%
     dplyr::select(-do_grid, -loglik, -loglik_se) %>%
     unlist() %>%
-    c(rw_sigma = 0)
+    c(rw_sigma = 0.01)
   
   measles_pomp <- pomp(
     data = obs_data,
@@ -263,46 +264,88 @@ for(do_city in all_cities){
 
   city_abb <- substr(do_city, start = 1, stop = 6)
   pomp_objects[[city_abb]] <- measles_pomp
+  
+   params <- read_csv(mle_file) %>%
+    filter(loglik == max(loglik, na.rm = TRUE)) %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se) %>%
+    unlist() %>%
+    c(rw_sigma = 0)
+  
+  measles_pomp_null <- pomp(
+    data = obs_data,
+    times = "time",
+    covar = covar_data,
+    tcovar = "time",
+    t0 = min(obs_data$time),
+    rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
+    rmeasure = measles_rmeasure,
+    dmeasure = measles_dmeasure,
+    initializer = initial_values,
+    statenames = c("S", "E", "I", "cases", "W", "RE", "RE_seas", "beta_t"),
+    toEstimationScale = to_estimation,
+    fromEstimationScale = from_estimation,
+    paramnames = names(params),
+    params = params,
+    globals = "int K = 6;",
+    zeronames = c("cases", "W")
+  )
+
+  city_abb <- substr(do_city, start = 1, stop = 6)
+  pomp_objects_null[[city_abb]] <- measles_pomp_null
 }
 ```
 
 ### Perform MIF
 
 Looking at the MIF traceplots, the log likelihood actually goes down from the initial parameter values.
-And, logliks are larger for null models where I set rw_sigma = 0.
+And, logliks are larger for null models where I set rw_sigma = 0 (see table after this code snippet.
 
-```{r, eval = FALSE}
-particles <- 5000
+```{r, eval = TRUE, message=FALSE, warning=FALSE}
+library(doParallel)
+library(foreach)
+
+registerDoParallel(cores = detectCores() - 1)
+
+
+particles <- 10000
 mif_iters <- 10
 
-mf <- pomp_objects[[1]] %>% 
-  mif2(
-    start = pomp_objects[[1]]@params,
-    Nmif = mif_iters,
-    Np = particles,
-    transform = TRUE,
-    cooling.fraction.50 = 1,
-    cooling.type = "geometric",
-    rw.sd = rw.sd(
-      beta_mu = 0.02,
-      beta_sd = 0.02,
-      iota = 0.02,
-      rho = 0.02,
-      b1 = 0.02,
-      b2 = 0.02,
-      b3 = 0.02,
-      b4 = 0.02,
-      b5 = 0.02,
-      b6 = 0.02,
-      I_0 = ivp(0.1),
-      E_0 = ivp(0.1),
-      S_0 = ivp(0.1),
-      tau = 0.02,
-      rw_sigma = 0.02
-    )
-  ) 
+logliks <- foreach(i = names(pomp_objects), .combine = "rbind") %dopar% 
+{
+  mf <- pomp_objects[[i]] %>% 
+    mif2(
+      start = pomp_objects[[i]]@params,
+      Nmif = mif_iters,
+      Np = particles,
+      transform = TRUE,
+      cooling.fraction.50 = 1,
+      cooling.type = "geometric",
+      rw.sd = rw.sd(
+        beta_mu = 0.02,
+        beta_sd = 0.02,
+        iota = 0.02,
+        rho = 0.02,
+        b1 = 0.02,
+        b2 = 0.02,
+        b3 = 0.02,
+        b4 = 0.02,
+        b5 = 0.02,
+        b6 = 0.02,
+        I_0 = ivp(0.1),
+        E_0 = ivp(0.1),
+        S_0 = ivp(0.1),
+        tau = 0.02,
+        rw_sigma = 0.02
+      )
+    ) 
 
-ll <- logmeanexp(replicate(5, logLik(pfilter(mf, Np = particles))), se=TRUE)
-ll_null <- logmeanexp(replicate(5, logLik(pfilter(pomp_objects[[1]], Np = particles))), se=TRUE)
-coef_ests <- data.frame(t(coef(mf)))
+    ll <- logmeanexp(replicate(5, logLik(pfilter(mf, Np = particles))), se=FALSE)
+    ll_null <- logmeanexp(replicate(5, logLik(pfilter(pomp_objects_null[[i]], 
+                                                      Np = particles))), se=FALSE)
+    c(ll, ll_null)
+  }
+
+knitr::kable(as_tibble(logliks) %>%
+               rename("random_walk" = V1,
+                      "no_random_walk" = V2))
 ```
