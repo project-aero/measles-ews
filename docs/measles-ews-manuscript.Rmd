@@ -711,6 +711,8 @@ This work was done on the Olympus High Performance Compute Cluster located at th
 # New figures
 
 ```{r emergence, fig.width=8.5, fig.height=5}
+mycols <- c("#91CDF0", "#EF6677")
+
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
 
@@ -789,8 +791,8 @@ ggplot(variance_all_sim, aes(x = log(variance + 1), fill = interval)) +
   geom_density(size = 0.5, alpha = 0.65, color = "white") +
   annotate(geom = "text", x = 3, y = 1.2, size = 3,
            label = paste("Area under the curve:", var_auc)) +
-  scale_fill_manual(values = c(ggthemes::ptol_pal()(2)), 
-                     name = "Interval", labels = c("Null", "Test")) +
+  scale_fill_manual(values = mycols, name = "Interval",
+                    labels = c("Null", "Test")) +
   labs(x = "Log(variance + 1)", y = "Density") +
   coord_cartesian(xlim = c(0, 4)) +
   theme_classic(base_size = 11) +
@@ -853,11 +855,11 @@ ggplot() +
   annotate(geom = "text", x = 79, y = 900, 
            label = "coverage reaches\nherd immunity",
            size = 2, color = "dodgerblue4") +
-  annotate(geom = "text", x = 28, y = 1350, size = 3,
+  annotate(geom = "text", x = 28, y = 1300, size = 3,
            label = paste("Variance =", 
                          filter(variance_example, half == "first") %>% 
                            pull(variance))) +
-  annotate(geom = "text", x = 70, y = 1350, size = 3,
+  annotate(geom = "text", x = 70, y = 1300, size = 3,
            label = paste("Variance =", 
                          filter(variance_example, half == "second") %>% 
                            pull(variance))) +
@@ -879,29 +881,36 @@ var_auc <- pROC::auc(rocobj)
 
 ggplot(data = all_variances, aes(x = log(variance + 1), fill = interval)) +
   geom_density(size = 0.5, alpha = 0.65, color = "white") +
-  annotate(geom = "text", x = 4, y = 0.3, size = 3,
+  annotate(geom = "text", x = 10, y = 0.4, size = 3,
            label = paste("Area under the curve:", round(var_auc,2))) +
-  scale_fill_manual(values = c(ggthemes::ptol_pal()(2)), 
-                     name = "Interval", labels = c("Null", "Test")) +
+  scale_fill_manual(values = mycols, name = "Interval", 
+                    labels = c("Null", "Test")) +
   labs(x = "Log(variance + 1)", y = "Density") +
+  coord_cartesian(xlim = c(6, 11)) +
   theme_classic(base_size = 11) +
-  theme(legend.position = c(0.2, 0.8)) -> dist_plot
+  theme(legend.position = c(0.8, 0.8)) -> dist_plot
 
 # AUC heatmap
 elimination_aucs <- read.csv("../results/elimination-grid-aucs.csv")
 
 ggplot() +
-  geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = abs(AUC-0.5))) +
-  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), 
+                                         y = metric, fill = abs(AUC-0.5))) +
+  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C",
+                     name = "| AUC - 0.5 |") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
+  labs(x = expression(paste("Rate to full vaccine coverage (", 
+                            phantom()%*%phantom(), 10^4, ")")), 
+       y = NULL) +
   theme_minimal(base_size = 11) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"),
+         strip.text = element_text(face = "bold"),
         plot.title = element_text(size = 11, face = "bold")) -> aucs
 
 row2 <- cowplot::plot_grid(aucs, labels = "C")
-row1 <- cowplot::plot_grid(cases_series, dist_plot, scale = 0.9, labels = "AUTO")
+row1 <- cowplot::plot_grid(cases_series, dist_plot, 
+                           scale = 0.9, labels = "AUTO")
 final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
 print(final)
 ```
