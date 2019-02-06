@@ -710,20 +710,45 @@ This work was done on the Olympus High Performance Compute Cluster located at th
 
 # New figures
 
-```{r emergence}
+```{r emergence, fig.width=8.5, fig.height=5}
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
+
+re_one_year <- emerge_sim %>%
+  group_by(time) %>%
+  summarise(mean_re = mean(RE_seas)) %>%  
+  mutate(year = round(time)) %>%  # create 'year' variable
+  ungroup() %>%
+  filter(mean_re >= 1) %>%  # drop times where Re less than 1
+  filter(year == min(year) + 1) %>%  # filter to critical transition year
+  distinct(year, .keep_all = TRUE) %>%  # drop duplicates
+  dplyr::select(year) %>%
+  ungroup()
+
+re_path <- emerge_sim %>%
+  group_by(time) %>%
+  summarise(mean_re = mean(RE_seas)) %>%  
+  mutate(year = round(time)) %>%  # create 'year' variable
+  ungroup()
 
 one_sim <- emerge_sim %>% 
   filter(sim == 1) %>%
   left_join(re_path) %>%
-  mutate(used = ifelse(time <= re_one_year$year, "yes", "no"))
+  mutate(used = ifelse(time <= re_one_year$year, "yes", "no")) %>%
+  filter(year < 9)
 
 variance_one_sim <- one_sim %>%
   filter(used == "yes") %>%
   mutate(interval = ifelse(time < max(year)/2, "null", "test")) %>%
   group_by(interval) %>%
   summarise(variance = round(var(reports),1))
+
+variance_cats <- variance_one_sim %>%
+  ungroup() %>%
+  mutate(cat = ifelse(interval == "null", 0, 1)) 
+
+rocobj <- pROC::roc(variance_cats$cat, variance_cats$variance)
+var_auc <- pROC::auc(rocobj)
 
 variance_all_sim <- emerge_sim %>%
   left_join(re_path) %>%
@@ -733,38 +758,69 @@ variance_all_sim <- emerge_sim %>%
   group_by(interval, sim) %>%
   summarise(variance = var(reports))
 
-cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports)) +
+# Case time series
+ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports)) +
   geom_line(color = "tan", aes(alpha = used)) +
   geom_vline(aes(xintercept = 0), color = "dodgerblue4", linetype = 2) +
-  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
+  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", 
+             linetype = 2) +
   geom_vline(aes(xintercept = 7/2)) +
-  annotate(geom = "text", x = 1.75, y = 250, 
+  annotate(geom = "text", x = 1.75, y = 250, size = 3,
            label = "Null window", fontface = "bold") +
-  annotate(geom = "text", x = 5.25, y = 250, 
+  annotate(geom = "text", x = 5.25, y = 250, size = 3,
            label = "Test window", fontface = "bold") +
-  annotate(geom = "text", x = 1.75, y = 220, 
+  annotate(geom = "text", x = 1.75, y = 220, size = 3,
            label = paste("Variance =", 
                          filter(variance_one_sim, interval == "null") %>%
                            pull(variance))) +
-  annotate(geom = "text", x = 5.25, y = 220, 
+  annotate(geom = "text", x = 5.25, y = 220, size = 3,
            label = paste("Variance =", 
                          filter(variance_one_sim, interval == "test") %>%
                            pull(variance))) +
   scale_alpha_manual(values = c(0.4, 1)) +
   guides(alpha = FALSE) +
-  annotate(geom = "text", x = 6.35, y = 150, label = "critical\nyear", size = 3, color = "dodgerblue4") +
+  annotate(geom = "text", x = 6.3, y = 125, label = "critical\nyear", 
+           size = 3, color = "dodgerblue4") +
   labs(x = "Simulation time (year)", y = "Reported cases") +
-  theme_classic(base_size = 12)
-cases_series %>% print()
+  theme_classic(base_size = 11) -> cases_series
 
+# Distribution of variance across simulations
 ggplot(variance_all_sim, aes(x = log(variance + 1), fill = interval)) +
-  geom_density(size = 1, alpha = 0.65, color = "white") +
+  geom_density(size = 0.5, alpha = 0.65, color = "white") +
+  annotate(geom = "text", x = 3, y = 1.2, size = 3,
+           label = paste("Area under the curve:", var_auc)) +
   scale_fill_manual(values = c(ggthemes::ptol_pal()(2)), 
                      name = "Interval", labels = c("Null", "Test")) +
   labs(x = "Log(variance + 1)", y = "Density") +
   coord_cartesian(xlim = c(0, 4)) +
-  theme_classic(base_size = 12) +
-  theme(legend.position = c(0.8, 0.8))
+  theme_classic(base_size = 11) +
+  theme(legend.position = c(0.8, 0.8)) -> dist_plot
+
+# AUC heatmap
+emergence_aucs <- read.csv("../results/emergence-grid-aucs.csv")
+
+star_tbl <- tibble(
+  city = "Niamey",
+  x = as.factor(rep(1e-04, 2)),
+  y = c(5.7, 7.7)
+)
+
+ggplot() +
+  geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
+  geom_text(data = star_tbl, aes(x = x, y = y, label = "*"), color = "white", size = 6) +
+  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  facet_wrap(~city, nrow = 1) +
+  labs(x = "Proportion of mean susceptibles", y = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"),
+        strip.text = element_text(face = "bold"),
+        plot.title = element_text(size = 11, face = "bold")) -> aucs
+
+row2 <- cowplot::plot_grid(aucs, labels = "C")
+row1 <- cowplot::plot_grid(cases_series, dist_plot, scale = 0.9, labels = "AUTO")
+final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
+print(final)
 
 ```
 
