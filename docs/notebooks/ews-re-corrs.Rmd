@@ -276,10 +276,10 @@ for(do_city in unique(all_sims$city)){
     x = tmp_cases,
     center_trend = "local_constant", 
     center_kernel = "uniform", 
-    center_bandwidth = 30, 
+    center_bandwidth = 15, 
     stat_trend = "local_constant", 
     stat_kernel = "uniform", 
-    stat_bandwidth = 30, 
+    stat_bandwidth = 15, 
     lag = 1, 
     backward_only = TRUE
   )$stats
@@ -299,7 +299,7 @@ for(do_city in unique(sim_ews$city)){
   tmp <- filter(sim_ews, city == do_city)
   x <- tmp$time
   y <- tmp$RE_seas
-  y2 <- log(tmp$variance)
+  y2 <- log(tmp$variance+1)
   color <- ifelse(tmp$critical == TRUE, "red", "blue")
   
   par(mar = c(5,5,2,5))
@@ -308,7 +308,7 @@ for(do_city in unique(sim_ews$city)){
   par(new = T)
   plot(x, y2, type = "l", axes=F, xlab=NA, ylab=NA, lwd = 1.5)
   axis(side = 4)
-  mtext(side = 4, line = 3, "Log variance")
+  mtext(side = 4, line = 3, "Log variance (+1)")
 }
 
 for(do_city in unique(sim_ews$city)){
