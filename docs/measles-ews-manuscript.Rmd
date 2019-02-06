@@ -824,4 +824,90 @@ print(final)
 
 ```
 
+```{r elimination, fig.width=8.5, fig.height=5}
+example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
+ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
+
+variance_example <- ews_data_example %>%
+  group_by(half) %>%
+  summarise(variance = round(var(reports)))
+
+ggplot() +
+  geom_line(data = example_data, aes(x = time, y = reports, group = group), 
+            color = "tan", alpha = 0.4, size = 0.3) +
+  geom_vline(data = ews_data_example, aes(xintercept = max(time)), 
+             color = "dodgerblue4",  linetype = 2) +
+  geom_vline(data = ews_data_example, aes(xintercept = min(time)), 
+             color = "dodgerblue4",  linetype = 2) +
+  geom_vline(data = ews_data_example, aes(xintercept = 50), 
+             color = "grey45", linetype = 1) +
+  geom_line(data = ews_data_example, aes(x = time, y = reports),
+            color = "tan", size = 0.3) +
+  annotate(geom = "text", x = 28, y = 1450, size = 3,
+           label = "Null window", fontface = "bold") +
+  annotate(geom = "text", x = 70, y = 1450, size = 3,
+           label = "Test window", fontface = "bold") +
+  annotate(geom = "text", x = 36, y = 900, 
+           label = "start of\nvaccination campaign", 
+           size = 2, color = "grey25") +
+  annotate(geom = "text", x = 79, y = 900, 
+           label = "coverage reaches\nherd immunity",
+           size = 2, color = "dodgerblue4") +
+  annotate(geom = "text", x = 28, y = 1350, size = 3,
+           label = paste("Variance =", 
+                         filter(variance_example, half == "first") %>% 
+                           pull(variance))) +
+  annotate(geom = "text", x = 70, y = 1350, size = 3,
+           label = paste("Variance =", 
+                         filter(variance_example, half == "second") %>% 
+                           pull(variance))) +
+  labs(x = "Simulation time (year)", y = "Reported cases") +
+  theme_classic(base_size = 11) -> cases_series
+
+# Plot variance distributions
+all_variances <- read_csv("../results/ews-elimination.csv") %>%
+  filter(metric == "variance", city == "Maradi", vacc_speed == 0.000015) %>%
+  mutate(interval = ifelse(half == "first", "Null", "Test"),
+         variance = value)
+
+variance_cats <- all_variances %>%
+  ungroup() %>%
+  mutate(cat = ifelse(interval == "Null", 0, 1)) 
+
+rocobj <- pROC::roc(variance_cats$cat, variance_cats$variance)
+var_auc <- pROC::auc(rocobj)
+
+ggplot(data = all_variances, aes(x = log(variance + 1), fill = interval)) +
+  geom_density(size = 0.5, alpha = 0.65, color = "white") +
+  annotate(geom = "text", x = 4, y = 0.3, size = 3,
+           label = paste("Area under the curve:", round(var_auc,2))) +
+  scale_fill_manual(values = c(ggthemes::ptol_pal()(2)), 
+                     name = "Interval", labels = c("Null", "Test")) +
+  labs(x = "Log(variance + 1)", y = "Density") +
+  theme_classic(base_size = 11) +
+  theme(legend.position = c(0.2, 0.8)) -> dist_plot
+
+# AUC heatmap
+elimination_aucs <- read.csv("../results/elimination-grid-aucs.csv")
+
+ggplot() +
+  geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = abs(AUC-0.5))) +
+  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  facet_wrap(~city, nrow = 1) +
+  labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(panel.spacing = unit(1, "lines"),
+        plot.title = element_text(size = 11, face = "bold")) -> aucs
+
+row2 <- cowplot::plot_grid(aucs, labels = "C")
+row1 <- cowplot::plot_grid(cases_series, dist_plot, scale = 0.9, labels = "AUTO")
+final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
+print(final)
+```
+
+
+
+```
+
 # References
