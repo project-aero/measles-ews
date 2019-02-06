@@ -33,7 +33,7 @@ keywords:
   - infectious disease
 bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 date: "`r Sys.Date()`"
-csl: science-without-titles.csl
+csl: pnas.csl
 output: rticles::elsevier_article
 layout: 3p # review # review = doublespace, 3p = singlespace, 5p = two-column
 preamble: |
@@ -707,5 +707,65 @@ Early warning signals, though powerful and now accompanied with robust empirical
 This research was funded by the National Institute of General Medical Sciences of the National Institutes of Health (Award Number U01GM110744).
 The funders had no role in study design, data collection and analysis, decision to publish, or preparation of the manuscript.
 This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
+
+# New figures
+
+```{r emergence}
+ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
+emerge_sim <- readRDS(ex_file)
+
+one_sim <- emerge_sim %>% 
+  filter(sim == 1) %>%
+  left_join(re_path) %>%
+  mutate(used = ifelse(time <= re_one_year$year, "yes", "no"))
+
+variance_one_sim <- one_sim %>%
+  filter(used == "yes") %>%
+  mutate(interval = ifelse(time < max(year)/2, "null", "test")) %>%
+  group_by(interval) %>%
+  summarise(variance = round(var(reports),1))
+
+variance_all_sim <- emerge_sim %>%
+  left_join(re_path) %>%
+  mutate(used = ifelse(time <= re_one_year$year, "yes", "no")) %>%
+  filter(used == "yes") %>%
+  mutate(interval = ifelse(time < max(year)/2, "null", "test")) %>%
+  group_by(interval, sim) %>%
+  summarise(variance = var(reports))
+
+cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports)) +
+  geom_line(color = "tan", aes(alpha = used)) +
+  geom_vline(aes(xintercept = 0), color = "dodgerblue4", linetype = 2) +
+  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
+  geom_vline(aes(xintercept = 7/2)) +
+  annotate(geom = "text", x = 1.75, y = 250, 
+           label = "Null window", fontface = "bold") +
+  annotate(geom = "text", x = 5.25, y = 250, 
+           label = "Test window", fontface = "bold") +
+  annotate(geom = "text", x = 1.75, y = 220, 
+           label = paste("Variance =", 
+                         filter(variance_one_sim, interval == "null") %>%
+                           pull(variance))) +
+  annotate(geom = "text", x = 5.25, y = 220, 
+           label = paste("Variance =", 
+                         filter(variance_one_sim, interval == "test") %>%
+                           pull(variance))) +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  guides(alpha = FALSE) +
+  annotate(geom = "text", x = 6.35, y = 150, label = "critical\nyear", size = 3, color = "dodgerblue4") +
+  labs(x = "Simulation time (year)", y = "Reported cases") +
+  theme_classic(base_size = 12)
+cases_series %>% print()
+
+ggplot(variance_all_sim, aes(x = log(variance + 1), fill = interval)) +
+  geom_density(size = 1, alpha = 0.65, color = "white") +
+  scale_fill_manual(values = c(ggthemes::ptol_pal()(2)), 
+                     name = "Interval", labels = c("Null", "Test")) +
+  labs(x = "Log(variance + 1)", y = "Density") +
+  coord_cartesian(xlim = c(0, 4)) +
+  theme_classic(base_size = 12) +
+  theme(legend.position = c(0.8, 0.8))
+
+```
 
 # References
