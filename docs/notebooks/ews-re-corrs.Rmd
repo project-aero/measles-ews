@@ -45,6 +45,7 @@ I use a bandwidth of 30 weeks and set `backward_only = TRUE` so that only past d
 ```{r ews-calc}
 library(spaero)
 
+bandwidth <- 15
 fname <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
 measles_data <- readRDS(fname) %>%
   filter(year > 1994)  # drop first NA year, only used for modeling
@@ -61,10 +62,10 @@ for(do_region in unique(measles_data$region)){
     x = cases,
     center_trend = "local_constant", 
     center_kernel = "uniform", 
-    center_bandwidth = 30, 
+    center_bandwidth = bandwidth, 
     stat_trend = "local_constant", 
     stat_kernel = "uniform", 
-    stat_bandwidth = 30, 
+    stat_bandwidth = bandwidth, 
     lag = 1, 
     backward_only = TRUE
   )$stats
