@@ -94,7 +94,7 @@ mles <- read.csv(mle_file) %>%
 
 sim <- as_tibble(
     simulate(pomp_object, params = mles, nsim = 1, as.data.frame = TRUE,
-             include.data = FALSE, seed = 12345872)
+             include.data = FALSE, seed = 123452)
   ) %>%
   filter(time >= 1995) %>%
   dplyr::select(sim, time, reports, S, E, I, RE_seas) %>%
@@ -124,7 +124,7 @@ Forecasts will be made for all of 2000 (52 weeks).
 ```{r plot-data-used}
 test_data <- sim %>%
   filter(year(date) < 2001) %>%
-  filter(year(date) == 2000 | (year(date) == 1999 & week(date) > 40)) %>%
+  filter(year(date) == 2000 | (year(date) == 1999 & week(date) > 30)) %>%
   mutate(split = ifelse(year(date) == 1999, 
                         "initial conditions", 
                         "to be forecast"))
@@ -140,7 +140,7 @@ Essentially, I am removing initial conditions error for now.
 
 First, make a `pomp` model that can take a set of initial conditions and then simulate forward.
 
-```{r make-pomp}
+```{r make-pomp, eval = FALSE}
 make_pomp_simulator <- function(do_city, mles, years_to_sim = 1, init)
 {
   library(tidyverse)
@@ -367,3 +367,138 @@ ggplot(rep_for_plot, aes(x = time, y = value, group = sim, color = outbreak_year
 ```
 
 See this, https://kingaa.github.io/sbied/ebola/ebola.html, for ideas on setting up a particle filter that transitions to forecasting.
+
+## Use EWS to predict outbreaks
+
+Now I will calculate EWS over a moving window in an increasinly large time series from week 30 to week 52 leading up to the next season.
+For each length of time series (i.e., lead time) I will calculate the trend in the EWS over time.
+Increasing EWS signal an upcoming transition.
+When the mean, autocorrelation, autocovariance, variance, and decay time all show increasing trends, I will call that a warning of an outbreak.
+
+```{r calc-ews}
+# Get the case data
+ews_data <- test_data %>%
+  filter(year(date) < 2000) %>%
+  dplyr::select(date, reports)
+
+# Set the EWS bandwidth to 15 weeks
+bandwidth <- 15
+
+# Set up lead time sequence
+stop_times <- seq_len(nrow(ews_data))[-c(1:3)]  # drop 1st element b/c it's 1 yr only
+
+# Loop over stop times and calculate EWS trends
+out_trends <- tibble()  # empty tibble for storage
+for(tstop in stop_times){
+  x <- ews_data$reports[1:tstop]
+  trends <- spaero::get_stats(x = x, center_trend = "local_constant",
+                              center_kernel = "uniform",
+                              center_bandwidth = bandwidth, 
+                              stat_trend = "local_constant",
+                              stat_kernel = "uniform", 
+                              stat_bandwidth = bandwidth, lag = 1,
+                              backward_only = TRUE)$taus %>%
+    as_tibble() %>%
+    gather() %>%
+    mutate(trend_sign = sign(value)) %>%
+    filter(!(key %in% c("skewness", "kurtosis", 
+                        "coefficient_of_variance"))) %>%
+    group_by(trend_sign) %>%
+    count() %>%
+    mutate(stop_week = tstop)
+  
+  out_trends <- bind_rows(out_trends, trends)
+}
+
+warning_week <- out_trends %>%
+  filter(trend_sign == 1) %>%
+  mutate(lead_time = 52 - (30 + stop_week)) %>%
+  filter(n == max(n)) %>%
+  pull(lead_time) %>%
+  max()
+
+out_trends %>%
+  filter(trend_sign == 1) %>%
+  mutate(lead_time = 52 - (30 + stop_week)) %>%
+  ggplot(aes(x = lead_time, y = n)) +
+   geom_vline(aes(xintercept = warning_week), color = "red") +
+  geom_line(size = 0.4, color = "grey45") +
+  geom_point(size = 4, color = "grey45") +
+  scale_x_reverse() +
+  labs(x = "lead time (weeks)", y = "number of EWS increasing")
+```
+
+OK, that was for on outbreak year.
+Now I'll do the same analysis for every year, whether a large or small outbreak.
+
+```{r ews-all-years}
+my_get_stats <- function(x, bandwidth){
+   spaero::get_stats(x = x, center_trend = "local_constant",
+                     center_kernel = "uniform", center_bandwidth = bandwidth, 
+                     stat_trend = "local_constant", stat_kernel = "uniform", 
+                     stat_bandwidth = bandwidth, lag = 1, backward_only = TRUE)
+}
+
+get_trends <- function(x, bandwidth, ews_to_ignore = NULL){
+  stop_times <- seq_len(length(x))[-c(1:3)]
+  out_trends <- tibble()
+  
+  for(tstop in stop_times){
+    xnow <- x[1:tstop]
+    trends <- my_get_stats(x = xnow, bandwidth = bandwidth)$taus %>%
+      as_tibble() %>%
+      gather() %>%
+      mutate(trend_sign = sign(value)) %>%
+      filter(!(key %in% ews_to_ignore)) %>%
+      group_by(trend_sign) %>%
+      count() %>%
+      mutate(stop_week = tstop,
+             lead_time = 52 - (30 + stop_week))
+    
+    out_trends <- bind_rows(out_trends, trends)
+  }
+  return(out_trends)
+}
+
+get_testing_data <- function(df, test_year){
+  df %>%
+    filter(year == (test_year - 1) & week(date) > 30) %>%
+    pull(reports)
+}
+
+run_ews_analysis <- function(df, test_year, bw = 15, ews_to_ignore){
+  cases <- get_testing_data(df, test_year)
+  ews_trends <- get_trends(x = cases, bandwidth = bw,
+                           ews_to_ignore = ews_to_ignore)
+  return(ews_trends)
+} 
+
+years_to_predict <- unique(sim$year)[-1]
+all_trends <- tibble()
+ignore_these <-  c("skewness", "kurtosis", "cofficient_of_variation", "decay_time", "variance_first_difference")
+
+for(do_year in years_to_predict){
+  all_trends %>%
+    bind_rows(
+      run_ews_analysis(sim, test_year = do_year, 
+                       bw = 15, ews_to_ignore = ignore_these) %>%
+        mutate(test_year = do_year)
+    ) -> all_trends
+}
+
+all_trends %>%
+  filter(trend_sign == 1) %>%
+  left_join(
+    sim %>% dplyr::select(year, outbreak_year),
+    by = c("test_year" = "year")
+  ) %>%
+  ggplot(aes(x = lead_time, y = n/5, color = outbreak_year)) +
+  geom_hline(aes(yintercept = 1), color = "grey45") +
+  geom_line() +
+  geom_point() +
+  scale_x_reverse() +
+  scale_y_continuous(limits = c(0, 1)) +
+  facet_wrap(~test_year, nrow = 2) +
+  labs(x = "lead time (weeks)", y = "proprtion of EWS increasing")
+```
+
