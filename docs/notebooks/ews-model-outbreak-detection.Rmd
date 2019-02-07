@@ -1,0 +1,369 @@
+---
+title: "Compare EWS and model-based outbreak detection"
+author: "Andrew Tredennick"
+date: 2019-02-07
+output: html_notebook
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(pomp)
+
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+# Motivation
+Parametric models of disease dynamics are data hungry and take a lot of time and effort to fit.
+However, their mechanistic basis may lead to better predictions of outbreaks in highly seasonal systems.
+Model-independent early warning signals (EWS), on the other hand, lack mechanism but are easy to calculate and require less data.
+An open question is whether parametric models are worth the effort.
+That is, are EWS just as good for half the hassle?
+
+In this notebook, I answer the above question by predicting large vs. small outbreaks from a fitted parametric *SEIR* model and from EWS.
+
+# Methods
+
+## Defining large and small outbreaks
+The first step is to classify the seasonal epidemics as outbreaks and non-outbreaks.
+To do this, I will fit a general mixture model of two exponentials.
+The break point between the two defines the incidence at which we classify an outbreak as large or small.
+I use incidence, rather than raw case numbers, so I can combine the data from all the cities, increasing the sample size to a decent level.
+
+```{r classify-outbreaks}
+# Load measles data
+fname <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+measles_data <- readRDS(fname) %>%
+  filter(year > 1994)  # remove 1994 year, only used for modeling
+
+# Make population df
+pop_data <- tibble(
+  region = c("Agadez (City)", "Maradi (City)", 
+             "Niamey (City)", "Zinder (City)"),
+  pop = c(118224, 267249, 1027000, 322935)  # from Wikipedia
+)
+
+# Summarize to cumulative yearly cases
+cusum_data <- measles_data %>%
+  group_by(region, year) %>%
+  summarise(cases = sum(cases)) %>%
+  left_join(pop_data, by = "region") %>%  # add in population data
+  mutate(incidence = cases/pop)  # calculate incidence
+
+x <- sort(cusum_data$incidence)  # extract incidence data
+
+# Fit null distribution for starting values
+fit1 <- MASS::fitdistr(x, "exponential")
+
+# Define likelihood of mixed exponential
+mixexplik <- function(p, lambda1, lambda2) {
+  z <- p*dexp(x,lambda1) + (1-p)*dexp(x,lambda2)
+  return(-sum(log(z)))
+}
+
+# Fit the model
+mle_fit <- suppressWarnings(  # ignore warnings about bad guesses
+  stats4::mle(minuslogl = mixexplik, 
+              start= list(p = 0.2,
+                          lambda1 = as.numeric(fit1$estimate), 
+                          lambda2 = as.numeric(fit1$estimate)), 
+              method="Nelder-Mead")
+)
+
+# Calculate the boundary incidence between small and large outbreaks
+boundary <- qexp(p = 0.5, rate = mle_fit@coef["p"]*mle_fit@coef["lambda1"])
+```
+
+The GMM suggests that the boundary between small and large outbreaks is an incidence level of ```r round(boundary, 4)```.
+
+## Simulate a new series
+The next step is to simulate a new time series from the fitted models.
+I do this because we want to predict outbreaks as if we are dealing with new data, not the same exact data used to fit the model.
+For now, I am just going to focus on Niamey as a test case.
+
+```{r sim-new-data}
+# Load pomp object
+pomp_object <- readRDS("../../code/measles-pomp-object-Niamey.RDS")
+
+# Load MLEs
+mle_file <- paste0("../../results/initial-mif-lls-Niamey.csv")
+mles <- read.csv(mle_file) %>%
+  as_tibble() %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
+sim <- as_tibble(
+    simulate(pomp_object, params = mles, nsim = 1, as.data.frame = TRUE,
+             include.data = FALSE, seed = 12345872)
+  ) %>%
+  filter(time >= 1995) %>%
+  dplyr::select(sim, time, reports, S, E, I, RE_seas) %>%
+  mutate(year = trunc(time)) %>%
+  group_by(year) %>%
+  mutate(cumulative_cases = sum(reports)) %>%
+  mutate(incidence = cumulative_cases/1027000) %>%  # divide cases by population
+  mutate(outbreak_year = ifelse(incidence < boundary, FALSE, TRUE)) %>%
+  ungroup() %>%
+  mutate(date = unique(measles_data$date))
+
+ggplot(sim, aes(x = date, y = reports)) +
+  geom_line(aes(group = year, color = outbreak_year)) +
+  ggtitle("Simulated time series from the MLE model")
+```
+
+## Predict trajectories of the new series
+Now we can use the fitted model to predict trajectories, informed by data, via particle filtering.
+The idea is to use particle filtering up to a certain time point *t* and then make forecasts for $t + 1, t + 2, t + 3, \dots, t + T$, where *T* is the final week we wish to forecast.
+To start, *t* will be the end of the year and *T* will be the end of the next year.
+Eventually we will look across forecasts that start from $t-0, t-1, t-2, t-3, \dots, t-k$, where *k* is a week very close to the end of the previous year's measles season (around calendar week 40).
+
+As an initial attempt, I will focus on the large outbreak in 2000 of the simulated series.
+The "data" will be reports from week 40 to week 52 in 1999.
+Forecasts will be made for all of 2000 (52 weeks).
+
+```{r plot-data-used}
+test_data <- sim %>%
+  filter(year(date) < 2001) %>%
+  filter(year(date) == 2000 | (year(date) == 1999 & week(date) > 40)) %>%
+  mutate(split = ifelse(year(date) == 1999, 
+                        "initial conditions", 
+                        "to be forecast"))
+
+ggplot(test_data, aes(x = date, y = reports)) +
+  geom_line(aes(color = split)) +
+  ggtitle("Data for initial conditions and to be forecast")
+```
+
+For this initial test, I'm going to use the data in red above as known initial conditions for the forecasts from the parametric model.
+In practice, I think I should use a particle filter to get the initial states up to a certain point and then forecast from those filtering distributions.
+Essentially, I am removing initial conditions error for now.
+
+First, make a `pomp` model that can take a set of initial conditions and then simulate forward.
+
+```{r make-pomp}
+make_pomp_simulator <- function(do_city, mles, years_to_sim = 1, init)
+{
+  library(tidyverse)
+  library(pomp)
+  
+  # Define stochastic process (SDEs) 
+  
+  measles_process <- Csnippet(
+    "
+    // Define the variables
+    int nrate = 7;            // number of rates
+    double rate[nrate];	  	  // transition rates
+    double trans[nrate];   	  // transition numbers
+    double lambda;            // force of infection
+    double beta;              // transmission rate
+    double eta = 365/8;       // infectious rate (8 days latent)
+    double gamma = 365/5;     // recovery rate (5 days infectious)
+    double dW;                // white noise
+    double seas;              // seasonality term
+    double dNS0, dN0S, dNSE;  // S transitions
+    double dNE0, dNEI;        // E transitions
+    double dN0I, dNI0, dNIR;  // I transitions
+    double dN0R, dNR0;        // R transitions
+
+    // Calculate force of infection
+    seas = (1 + exp(dot_product(K, &xi1, &b1)));
+    beta = beta_mu*seas;
+    lambda = beta*I/N;
+    
+    // Gamma noise, mean=dt, variance=(beta_sd^2 dt)
+    dW = rgammawn(beta_sd, dt);
+    
+    // Compute the transition rates
+    rate[0] = nu;           // susceptible deaths
+    rate[1] = lambda*dW/dt; // force of infection
+    rate[2] = nu;           // exposed deaths
+    rate[3] = eta;          // infectious rate from latent
+    rate[4] = nu;           // infected deaths
+    rate[5] = gamma;	      // recovery from infectious
+    rate[6] = nu;           // recovered deaths
+    
+    // Compute the state transitions
+    reulermultinom(2, S, &rate[0], dt, &trans[0]);
+    reulermultinom(2, E, &rate[2], dt, &trans[2]);
+    reulermultinom(2, I, &rate[4], dt, &trans[4]);
+    reulermultinom(1, R, &rate[6], dt, &trans[6]);
+    
+    // Transitions
+    dNS0 = trans[0];                                // susceptible deaths
+    dN0S = rpois(vacc_discount * mu * N * dt);      // births, unvaccinated
+    dNSE = trans[1];                                // S -> E
+    dNE0 = trans[2];                                // exposed deaths
+    dNEI = trans[3];                                // E -> I
+    dN0I = rpois(eta * dt);                         // imported infections
+    dNI0 = trans[4];                                // infected deaths
+    dNIR = trans[5];                                // I -> R
+    dN0R = rpois((1-vacc_discount) * mu * N * dt);  // births, vaccinated
+    dNR0 = trans[6];                                // recovered deaths
+    
+    // Balance the equations
+    S += dN0S - dNSE               - dNS0;
+    E +=        dNSE - dNEI        - dNE0;
+    I += dN0I        + dNEI - dNIR - dNI0;
+    R += dN0R               + dNIR - dNR0;
+    
+    cases += dNIR;  // cumulative reports at end of infectious period (I->R)
+    RE_seas = ((eta*beta*(vacc_discount * mu)) / (nu*(eta+nu)*(gamma+nu))) * (S / N);
+    "
+  )
+  
+  
+  # Define likelihood function 
+  
+  measles_dmeasure <- Csnippet(
+    "
+    double mean;
+    double f;
+    mean = cases*rho;
+    if (ISNA(reports)) {  // for catching missing observations
+      lik = (give_log) ? 0 : 1;
+    } else {
+      f = dnbinom_mu(reports, 1/tau, mean, give_log);  // neg binomial likelihood
+    }
+    
+    lik = (give_log) ? log(f) : f;
+    "
+  )
+  
+  
+  # Define process simulator for observations 
+  
+  measles_rmeasure <- Csnippet(
+    "
+    reports = rnbinom_mu(1/tau, rho*cases);  // neg binomial measurement process
+    
+    if (reports > 0.0) {
+      reports = nearbyint(reports);
+    } else {
+      reports = 0.0;
+    }
+    "
+  )
+  
+  # Define parameter transformation scales 
+  
+  from_estimation <- Csnippet(
+    "
+    Tiota = exp(iota);
+    Trho = expit(rho);
+    Tbeta_sd = exp(beta_sd);
+    Ttau = exp(tau);
+    "
+  )
+  
+  to_estimation <- Csnippet(
+    "
+    Tiota = log(iota);
+    Trho = logit(rho);
+    Tbeta_sd = log(beta_sd);
+    Ttau = log(tau);
+    "
+  )
+  
+  initial_values <- Csnippet(
+    "
+    S = S_0;
+    E = E_0;
+    I = I_0;
+    R = R_0;
+    cases = rho*I_0;
+    RE_seas = 0;
+    "
+  )
+  
+  all_times <- seq(0, years_to_sim, by = 1/365)
+  report_times <- all_times[seq(1, length(all_times), 7)]
+  
+  # Make data tables
+  the_data <- tibble(
+    time = report_times,
+    reports = NA
+  )
+  
+  # Generate basis functions for seasonality
+  covar_table <- periodic.bspline.basis(
+    all_times,
+    nbasis = 6,
+    degree = 3,
+    period = 1,
+    names = "xi%d"
+  ) %>%
+    as_tibble() %>%
+    mutate(
+      time = all_times
+    )
+  
+  vacc_discount <-  0.3
+  global_str <- paste0(
+    "int K = 6; double mu = 0.05; double nu = 0.05;", 
+    " double S_0 = ", init$S, ";",
+    " double E_0 = ", init$E, ";",
+    " double I_0 = ", init$I, ";",
+    " double R_0 = ", init$R, ";",
+    " double N = ", round(init$N), ";",
+    " double vacc_discount = ", vacc_discount, ";"
+  )
+  
+  simulator_pomp <- pomp(
+    data = the_data,
+    times = "time",
+    covar = covar_table,
+    tcovar = "time",
+    t0 = min(the_data$time),
+    rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
+    rmeasure = measles_rmeasure,
+    dmeasure = measles_dmeasure,
+    statenames = c("S", "E", "I", "R", "cases", "RE_seas"),
+    toEstimationScale = to_estimation,
+    fromEstimationScale = from_estimation,
+    paramnames = names(mles),
+    params = unlist(mles),
+    globals = global_str,
+    zeronames = c("cases")
+  )
+  
+  return(simulator_pomp)
+}
+```
+
+Now feed the initial conditions to the model and simulate trajectories.
+
+```{r sim-trajectories}
+pop_size <- readRDS("../../data/clean-data/annual-demographic-data-niger-cities-clean.RDS") %>%
+  filter(trunc(time) == 1999, region == "Niamey (City)") %>%
+  filter(time == max(time)) %>%
+  pull(population_size)
+
+initial_conditions <- test_data %>%
+  filter(year(date) == 1999) %>%
+  filter(date == max(date)) %>%
+  dplyr::select(S, E, I) %>%
+  mutate(N = pop_size,
+         R = round(N - (S + E + I)))
+
+pomp_simulator <- make_pomp_simulator(do_city = "Niamey", mles = mles %>% dplyr::select(-S_0, -E_0, -I_0), 
+                                      years_to_sim = 1, 
+                                      init = initial_conditions)
+rep_trajectories <- pomp_simulator %>%
+  simulate(nsim = 1000, as.data.frame = TRUE, 
+           include.data = FALSE, seed = 18431236) %>%
+  as_tibble() %>%
+  filter(time > 0)  # remove initial conditions time step
+
+rep_for_plot <- rep_trajectories %>%
+  group_by(sim) %>%
+  mutate(cumulative_cases = cumsum(reports)) %>%
+  dplyr::select(time, sim, reports, cumulative_cases) %>%
+  mutate(outbreak_year = ifelse(max(cumulative_cases) > boundary * 1027000, TRUE, FALSE)) %>%
+  gather(key, value, -time, -sim, -outbreak_year)
+  
+ggplot(rep_for_plot, aes(x = time, y = value, group = sim, color = outbreak_year)) +
+  geom_line(alpha = 0.5, size = 0.3) +
+  facet_wrap(~key, scales = "free_y", ncol = 2)
+```
+
+See this, https://kingaa.github.io/sbied/ebola/ebola.html, for ideas on setting up a particle filter that transitions to forecasting.
