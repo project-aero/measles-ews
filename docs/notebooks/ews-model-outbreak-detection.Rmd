@@ -9,6 +9,8 @@ output: html_notebook
 library(tidyverse)
 library(lubridate)
 library(pomp)
+library(foreach)
+library(doParallel)
 
 knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 ```
@@ -411,7 +413,7 @@ simulate_forecasts <- function(pomp_obj, train_sims, time_start, time_end,
                  as.data.frame = TRUE)
 }
 
-do_city <- "Niamey"
+do_city <- "Zinder"
 pomp_mod_file <- paste0("../../code/measles-pomp-object-", do_city, ".RDS")
 mle_file <- paste0("../../results/initial-mif-lls-", do_city, ".csv")
 data_file <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
@@ -452,7 +454,7 @@ new_data <- pomp::simulate(M1, nsim = 1, seed = 123857,
                            as.data.frame = TRUE, include.data = FALSE) 
 
 M1@data["reports", ] <- t(new_data$reports)
-all_states <- filter_states(M1, mles, num_particles = 100)
+all_states <- filter_states(M1, mles, num_particles = 50)
 
 all_probs <- tibble()
 for(do_year in unique(forecast_start_times$year)){
@@ -497,15 +499,25 @@ template <- expand.grid(c(TRUE, FALSE),
                         unique(all_probs$week))
 colnames(template) <- c("outbreak_year", "year", "week") 
 
+new_data_classified <- new_data %>%
+  dplyr::select(time, reports) %>%
+  mutate(year = trunc(time)) %>%
+  group_by(year) %>%
+  summarise(total_cases = sum(reports)) %>%
+  mutate(incidence = total_cases / city_pop,
+         true_outbreak_year = ifelse(incidence >= boundary, TRUE, FALSE))
+
 save_probs <- all_probs %>%
   right_join(
     template
   ) %>%
   arrange(year, week) %>%
   mutate(n = ifelse(is.na(n) == TRUE, 0, n),
-         lead_time = 52 - (week-1))
+         lead_time = 52 - (week-1)) %>%
+  left_join(new_data_classified)
 
-ggplot(filter(save_probs, outbreak_year == TRUE), aes(x = lead_time, y = n)) +
+ggplot(filter(save_probs, outbreak_year == TRUE), 
+       aes(x = lead_time, y = n, color = true_outbreak_year)) +
   geom_line() +
   geom_point() +
   facet_wrap(~year) +
