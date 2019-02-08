@@ -94,7 +94,7 @@ mles <- read.csv(mle_file) %>%
 
 sim <- as_tibble(
     simulate(pomp_object, params = mles, nsim = 1, as.data.frame = TRUE,
-             include.data = FALSE, seed = 123452)
+             include.data = FALSE, seed = 12345278)
   ) %>%
   filter(time >= 1995) %>%
   dplyr::select(sim, time, reports, S, E, I, RE_seas) %>%
@@ -123,9 +123,9 @@ Forecasts will be made for all of 2000 (52 weeks).
 
 ```{r plot-data-used}
 test_data <- sim %>%
-  filter(year(date) < 2001) %>%
-  filter(year(date) == 2000 | (year(date) == 1999 & week(date) > 30)) %>%
-  mutate(split = ifelse(year(date) == 1999, 
+  filter(year(date) < 2000) %>%
+  filter(year(date) == 1999 | (year(date) == 1998 & week(date) > 30)) %>%
+  mutate(split = ifelse(year(date) == 1998, 
                         "initial conditions", 
                         "to be forecast"))
 
@@ -140,7 +140,7 @@ Essentially, I am removing initial conditions error for now.
 
 First, make a `pomp` model that can take a set of initial conditions and then simulate forward.
 
-```{r make-pomp, eval = FALSE}
+```{r make-pomp, eval = TRUE}
 make_pomp_simulator <- function(do_city, mles, years_to_sim = 1, init)
 {
   library(tidyverse)
@@ -317,6 +317,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 1, init)
     rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
     rmeasure = measles_rmeasure,
     dmeasure = measles_dmeasure,
+    initializer = initial_values,
     statenames = c("S", "E", "I", "R", "cases", "RE_seas"),
     toEstimationScale = to_estimation,
     fromEstimationScale = from_estimation,
@@ -334,12 +335,12 @@ Now feed the initial conditions to the model and simulate trajectories.
 
 ```{r sim-trajectories}
 pop_size <- readRDS("../../data/clean-data/annual-demographic-data-niger-cities-clean.RDS") %>%
-  filter(trunc(time) == 1999, region == "Niamey (City)") %>%
+  filter(trunc(time) == 1998, region == "Niamey (City)") %>%
   filter(time == max(time)) %>%
   pull(population_size)
 
 initial_conditions <- test_data %>%
-  filter(year(date) == 1999) %>%
+  filter(year(date) == 1998) %>%
   filter(date == max(date)) %>%
   dplyr::select(S, E, I) %>%
   mutate(N = pop_size,
@@ -367,6 +368,164 @@ ggplot(rep_for_plot, aes(x = time, y = value, group = sim, color = outbreak_year
 ```
 
 See this, https://kingaa.github.io/sbied/ebola/ebola.html, for ideas on setting up a particle filter that transitions to forecasting.
+
+## Forecasting code
+```{r forecast-functions, eval = FALSE}
+filter_states <- function(pomp_obj, param_df, num_particles = 2000){
+  pf <- pomp::pfilter(pomp_obj, params = unlist(param_df), 
+                      Np = num_particles, save.states = TRUE)
+  pf@saved.states[-1]
+}
+
+simulate_over_obs <- function(pomp_obj, param_df, nreps){
+  pp <- pomp::parmat(unlist(param_df), nrep = nreps)
+  pomp::simulate(pomp_obj, params = pp, include.data = TRUE, 
+                 as.data.frame = TRUE)
+}
+
+simulate_forecasts <- function(pomp_obj, train_sims, time_start, time_end,
+                               param_df, nreps, states_list){ 
+  start_time_id <- which(round(time(pomp_obj),3) == time_start)
+  end_time_id <- which(round(time(pomp_obj),3) == time_end)
+  forecast_times <- time(pomp_obj)[start_time_id:end_time_id]
+  
+  pomp_forecast <- pomp_obj
+  time(pomp_forecast) <- forecast_times
+  timezero(pomp_forecast) <- forecast_times[1]
+  
+  population_size_t0 <- train_sims %>% 
+    filter(round(time,3) == time_start, sim == "data") %>% 
+    pull(N)
+  initial_proportions <- t(all_states[[start_time_id]]) %>%
+    as_tibble() %>%
+    dplyr::select(S, E, I) %>%
+    dplyr::mutate(S_0 = S/population_size_t0,
+                  E_0 = E/population_size_t0,
+                  I_0 = I/population_size_t0) %>%
+    dplyr::select(-S, -E, -I) %>%
+    t()
+    
+  pp <- pomp::parmat(unlist(param_df), nrep = nreps)
+  pp[rownames(initial_proportions), ] <- initial_proportions
+  pomp::simulate(pomp_forecast, params = pp, include.data = FALSE, 
+                 as.data.frame = TRUE)
+}
+
+do_city <- "Niamey"
+pomp_mod_file <- paste0("../../code/measles-pomp-object-", do_city, ".RDS")
+mle_file <- paste0("../../results/initial-mif-lls-", do_city, ".csv")
+data_file <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+
+pop_data <- tibble(
+  region = c("Agadez", "Maradi", 
+             "Niamey", "Zinder"),
+  pop = c(118224, 267249, 1027000, 322935)  # from Wikipedia
+)
+
+city_pop <- pop_data %>% filter(region == do_city) %>% pull(pop)
+
+
+M1 <- readRDS(pomp_mod_file) 
+mles <- read_csv(mle_file) %>%
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+the_data <- readRDS(data_file) %>%
+  filter(region == paste0(do_city, " (City)"))
+
+time_date_map <- tibble(
+  pomp_time = round(time(M1), 3),
+  calendar_date = the_data$date,
+  year = year(calendar_date),
+  week = week(calendar_date)
+)
+
+forecast_start_times <- time_date_map %>%
+  filter(year > 1994, week > 29, year < 2005) %>%
+  dplyr::select(-calendar_date, -week) 
+
+forecast_end_times <- time_date_map %>%
+  filter(year > 1995, week == 52) %>%
+  dplyr::select(-calendar_date, -week) %>%
+  mutate(year = year - 1)
+
+new_data <- pomp::simulate(M1, nsim = 1, seed = 123857, 
+                           as.data.frame = TRUE, include.data = FALSE) 
+
+M1@data["reports", ] <- t(new_data$reports)
+all_states <- filter_states(M1, mles, num_particles = 100)
+
+all_probs <- tibble()
+for(do_year in unique(forecast_start_times$year)){
+  year_time_grid <- expand.grid(
+    filter(forecast_start_times, year == do_year) %>% pull(pomp_time),
+    filter(forecast_end_times, year == do_year) %>% pull(pomp_time)
+  )
+
+  tmp_probs <- foreach::foreach(i = 1:nrow(year_time_grid), 
+                                .combine = rbind) %do%
+    {
+    tstart <- year_time_grid[i, 1]
+    tend <- year_time_grid[i, 2]
+    
+    train_sims <- simulate_over_obs(M1, mles, nreps = ncol(all_states[[1]]))
+    forecasts <- simulate_forecasts(pomp_obj = M1, train_sims = train_sims, 
+                                    time_start = tstart, time_end = tend, 
+                                    param_df = mles, 
+                                    nreps = ncol(all_states[[1]]), 
+                                    states_list = all_states)
+    
+    forecasts %>%
+      mutate(year = trunc(time)) %>%
+      group_by(sim, year) %>%
+      summarise(total_reports = sum(reports)) %>%
+      filter(year == max(year)) %>%
+      ungroup() %>%
+      mutate(incidence = total_reports/city_pop,
+             outbreak_year = ifelse(incidence >= boundary, TRUE, FALSE)) %>%
+      group_by(year, outbreak_year) %>%
+      count() %>%
+      ungroup() %>%
+      mutate(week = i+29)
+    }
+  all_probs <- bind_rows(all_probs, tmp_probs)
+}
+
+
+# Add in TRUE/FALSE for each year as needed
+template <- expand.grid(c(TRUE, FALSE), 
+                        unique(all_probs$year), 
+                        unique(all_probs$week))
+colnames(template) <- c("outbreak_year", "year", "week") 
+
+save_probs <- all_probs %>%
+  right_join(
+    template
+  ) %>%
+  arrange(year, week) %>%
+  mutate(n = ifelse(is.na(n) == TRUE, 0, n),
+         lead_time = 52 - (week-1))
+
+ggplot(filter(save_probs, outbreak_year == TRUE), aes(x = lead_time, y = n)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~year) +
+  scale_x_reverse()
+
+
+# 
+# train_sims <- simulate_over_obs(M1, mles, nreps = ncol(all_states[[1]]))
+# forecasts <- simulate_forecasts(pomp_obj = M1, train_sims = train_sims, 
+#                                 time_start = 2004.975, time_end = 2005.978, 
+#                                 param_df = mles, nreps = ncol(all_states[[1]]), 
+#                                 states_list = all_states)
+# 
+# forecasts %>% 
+#   filter(sim != "data") %>%
+#   ggplot(aes(x = time, y = reports, group = sim)) +
+#   geom_line(alpha = 0.2, size = 0.2) +
+#   geom_point(data = filter(forecasts, sim == "data"), color = "blue")
+```
+
 
 ## Use EWS to predict outbreaks
 
@@ -475,7 +634,7 @@ run_ews_analysis <- function(df, test_year, bw = 15, ews_to_ignore){
 
 years_to_predict <- unique(sim$year)[-1]
 all_trends <- tibble()
-ignore_these <-  c("skewness", "kurtosis", "cofficient_of_variation", "decay_time", "variance_first_difference")
+ignore_these <-  c("skewness", "kurtosis", "cofficient_of_variation")
 
 for(do_year in years_to_predict){
   all_trends %>%
