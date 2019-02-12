@@ -373,6 +373,7 @@ See this, https://kingaa.github.io/sbied/ebola/ebola.html, for ideas on setting 
 
 ## Forecasting code
 ```{r forecast-functions, eval = FALSE}
+
 filter_states <- function(pomp_obj, param_df, num_particles = 2000){
   pf <- pomp::pfilter(pomp_obj, params = unlist(param_df), 
                       Np = num_particles, save.states = TRUE)
@@ -413,7 +414,7 @@ simulate_forecasts <- function(pomp_obj, train_sims, time_start, time_end,
                  as.data.frame = TRUE)
 }
 
-do_city <- "Zinder"
+do_city <- "Maradi"
 pomp_mod_file <- paste0("../../code/measles-pomp-object-", do_city, ".RDS")
 mle_file <- paste0("../../results/initial-mif-lls-", do_city, ".csv")
 data_file <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
@@ -428,9 +429,11 @@ city_pop <- pop_data %>% filter(region == do_city) %>% pull(pop)
 
 
 M1 <- readRDS(pomp_mod_file) 
-mles <- read_csv(mle_file) %>%
-  filter(loglik == max(loglik, na.rm = TRUE)) %>%
-  dplyr::select(-do_grid, -loglik, -loglik_se)
+mles <- read.csv(mle_file) %>%
+  drop_na() %>%
+  filter(loglik == max(loglik))
+  # filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  # dplyr::select(-do_grid, -loglik, -loglik_se)
 the_data <- readRDS(data_file) %>%
   filter(region == paste0(do_city, " (City)"))
 
@@ -450,7 +453,7 @@ forecast_end_times <- time_date_map %>%
   dplyr::select(-calendar_date, -week) %>%
   mutate(year = year - 1)
 
-new_data <- pomp::simulate(M1, nsim = 1, seed = 123857, 
+new_data <- pomp::simulate(M1, nsim = 1, params = unlist(mles), seed = 1243765,
                            as.data.frame = TRUE, include.data = FALSE) 
 
 M1@data["reports", ] <- t(new_data$reports)
@@ -522,20 +525,6 @@ ggplot(filter(save_probs, outbreak_year == TRUE),
   geom_point() +
   facet_wrap(~year) +
   scale_x_reverse()
-
-
-# 
-# train_sims <- simulate_over_obs(M1, mles, nreps = ncol(all_states[[1]]))
-# forecasts <- simulate_forecasts(pomp_obj = M1, train_sims = train_sims, 
-#                                 time_start = 2004.975, time_end = 2005.978, 
-#                                 param_df = mles, nreps = ncol(all_states[[1]]), 
-#                                 states_list = all_states)
-# 
-# forecasts %>% 
-#   filter(sim != "data") %>%
-#   ggplot(aes(x = time, y = reports, group = sim)) +
-#   geom_line(alpha = 0.2, size = 0.2) +
-#   geom_point(data = filter(forecasts, sim == "data"), color = "blue")
 ```
 
 
@@ -644,14 +633,18 @@ run_ews_analysis <- function(df, test_year, bw = 15, ews_to_ignore){
   return(ews_trends)
 } 
 
-years_to_predict <- unique(sim$year)[-1]
+new_data_for_ews <- new_data %>%
+  mutate(year = trunc(time),
+         date = the_data$date) %>%
+  filter(time >= 1995)
+years_to_predict <- unique(new_data_for_ews$year)[-1]
 all_trends <- tibble()
 ignore_these <-  c("skewness", "kurtosis", "cofficient_of_variation")
 
 for(do_year in years_to_predict){
   all_trends %>%
     bind_rows(
-      run_ews_analysis(sim, test_year = do_year, 
+      run_ews_analysis(df = new_data_for_ews, test_year = do_year, 
                        bw = 15, ews_to_ignore = ignore_these) %>%
         mutate(test_year = do_year)
     ) -> all_trends
@@ -660,16 +653,49 @@ for(do_year in years_to_predict){
 all_trends %>%
   filter(trend_sign == 1) %>%
   left_join(
-    sim %>% dplyr::select(year, outbreak_year),
+    new_data_classified %>% 
+      dplyr::select(year, true_outbreak_year),
     by = c("test_year" = "year")
   ) %>%
-  ggplot(aes(x = lead_time, y = n/5, color = outbreak_year)) +
-  geom_hline(aes(yintercept = 1), color = "grey45") +
+  ggplot(aes(x = lead_time, y = n, color = true_outbreak_year)) +
+  # geom_hline(aes(yintercept = 1), color = "grey45") +
   geom_line() +
   geom_point() +
   scale_x_reverse() +
-  scale_y_continuous(limits = c(0, 1)) +
-  facet_wrap(~test_year, nrow = 2) +
+  # scale_y_continuous(limits = c(0, 1)) +
+  facet_wrap(~test_year) +
   labs(x = "lead time (weeks)", y = "proprtion of EWS increasing")
 ```
 
+## Try to plot both predictions on same plot
+```{r plot-both}
+ews_trends <- all_trends %>%
+  filter(trend_sign == 1) %>%
+  left_join(
+    new_data_classified %>% 
+      dplyr::select(year, true_outbreak_year),
+    by = c("test_year" = "year")
+  )
+
+model_trends <- save_probs %>%
+  filter(outbreak_year == TRUE)
+
+combined_trends <- ews_trends %>%
+  mutate(proportion = n/max(n),
+         model = "ews") %>%
+  rename("year" = test_year) %>%
+  dplyr::select(model, year, proportion, lead_time, true_outbreak_year) %>%
+  bind_rows(model_trends %>%
+              mutate(proportion = n/max(n),
+                     model = "parametric") %>%
+              dplyr::select(model, year, proportion, 
+                            lead_time, true_outbreak_year))
+
+ggplot(combined_trends, aes(x = lead_time, y = proportion)) +
+  geom_line(aes(linetype = model, color = true_outbreak_year)) +
+  facet_wrap(~year) +
+  scale_x_reverse() +
+  scale_color_discrete(name = "true classification", labels = c("no outbreak", "outbreak")) +
+  labs(x = "lead time (weeks)",
+       y = "proportion of ews increasing\nor\nproportion of simulations predicting outbreak")
+```
