@@ -73,10 +73,11 @@ mle_fit <- suppressWarnings(  # ignore warnings about bad guesses
 )
 
 # Calculate the boundary incidence between small and large outbreaks
-boundary <- qexp(p = 0.5, rate = mle_fit@coef["p"]*mle_fit@coef["lambda1"])
+outbreak_boundary <- qexp(p = 0.5, 
+                          rate = mle_fit@coef["p"]*mle_fit@coef["lambda1"])
 ```
 
-The GMM suggests that the boundary between small and large outbreaks is an incidence level of ```r round(boundary, 4)```.
+The GMM suggests that the boundary between small and large outbreaks is an incidence level of ```r round(outbreak_boundary, 4)```.
 
 ## Simulate a new series
 The next step is to simulate a new time series from the fitted models.
@@ -104,7 +105,7 @@ sim <- as_tibble(
   group_by(year) %>%
   mutate(cumulative_cases = sum(reports)) %>%
   mutate(incidence = cumulative_cases/1027000) %>%  # divide cases by population
-  mutate(outbreak_year = ifelse(incidence < boundary, FALSE, TRUE)) %>%
+  mutate(outbreak_year = ifelse(incidence < outbreak_boundary, FALSE, TRUE)) %>%
   ungroup() %>%
   mutate(date = unique(measles_data$date))
 
@@ -136,243 +137,50 @@ ggplot(test_data, aes(x = date, y = reports)) +
   ggtitle("Data for initial conditions and to be forecast")
 ```
 
-For this initial test, I'm going to use the data in red above as known initial conditions for the forecasts from the parametric model.
-In practice, I think I should use a particle filter to get the initial states up to a certain point and then forecast from those filtering distributions.
-Essentially, I am removing initial conditions error for now.
-
-First, make a `pomp` model that can take a set of initial conditions and then simulate forward.
-
-```{r make-pomp, eval = TRUE}
-make_pomp_simulator <- function(do_city, mles, years_to_sim = 1, init)
-{
-  library(tidyverse)
-  library(pomp)
-  
-  # Define stochastic process (SDEs) 
-  
-  measles_process <- Csnippet(
-    "
-    // Define the variables
-    int nrate = 7;            // number of rates
-    double rate[nrate];	  	  // transition rates
-    double trans[nrate];   	  // transition numbers
-    double lambda;            // force of infection
-    double beta;              // transmission rate
-    double eta = 365/8;       // infectious rate (8 days latent)
-    double gamma = 365/5;     // recovery rate (5 days infectious)
-    double dW;                // white noise
-    double seas;              // seasonality term
-    double dNS0, dN0S, dNSE;  // S transitions
-    double dNE0, dNEI;        // E transitions
-    double dN0I, dNI0, dNIR;  // I transitions
-    double dN0R, dNR0;        // R transitions
-
-    // Calculate force of infection
-    seas = (1 + exp(dot_product(K, &xi1, &b1)));
-    beta = beta_mu*seas;
-    lambda = beta*I/N;
-    
-    // Gamma noise, mean=dt, variance=(beta_sd^2 dt)
-    dW = rgammawn(beta_sd, dt);
-    
-    // Compute the transition rates
-    rate[0] = nu;           // susceptible deaths
-    rate[1] = lambda*dW/dt; // force of infection
-    rate[2] = nu;           // exposed deaths
-    rate[3] = eta;          // infectious rate from latent
-    rate[4] = nu;           // infected deaths
-    rate[5] = gamma;	      // recovery from infectious
-    rate[6] = nu;           // recovered deaths
-    
-    // Compute the state transitions
-    reulermultinom(2, S, &rate[0], dt, &trans[0]);
-    reulermultinom(2, E, &rate[2], dt, &trans[2]);
-    reulermultinom(2, I, &rate[4], dt, &trans[4]);
-    reulermultinom(1, R, &rate[6], dt, &trans[6]);
-    
-    // Transitions
-    dNS0 = trans[0];                                // susceptible deaths
-    dN0S = rpois(vacc_discount * mu * N * dt);      // births, unvaccinated
-    dNSE = trans[1];                                // S -> E
-    dNE0 = trans[2];                                // exposed deaths
-    dNEI = trans[3];                                // E -> I
-    dN0I = rpois(eta * dt);                         // imported infections
-    dNI0 = trans[4];                                // infected deaths
-    dNIR = trans[5];                                // I -> R
-    dN0R = rpois((1-vacc_discount) * mu * N * dt);  // births, vaccinated
-    dNR0 = trans[6];                                // recovered deaths
-    
-    // Balance the equations
-    S += dN0S - dNSE               - dNS0;
-    E +=        dNSE - dNEI        - dNE0;
-    I += dN0I        + dNEI - dNIR - dNI0;
-    R += dN0R               + dNIR - dNR0;
-    
-    cases += dNIR;  // cumulative reports at end of infectious period (I->R)
-    RE_seas = ((eta*beta*(vacc_discount * mu)) / (nu*(eta+nu)*(gamma+nu))) * (S / N);
-    "
-  )
-  
-  
-  # Define likelihood function 
-  
-  measles_dmeasure <- Csnippet(
-    "
-    double mean;
-    double f;
-    mean = cases*rho;
-    if (ISNA(reports)) {  // for catching missing observations
-      lik = (give_log) ? 0 : 1;
-    } else {
-      f = dnbinom_mu(reports, 1/tau, mean, give_log);  // neg binomial likelihood
-    }
-    
-    lik = (give_log) ? log(f) : f;
-    "
-  )
-  
-  
-  # Define process simulator for observations 
-  
-  measles_rmeasure <- Csnippet(
-    "
-    reports = rnbinom_mu(1/tau, rho*cases);  // neg binomial measurement process
-    
-    if (reports > 0.0) {
-      reports = nearbyint(reports);
-    } else {
-      reports = 0.0;
-    }
-    "
-  )
-  
-  # Define parameter transformation scales 
-  
-  from_estimation <- Csnippet(
-    "
-    Tiota = exp(iota);
-    Trho = expit(rho);
-    Tbeta_sd = exp(beta_sd);
-    Ttau = exp(tau);
-    "
-  )
-  
-  to_estimation <- Csnippet(
-    "
-    Tiota = log(iota);
-    Trho = logit(rho);
-    Tbeta_sd = log(beta_sd);
-    Ttau = log(tau);
-    "
-  )
-  
-  initial_values <- Csnippet(
-    "
-    S = S_0;
-    E = E_0;
-    I = I_0;
-    R = R_0;
-    cases = rho*I_0;
-    RE_seas = 0;
-    "
-  )
-  
-  all_times <- seq(0, years_to_sim, by = 1/365)
-  report_times <- all_times[seq(1, length(all_times), 7)]
-  
-  # Make data tables
-  the_data <- tibble(
-    time = report_times,
-    reports = NA
-  )
-  
-  # Generate basis functions for seasonality
-  covar_table <- periodic.bspline.basis(
-    all_times,
-    nbasis = 6,
-    degree = 3,
-    period = 1,
-    names = "xi%d"
-  ) %>%
-    as_tibble() %>%
-    mutate(
-      time = all_times
-    )
-  
-  vacc_discount <-  0.3
-  global_str <- paste0(
-    "int K = 6; double mu = 0.05; double nu = 0.05;", 
-    " double S_0 = ", init$S, ";",
-    " double E_0 = ", init$E, ";",
-    " double I_0 = ", init$I, ";",
-    " double R_0 = ", init$R, ";",
-    " double N = ", round(init$N), ";",
-    " double vacc_discount = ", vacc_discount, ";"
-  )
-  
-  simulator_pomp <- pomp(
-    data = the_data,
-    times = "time",
-    covar = covar_table,
-    tcovar = "time",
-    t0 = min(the_data$time),
-    rprocess = euler.sim(step.fun = measles_process, delta.t = 1/365),
-    rmeasure = measles_rmeasure,
-    dmeasure = measles_dmeasure,
-    initializer = initial_values,
-    statenames = c("S", "E", "I", "R", "cases", "RE_seas"),
-    toEstimationScale = to_estimation,
-    fromEstimationScale = from_estimation,
-    paramnames = names(mles),
-    params = unlist(mles),
-    globals = global_str,
-    zeronames = c("cases")
-  )
-  
-  return(simulator_pomp)
-}
-```
-
-Now feed the initial conditions to the model and simulate trajectories.
-
-```{r sim-trajectories}
-pop_size <- readRDS("../../data/clean-data/annual-demographic-data-niger-cities-clean.RDS") %>%
-  filter(trunc(time) == 1998, region == "Niamey (City)") %>%
-  filter(time == max(time)) %>%
-  pull(population_size)
-
-initial_conditions <- test_data %>%
-  filter(year(date) == 1998) %>%
-  filter(date == max(date)) %>%
-  dplyr::select(S, E, I) %>%
-  mutate(N = pop_size,
-         R = round(N - (S + E + I)))
-
-pomp_simulator <- make_pomp_simulator(do_city = "Niamey", mles = mles %>% dplyr::select(-S_0, -E_0, -I_0), 
-                                      years_to_sim = 1, 
-                                      init = initial_conditions)
-rep_trajectories <- pomp_simulator %>%
-  simulate(nsim = 1000, as.data.frame = TRUE, 
-           include.data = FALSE, seed = 18431236) %>%
-  as_tibble() %>%
-  filter(time > 0)  # remove initial conditions time step
-
-rep_for_plot <- rep_trajectories %>%
-  group_by(sim) %>%
-  mutate(cumulative_cases = cumsum(reports)) %>%
-  dplyr::select(time, sim, reports, cumulative_cases) %>%
-  mutate(outbreak_year = ifelse(max(cumulative_cases) > boundary * 1027000, TRUE, FALSE)) %>%
-  gather(key, value, -time, -sim, -outbreak_year)
-  
-ggplot(rep_for_plot, aes(x = time, y = value, group = sim, color = outbreak_year)) +
-  geom_line(alpha = 0.5, size = 0.3) +
-  facet_wrap(~key, scales = "free_y", ncol = 2)
-```
-
 See this, https://kingaa.github.io/sbied/ebola/ebola.html, for ideas on setting up a particle filter that transitions to forecasting.
 
-## Forecasting code
-```{r forecast-functions, eval = FALSE}
+## Example forecast
+
+Here's an example of the plan.
+The plan is to have a given set of initial conditions, from particle filtering up to a certain point, and then simulating replicate trajectories of the next year starting from those initial conditions.
+I can then tally the number of replicates that are predicted to be outbreaks to compute the probability of an outbreak.
+The initial conditions can be updated to look at difference lead times.
+Below is just an example of how the replicate simulations allow me to compute the probability of an outbreak, conditional on the initial conditions and the model parameters.
+
+```{r ex-forecast}
+simulate(pomp_object, params = unlist(mles), nsim = 100, 
+         as.data.frame = TRUE, include.data = FALSE) %>%
+  filter(time >= 1999 & time < 2000) %>%
+  dplyr::select(time, reports, sim) %>%
+  group_by(sim) %>%
+  mutate(population = as.numeric(pop_data[3, 2]),
+         total_cases = sum(reports),
+         incidence = total_cases/population,
+         outbreak_year = ifelse(incidence >= outbreak_boundary, 
+                                TRUE, FALSE)) %>%
+  ungroup() %>%
+  group_by(outbreak_year) %>%
+  mutate(prop_outbreak = n()/52/100) %>%
+  ungroup() -> example_simulation
+
+pr_outbreak <- example_simulation %>%
+  filter(outbreak_year == TRUE) %>%
+  pull(prop_outbreak) %>%
+  unique()
+
+  ggplot(example_simulation, aes(x = time, y = reports, group = sim)) +
+    geom_line(aes(color = outbreak_year), size = 0.4) +
+    ggtitle("Example simulations of a given year", 
+            subtitle = paste0("Pr(outbreak) = ", pr_outbreak))
+  
+```
+
+## Forecasting functions
+
+Here I define a set of functions that I will use to estimate states (initial conditions) via particle filtering and simulate forecasts of the next year conditional on those initial conditions.
+Note that these functions do not currently allow for parameter uncertainty, but initial conditions uncertainty is included by simulating forecasts from the filtered states, for which we have one estimate per particle.
+
+```{r forecast-functions, eval = TRUE}
 
 filter_states <- function(pomp_obj, param_df, num_particles = 2000){
   pf <- pomp::pfilter(pomp_obj, params = unlist(param_df), 
@@ -413,118 +221,151 @@ simulate_forecasts <- function(pomp_obj, train_sims, time_start, time_end,
   pomp::simulate(pomp_forecast, params = pp, include.data = FALSE, 
                  as.data.frame = TRUE)
 }
+```
 
-do_city <- "Maradi"
-pomp_mod_file <- paste0("../../code/measles-pomp-object-", do_city, ".RDS")
-mle_file <- paste0("../../results/initial-mif-lls-", do_city, ".csv")
-data_file <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+## Run the forecasting analysis
 
+Using this functions defined above, I can now loop over cities and make forecasts from a grid of lead times for every simulated year.
+I will then plot the Pr(outbreak) as a function of lead time, with each year classified as a true outbreak year or not.
+
+```{r run-forecasts, eval = FALSE}
+# Define population data for calculating incidence
 pop_data <- tibble(
-  region = c("Agadez", "Maradi", 
-             "Niamey", "Zinder"),
+  region = c("Agadez", "Maradi", "Niamey", "Zinder"),
   pop = c(118224, 267249, 1027000, 322935)  # from Wikipedia
 )
 
-city_pop <- pop_data %>% filter(region == do_city) %>% pull(pop)
+# Loop over cities
+all_cities <- c("Agadez", "Maradi", "Niamey", "Zinder")
+do_city <- "Maradi"  # for testing
 
-
-M1 <- readRDS(pomp_mod_file) 
-mles <- read.csv(mle_file) %>%
-  drop_na() %>%
-  filter(loglik == max(loglik))
-  # filter(loglik == max(loglik, na.rm = TRUE)) %>%
-  # dplyr::select(-do_grid, -loglik, -loglik_se)
-the_data <- readRDS(data_file) %>%
-  filter(region == paste0(do_city, " (City)"))
-
-time_date_map <- tibble(
-  pomp_time = round(time(M1), 3),
-  calendar_date = the_data$date,
-  year = year(calendar_date),
-  week = week(calendar_date)
-)
-
-forecast_start_times <- time_date_map %>%
-  filter(year > 1994, week > 29, year < 2005) %>%
-  dplyr::select(-calendar_date, -week) 
-
-forecast_end_times <- time_date_map %>%
-  filter(year > 1995, week == 52) %>%
-  dplyr::select(-calendar_date, -week) %>%
-  mutate(year = year - 1)
-
-new_data <- pomp::simulate(M1, nsim = 1, params = unlist(mles), seed = 1243765,
-                           as.data.frame = TRUE, include.data = FALSE) 
-
-M1@data["reports", ] <- t(new_data$reports)
-all_states <- filter_states(M1, mles, num_particles = 50)
-
-all_probs <- tibble()
-for(do_year in unique(forecast_start_times$year)){
-  year_time_grid <- expand.grid(
-    filter(forecast_start_times, year == do_year) %>% pull(pomp_time),
-    filter(forecast_end_times, year == do_year) %>% pull(pomp_time)
+out_probs <- tibble()  # empty tibble for storage
+for(do_city in all_cities){
+  # Set file names
+  pomp_mod_file <- paste0("../../code/measles-pomp-object-", do_city, ".RDS")
+  mle_file <- paste0("../../results/initial-mif-lls-", do_city, ".csv")
+  data_file <- paste0("../../data/clean-data/", 
+                      "weekly-measles-incidence-niger-cities-clean.RDS")
+  
+  # Extract population data
+  city_pop <- pop_data %>% 
+    filter(region == do_city) %>% 
+    pull(pop)
+  
+  # Load pomp object
+  M1 <- readRDS(pomp_mod_file) 
+  
+  # Load MLE parameters
+  mles <- read_csv(mle_file) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+  
+  # Load the observed data
+  the_data <- readRDS(data_file) %>%
+    filter(region == paste0(do_city, " (City)"))
+  
+  # Map calendar dates to pomp::time
+  time_date_map <- tibble(
+    pomp_time = round(time(M1), 3),
+    calendar_date = the_data$date,
+    year = year(calendar_date),
+    week = week(calendar_date)
   )
+  
+  # Define grid of forecasting start and stop times
+  # Start times reflect different lead times, stop times are the same for all
+  forecast_start_times <- time_date_map %>%
+    filter(year > 1994, week > 29, year < 2005) %>%
+    dplyr::select(-calendar_date, -week) 
+  
+  forecast_end_times <- time_date_map %>%
+    filter(year > 1995, week == 52) %>%
+    dplyr::select(-calendar_date, -week) %>%
+    mutate(year = year - 1)
+  
+  # Simulate a new data series from the fitted model.
+  # This series will be used for training and forecasting so that
+  # we are one step away from the data used to fit the model.
+  new_data <- simulate(M1, nsim = 1, params = unlist(mles), seed = 1243765,
+                       as.data.frame = TRUE, include.data = FALSE) 
+  
+  # Update pomp object with new "data"
+  M1@data["reports", ] <- t(new_data$reports)
+  
+  # Estimate states across particles for initial conditions at all times
+  all_states <- filter_states(M1, mles, num_particles = 50)
 
-  tmp_probs <- foreach::foreach(i = 1:nrow(year_time_grid), 
-                                .combine = rbind) %do%
-    {
-    tstart <- year_time_grid[i, 1]
-    tend <- year_time_grid[i, 2]
+  # Loop over all years to make forecasts from grid of lead times
+  all_probs <- tibble()  # empty tibble for storage of outbreak probabilities
+  for(do_year in unique(forecast_start_times$year)){
+    year_time_grid <- expand.grid(
+      filter(forecast_start_times, year == do_year) %>% pull(pomp_time),
+      filter(forecast_end_times, year == do_year) %>% pull(pomp_time)
+    )
+  
+    tmp_probs <- foreach::foreach(i = 1:nrow(year_time_grid), 
+                                  .combine = rbind) %do%
+      {
+      tstart <- year_time_grid[i, 1]
+      tend <- year_time_grid[i, 2]
+      
+      train_sims <- simulate_over_obs(M1, mles, nreps = ncol(all_states[[1]]))
+      forecasts <- simulate_forecasts(pomp_obj = M1, train_sims = train_sims, 
+                                      time_start = tstart, time_end = tend, 
+                                      param_df = mles, 
+                                      nreps = ncol(all_states[[1]]), 
+                                      states_list = all_states)
+      
+      forecasts %>%
+        mutate(year = trunc(time)) %>%
+        group_by(sim, year) %>%
+        summarise(total_reports = sum(reports)) %>%
+        filter(year == max(year)) %>%
+        ungroup() %>%
+        mutate(incidence = total_reports/city_pop,
+               outbreak_year = ifelse(incidence >= outbreak_boundary, 
+                                      TRUE, FALSE)) %>%
+        group_by(year, outbreak_year) %>%
+        count() %>%
+        ungroup() %>%
+        mutate(week = i+29)
+      }
     
-    train_sims <- simulate_over_obs(M1, mles, nreps = ncol(all_states[[1]]))
-    forecasts <- simulate_forecasts(pomp_obj = M1, train_sims = train_sims, 
-                                    time_start = tstart, time_end = tend, 
-                                    param_df = mles, 
-                                    nreps = ncol(all_states[[1]]), 
-                                    states_list = all_states)
+    all_probs <- bind_rows(all_probs, tmp_probs)
     
-    forecasts %>%
-      mutate(year = trunc(time)) %>%
-      group_by(sim, year) %>%
-      summarise(total_reports = sum(reports)) %>%
-      filter(year == max(year)) %>%
-      ungroup() %>%
-      mutate(incidence = total_reports/city_pop,
-             outbreak_year = ifelse(incidence >= boundary, TRUE, FALSE)) %>%
-      group_by(year, outbreak_year) %>%
-      count() %>%
-      ungroup() %>%
-      mutate(week = i+29)
-    }
-  all_probs <- bind_rows(all_probs, tmp_probs)
+  }  # end year loop
+
+
+  # Add in TRUE/FALSE for each year as needed
+  template <- expand.grid(c(TRUE, FALSE), 
+                          unique(all_probs$year), 
+                          unique(all_probs$week))
+  colnames(template) <- c("outbreak_year", "year", "week") 
+
+  new_data_classified <- new_data %>%
+    dplyr::select(time, reports) %>%
+    mutate(year = trunc(time)) %>%
+    group_by(year) %>%
+    summarise(total_cases = sum(reports)) %>%
+    mutate(incidence = total_cases / city_pop,
+           true_outbreak_year = ifelse(incidence >= outbreak_boundary, 
+                                       TRUE, FALSE))
+
+  save_probs <- all_probs %>%
+    right_join(
+      template
+    ) %>%
+    arrange(year, week) %>%
+    mutate(n = ifelse(is.na(n) == TRUE, 0, n),
+           lead_time = 52 - (week-1)) %>%
+    left_join(new_data_classified) %>%
+    mutate(city = do_city)
+  
+  out_probs <- bind_rows(out_probs, save_probs)
 }
 
-
-# Add in TRUE/FALSE for each year as needed
-template <- expand.grid(c(TRUE, FALSE), 
-                        unique(all_probs$year), 
-                        unique(all_probs$week))
-colnames(template) <- c("outbreak_year", "year", "week") 
-
-new_data_classified <- new_data %>%
-  dplyr::select(time, reports) %>%
-  mutate(year = trunc(time)) %>%
-  group_by(year) %>%
-  summarise(total_cases = sum(reports)) %>%
-  mutate(incidence = total_cases / city_pop,
-         true_outbreak_year = ifelse(incidence >= boundary, TRUE, FALSE))
-
-save_probs <- all_probs %>%
-  right_join(
-    template
-  ) %>%
-  arrange(year, week) %>%
-  mutate(n = ifelse(is.na(n) == TRUE, 0, n),
-         lead_time = 52 - (week-1)) %>%
-  left_join(new_data_classified)
-
-ggplot(filter(save_probs, outbreak_year == TRUE), 
-       aes(x = lead_time, y = n, color = true_outbreak_year)) +
-  geom_line() +
-  geom_point() +
-  facet_wrap(~year) +
-  scale_x_reverse()
+write_csv(out_probs, "parametric-outbreak-probabilities.csv")
 ```
 
 
@@ -570,18 +411,11 @@ for(tstop in stop_times){
   out_trends <- bind_rows(out_trends, trends)
 }
 
-warning_week <- out_trends %>%
-  filter(trend_sign == 1) %>%
-  mutate(lead_time = 52 - (30 + stop_week)) %>%
-  filter(n == max(n)) %>%
-  pull(lead_time) %>%
-  max()
-
 out_trends %>%
   filter(trend_sign == 1) %>%
-  mutate(lead_time = 52 - (30 + stop_week)) %>%
+  mutate(lead_time = 52 - (29 + stop_week)) %>%
+  filter(lead_time > 0 & lead_time < 21) %>%
   ggplot(aes(x = lead_time, y = n)) +
-   geom_vline(aes(xintercept = warning_week), color = "red") +
   geom_line(size = 0.4, color = "grey45") +
   geom_point(size = 4, color = "grey45") +
   scale_x_reverse() +
@@ -613,7 +447,7 @@ get_trends <- function(x, bandwidth, ews_to_ignore = NULL){
       group_by(trend_sign) %>%
       count() %>%
       mutate(stop_week = tstop,
-             lead_time = 52 - (30 + stop_week))
+             lead_time = 52 - (29 + stop_week - 1))
     
     out_trends <- bind_rows(out_trends, trends)
   }
@@ -622,7 +456,7 @@ get_trends <- function(x, bandwidth, ews_to_ignore = NULL){
 
 get_testing_data <- function(df, test_year){
   df %>%
-    filter(year == (test_year - 1) & week(date) > 30) %>%
+    filter(year == (test_year - 1) & week(date) > 29) %>%
     pull(reports)
 }
 
@@ -633,69 +467,228 @@ run_ews_analysis <- function(df, test_year, bw = 15, ews_to_ignore){
   return(ews_trends)
 } 
 
-new_data_for_ews <- new_data %>%
-  mutate(year = trunc(time),
-         date = the_data$date) %>%
-  filter(time >= 1995)
-years_to_predict <- unique(new_data_for_ews$year)[-1]
-all_trends <- tibble()
-ignore_these <-  c("skewness", "kurtosis", "cofficient_of_variation")
-
-for(do_year in years_to_predict){
-  all_trends %>%
-    bind_rows(
-      run_ews_analysis(df = new_data_for_ews, test_year = do_year, 
-                       bw = 15, ews_to_ignore = ignore_these) %>%
-        mutate(test_year = do_year)
-    ) -> all_trends
-}
-
-all_trends %>%
-  filter(trend_sign == 1) %>%
-  left_join(
-    new_data_classified %>% 
-      dplyr::select(year, true_outbreak_year),
-    by = c("test_year" = "year")
-  ) %>%
-  ggplot(aes(x = lead_time, y = n, color = true_outbreak_year)) +
-  # geom_hline(aes(yintercept = 1), color = "grey45") +
-  geom_line() +
-  geom_point() +
-  scale_x_reverse() +
-  # scale_y_continuous(limits = c(0, 1)) +
-  facet_wrap(~test_year) +
-  labs(x = "lead time (weeks)", y = "proprtion of EWS increasing")
-```
-
-## Try to plot both predictions on same plot
-```{r plot-both}
-ews_trends <- all_trends %>%
-  filter(trend_sign == 1) %>%
-  left_join(
+out_ews_trends <- tibble()  # empty tibble for storage
+for(do_city in all_cities){
+  # Set file names
+  pomp_mod_file <- paste0("../../code/measles-pomp-object-", do_city, ".RDS")
+  mle_file <- paste0("../../results/initial-mif-lls-", do_city, ".csv")
+  data_file <- paste0("../../data/clean-data/", 
+                      "weekly-measles-incidence-niger-cities-clean.RDS")
+  
+  # Extract population data
+  city_pop <- pop_data %>% 
+    filter(region == paste0(do_city, " (City)")) %>% 
+    pull(pop)
+  
+  # Load pomp object
+  M1 <- readRDS(pomp_mod_file) 
+  
+  # Load MLE parameters
+  mles <- read_csv(mle_file) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+  
+  # Load the observed data
+  the_data <- readRDS(data_file) %>%
+    filter(region == paste0(do_city, " (City)"))
+  
+  # Map calendar dates to pomp::time
+  time_date_map <- tibble(
+    pomp_time = round(time(M1), 3),
+    calendar_date = the_data$date,
+    year = year(calendar_date),
+    week = week(calendar_date)
+  )
+  
+  # Simulate a new data series from the fitted model.
+  # This series will be used for training and forecasting so that
+  # we are one step away from the data used to fit the model.
+  new_data <- simulate(M1, nsim = 1, params = unlist(mles), seed = 1243765,
+                       as.data.frame = TRUE, include.data = FALSE)
+  
+  new_data_for_ews <- new_data %>%
+    mutate(year = trunc(time),
+           date = the_data$date) %>%
+    filter(time >= 1995)
+  years_to_predict <- unique(new_data_for_ews$year)[-1]
+  all_trends <- tibble()
+  ignore_these <-  c("skewness", "kurtosis", "cofficient_of_variation")
+  
+  all_trends <- tibble()  # empty tibble for storage
+  for(do_year in years_to_predict){
+    all_trends %>%
+      bind_rows(
+        run_ews_analysis(df = new_data_for_ews, test_year = do_year, 
+                         bw = 15, ews_to_ignore = ignore_these) %>%
+          mutate(test_year = do_year)
+      ) -> all_trends
+  }  # end year loop
+  
+  # Classify simulated years as outbreak/no outbreak
+  new_data_classified <- new_data %>%
+    dplyr::select(time, reports) %>%
+    mutate(year = trunc(time)) %>%
+    group_by(year) %>%
+    mutate(total_cases = sum(reports)) %>%
+    mutate(incidence = total_cases / city_pop,
+           true_outbreak_year = ifelse(incidence >= outbreak_boundary, 
+                                       TRUE, FALSE))
+  
+  all_trends <- all_trends %>% 
+    mutate(city = do_city) %>%
+     left_join(
     new_data_classified %>% 
       dplyr::select(year, true_outbreak_year),
     by = c("test_year" = "year")
   )
+  
+  out_ews_trends <- bind_rows(out_ews_trends, all_trends)
+}  # end city loop
 
-model_trends <- save_probs %>%
+
+
+# all_trends %>%
+#   filter(trend_sign == 1) %>%
+#   left_join(
+#     new_data_classified %>% 
+#       dplyr::select(year, true_outbreak_year),
+#     by = c("test_year" = "year")
+#   ) %>%
+#   ggplot(aes(x = lead_time, y = n, color = true_outbreak_year)) +
+#   # geom_hline(aes(yintercept = 1), color = "grey45") +
+#   geom_line() +
+#   geom_point() +
+#   scale_x_reverse() +
+#   # scale_y_continuous(limits = c(0, 1)) +
+#   facet_wrap(~test_year) +
+#   labs(x = "lead time (weeks)", y = "proprtion of EWS increasing")
+```
+
+## Try to plot both predictions on same plot
+```{r plot-both, fig.width=12, fig.height=4}
+ews_trends <- out_ews_trends %>%
+  filter(trend_sign == 1)
+
+model_trends <- read_csv("parametric-outbreak-probabilities.csv") %>%
   filter(outbreak_year == TRUE)
 
 combined_trends <- ews_trends %>%
   mutate(proportion = n/max(n),
          model = "ews") %>%
   rename("year" = test_year) %>%
-  dplyr::select(model, year, proportion, lead_time, true_outbreak_year) %>%
+  dplyr::select(model, year, proportion, lead_time, 
+                true_outbreak_year, city) %>%
   bind_rows(model_trends %>%
               mutate(proportion = n/max(n),
                      model = "parametric") %>%
               dplyr::select(model, year, proportion, 
-                            lead_time, true_outbreak_year))
+                            lead_time, true_outbreak_year, city))
 
 ggplot(combined_trends, aes(x = lead_time, y = proportion)) +
-  geom_line(aes(linetype = model, color = true_outbreak_year)) +
-  facet_wrap(~year) +
+  geom_hline(aes(yintercept = 0.5), color = "grey") +
+  geom_line(aes(color = model, linetype = true_outbreak_year)) +
+  facet_grid(city~year) +
   scale_x_reverse() +
-  scale_color_discrete(name = "true classification", labels = c("no outbreak", "outbreak")) +
+  scale_y_continuous(limits = c(0,1)) +
+  scale_linetype_manual(name = "true classification", 
+                          labels = c("no outbreak", "outbreak"),
+                          values = c(2,1)) +
   labs(x = "lead time (weeks)",
-       y = "proportion of ews increasing\nor\nproportion of simulations predicting outbreak")
+       y = paste0("proportion of ews increasing", 
+                  "\nor\nproportion of simulations predicting outbreak")) +
+  theme_gray(base_size = 8)
+```
+
+## Attempt a summary plot at far and near lead times
+
+```{r summary-plot}
+slice_trends <- combined_trends %>%
+  filter(lead_time == 15 | lead_time == 2) 
+
+ggplot(slice_trends, aes(x = as.factor(lead_time), y = proportion)) +
+  geom_col(aes(fill = model), position = position_dodge()) +
+  geom_hline(aes(yintercept = 0.5), color = "grey35") +
+  facet_grid(city~true_outbreak_year) +
+  labs(x = "lead time (weeks)",
+       y = paste0("proportion of ews increasing", 
+                  "\nor\nproportion of simulations predicting outbreak"))
+
+true_outbreak_results <- combined_trends %>%
+  filter(true_outbreak_year == TRUE) %>%
+  filter(lead_time <= 20)
+
+false_outbreak_results <- combined_trends %>%
+  filter(true_outbreak_year == FALSE) %>%
+  filter(lead_time <= 20)
+
+ggplot(true_outbreak_results, aes(x = lead_time, y = as.factor(year))) +
+  geom_tile(aes(fill = proportion)) +
+  facet_grid(city~model) +
+  scale_x_reverse() +
+  scale_fill_viridis_c(option = "E") +
+  ggtitle("Detection of outbreak years") +
+  labs(x = "lead time (weeks)", y = "detection year") +
+  theme(legend.position = "top") -> true_plot
+
+ggplot(false_outbreak_results, aes(x = lead_time, y = as.factor(year))) +
+  geom_tile(aes(fill = 1-proportion)) +
+  facet_grid(city~model) +
+  scale_x_reverse() +
+  scale_fill_viridis_c(option = "E", name = "proportion") +
+  ggtitle("Detection of non-outbreak years") +
+  labs(x = "lead time (weeks)", y = "detection year") +
+  theme(legend.position = "top") -> false_plot
+
+cowplot::plot_grid(true_plot, false_plot)
+```
+
+## Plots of the simulated trajectories
+
+```{r sim-plots}
+all_new_sims <- tibble()  # empty df for storage
+for(do_city in all_cities){
+  # Set file names
+  pomp_mod_file <- paste0("../../code/measles-pomp-object-", do_city, ".RDS")
+  mle_file <- paste0("../../results/initial-mif-lls-", do_city, ".csv")
+  data_file <- paste0("../../data/clean-data/", 
+                      "weekly-measles-incidence-niger-cities-clean.RDS")
+  
+  # Extract population data
+  city_pop <- pop_data %>% 
+    filter(region == paste0(do_city, " (City)")) %>% 
+    pull(pop)
+  
+  # Load pomp object
+  M1 <- readRDS(pomp_mod_file) 
+  
+  # Load MLE parameters
+  mles <- read_csv(mle_file) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+
+  
+  # Simulate a new data series from the fitted model.
+  # This series will be used for training and forecasting so that
+  # we are one step away from the data used to fit the model.
+  new_data <- simulate(M1, nsim = 1, params = unlist(mles), seed = 1243765,
+                       as.data.frame = TRUE, include.data = FALSE) %>%
+    mutate(year = trunc(time)) %>%
+    group_by(year) %>%
+    mutate(city = do_city,
+           total_cases = sum(reports),
+           incidence = total_cases/city_pop,
+           outbreak_year = ifelse(incidence >= outbreak_boundary, 
+                                  TRUE, FALSE)) %>%
+    dplyr::select(city, time, reports, outbreak_year)
+  
+  all_new_sims <- bind_rows(all_new_sims, new_data)
+}
+
+ggplot(all_new_sims, aes(x = time, y = reports, 
+                         group = trunc(time), color = outbreak_year)) +
+  geom_line() +
+  facet_wrap(~city, scales = "free_y")
+
 ```
