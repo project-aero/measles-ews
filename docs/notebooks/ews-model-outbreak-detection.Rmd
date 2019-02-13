@@ -294,7 +294,7 @@ for(do_city in all_cities){
   M1@data["reports", ] <- t(new_data$reports)
   
   # Estimate states across particles for initial conditions at all times
-  all_states <- filter_states(M1, mles, num_particles = 50)
+  all_states <- filter_states(M1, mles, num_particles = 500)
 
   # Loop over all years to make forecasts from grid of lead times
   all_probs <- tibble()  # empty tibble for storage of outbreak probabilities
@@ -462,7 +462,7 @@ get_testing_data <- function(df, test_year){
 
 run_ews_analysis <- function(df, test_year, bw = 15, ews_to_ignore){
   cases <- get_testing_data(df, test_year)
-  ews_trends <- get_trends(x = cases, bandwidth = bw,
+  ews_trends <- get_trends(x = log(cases+1), bandwidth = bw,
                            ews_to_ignore = ews_to_ignore)
   return(ews_trends)
 } 
@@ -512,7 +512,6 @@ for(do_city in all_cities){
            date = the_data$date) %>%
     filter(time >= 1995)
   years_to_predict <- unique(new_data_for_ews$year)[-1]
-  all_trends <- tibble()
   ignore_these <-  c("skewness", "kurtosis", "cofficient_of_variation")
   
   all_trends <- tibble()  # empty tibble for storage
@@ -530,7 +529,7 @@ for(do_city in all_cities){
     dplyr::select(time, reports) %>%
     mutate(year = trunc(time)) %>%
     group_by(year) %>%
-    mutate(total_cases = sum(reports)) %>%
+    summarise(total_cases = sum(reports)) %>%
     mutate(incidence = total_cases / city_pop,
            true_outbreak_year = ifelse(incidence >= outbreak_boundary, 
                                        TRUE, FALSE))
@@ -583,7 +582,10 @@ combined_trends <- ews_trends %>%
               mutate(proportion = n/max(n),
                      model = "parametric") %>%
               dplyr::select(model, year, proportion, 
-                            lead_time, true_outbreak_year, city))
+                            lead_time, true_outbreak_year, city)) %>%
+  spread(model, proportion) %>%
+  mutate(ews = ifelse(is.na(ews) == TRUE, 0, ews)) %>%
+  gather("model", "proportion", ews:parametric)
 
 ggplot(combined_trends, aes(x = lead_time, y = proportion)) +
   geom_hline(aes(yintercept = 0.5), color = "grey") +
@@ -603,16 +605,16 @@ ggplot(combined_trends, aes(x = lead_time, y = proportion)) +
 ## Attempt a summary plot at far and near lead times
 
 ```{r summary-plot}
-slice_trends <- combined_trends %>%
-  filter(lead_time == 15 | lead_time == 2) 
-
-ggplot(slice_trends, aes(x = as.factor(lead_time), y = proportion)) +
-  geom_col(aes(fill = model), position = position_dodge()) +
-  geom_hline(aes(yintercept = 0.5), color = "grey35") +
-  facet_grid(city~true_outbreak_year) +
-  labs(x = "lead time (weeks)",
-       y = paste0("proportion of ews increasing", 
-                  "\nor\nproportion of simulations predicting outbreak"))
+# slice_trends <- combined_trends %>%
+#   filter(lead_time == 15 | lead_time == 2) 
+# 
+# ggplot(slice_trends, aes(x = as.factor(lead_time), y = proportion)) +
+#   geom_col(aes(fill = model), position = position_dodge()) +
+#   geom_hline(aes(yintercept = 0.5), color = "grey35") +
+#   facet_grid(city~true_outbreak_year) +
+#   labs(x = "lead time (weeks)",
+#        y = paste0("proportion of ews increasing", 
+#                   "\nor\nproportion of simulations predicting outbreak"))
 
 true_outbreak_results <- combined_trends %>%
   filter(true_outbreak_year == TRUE) %>%
@@ -641,6 +643,21 @@ ggplot(false_outbreak_results, aes(x = lead_time, y = as.factor(year))) +
   theme(legend.position = "top") -> false_plot
 
 cowplot::plot_grid(true_plot, false_plot)
+```
+
+## Plot proportion differences
+```{r prop-diffs}
+diffed_trends <- combined_trends %>%
+  mutate(proportion = ifelse(true_outbreak_year == FALSE, 
+                                   1-proportion, proportion)) %>%
+  spread(key = model, value = proportion) %>%
+  mutate(prop_diff = parametric - ews)
+
+ggplot(diffed_trends, aes(x = lead_time, y = as.factor(year))) +
+  geom_tile(aes(fill = prop_diff)) +
+  facet_grid(city~true_outbreak_year) +
+  scale_fill_viridis_c(option = "E", limits = c(-1, 1)) +
+  scale_x_reverse()
 ```
 
 ## Plots of the simulated trajectories
@@ -692,3 +709,9 @@ ggplot(all_new_sims, aes(x = time, y = reports,
   facet_wrap(~city, scales = "free_y")
 
 ```
+
+## Next steps
+
+If this sounds promising to the group, I think the next step is to simulate many, many 10 year time series and then divide the years into outbreak and non-outbreak groups.
+I'll do enough replicates to get, say, 50 outbreak and 50 non-outbreak years (sample these from ~200 `pomp::simulate` replicates).
+Then do the same analysis as above for all replicates within a group and summarize results.
