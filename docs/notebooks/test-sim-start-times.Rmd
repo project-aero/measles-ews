@@ -58,6 +58,9 @@ ggplot(filter(model_sims, trunc(time)<4),
        aes(x = time, y = reports, group = sim)) +
   geom_line(alpha = 0.1)
 
+ggplot(model_sims, aes(x = time, y = RE_seas, group = sim)) +
+  geom_line(alpha = 0.1)
+
 # re_one_year <- model_sims %>%
 #   mutate(year = round(time)) %>%  # create 'year' variable
 #   filter(RE_seas >= 1) %>%  # drop times where Re less than 1
