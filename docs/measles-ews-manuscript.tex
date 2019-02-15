@@ -123,51 +123,52 @@ Athens, GA 30602, USA}
 
 Forecasts of the emergence and re-emergence of infectious diseases have
 the potential to save lives, money, and human productivity by allowing
-for proactive, rather than reactive, preparedness measures (1).
+for proactive, rather than reactive, preparedness measures {[}1{]}.
 Similarly, indicators of the elimination of infectious diseases can
 signal the effectiveness of ``end game'' strategies aimed at disease
-eradication (2). Predicting (re)emergence and elimination is possible
-with complex mathematical models of disease transmission, but their
-success relies on detailed understanding of the underlying transmission
-dynamics and adequate data (3). We often do not have enough information
-to parameterize such models. An alternative approach is to use
-model-independent statistical signals that portend infectious disease
-(re)emergence and elimination by detecting critical slowing down as the
-system approaches a critical transition (4).
+eradication {[}2{]}. Predicting (re)emergence and elimination is
+possible with complex mathematical models of disease transmission, but
+their success relies on detailed understanding of the underlying
+transmission dynamics and adequate data {[}3{]}. We often do not have
+enough information to parameterize such models. An alternative approach
+is to use model-independent statistical signals that portend infectious
+disease (re)emergence and elimination by detecting critical slowing down
+as the system approaches a critical transition {[}4{]}.
 
 Emergence and elimination of an infectious disease both involve a
 critical transition (technically, a \emph{transcritical bifurcation}).
 The transition typically occurs at the critical point where the basic
 reproduction number (\(R_0\), the number of secondary cases that arise
 from a single infected case in a fully susceptible population) is equal
-to one (5). Thus, subcritical (\(R_0 < 1\)) and supercritical
-(\(R_0 > 1\)) systems represent alternative modes of fluctuation (4, 6,
-7).
+to one {[}5{]}. Thus, subcritical (\(R_0 < 1\)) and supercritical
+(\(R_0 > 1\)) systems represent alternative modes of fluctuation
+{[}4,6,7{]}.
 
 Critical transitions in stochastic systems, such as systems of disease
 transmission, are often associated with critical slowing down, a
-reduction in the resilience of a system to perturbations (8). Critical
-slowing down (CSD), in turn, is associated with changes in the dynamical
-features of the system: early warning signals (EWS) such as an increase
-in the variance and autocorrelation (6, 9). Recent theoretical work
-suggests that CSD occurs as disease dynamics approach \(R_0 = 1\) from
-below (emergence) (4, 10) and from above (elimination) (2, 4, 11), and
-that several EWS anticipate the critical transition (12--14). Empirical
-tests of EWS and associated CSD are, however, scarce. Documenting CSD in
-real disease dynamics is an essential first step toward the development
-of model-independent outbreak detection systems (1).
+reduction in the resilience of a system to perturbations {[}8{]}.
+Critical slowing down (CSD), in turn, is associated with changes in the
+dynamical features of the system: early warning signals (EWS) such as an
+increase in the variance and autocorrelation {[}6,9{]}. Recent
+theoretical work suggests that CSD occurs as disease dynamics approach
+\(R_0 = 1\) from below (emergence) {[}4,10{]} and from above
+(elimination) {[}2,4,11{]}, and that several EWS anticipate the critical
+transition {[}12--14{]}. Empirical tests of EWS and associated CSD are,
+however, scarce. Documenting CSD in real disease dynamics is an
+essential first step toward the development of model-independent
+outbreak detection systems {[}1{]}.
 
 Here, we use empirically-based model simulations of measles dynamics to
 test whether CSD anticipates critical transitions in real disease
 dynamics. We focus on two scenarios: the re-emergence of measles
 following a large outbreak, a situation typical of measles dynamics in
-sub-Saharan Africa (15), and the elimination of measles by a vaccination
-campaign. We seek to answer two related questions. First, can CSD
-distinguish between time series of disease incidence when the underlying
-dynamics are far from and near to a critical transition? If so, then CSD
-can anticipate disease re-emergence and elimination. Second, how does
-the distance to and the rate of approaching the threshold impact the
-anticipatory skill of CSD?
+sub-Saharan Africa {[}15{]}, and the elimination of measles by a
+vaccination campaign. We seek to answer two related questions. First,
+can CSD distinguish between time series of disease incidence when the
+underlying dynamics are far from and near to a critical transition? If
+so, then CSD can anticipate disease re-emergence and elimination.
+Second, how does the distance to and the rate of approaching the
+threshold impact the anticipatory skill of CSD?
 
 To answer these questions, we fit mechanistic models of disease
 transmission to time series of measles incidence in four Nigerien
@@ -180,7 +181,7 @@ by several EWS in realistic scenarios, and they do so using much shorter
 time series than used in theoretical studies. However, our study
 highlights the limitations of EWS in situations where disease
 re-emergence and elimination occurs rapidly. Moreoever, and contrary to
-theoretical expectations (4), we find that EWS perform better at
+theoretical expectations {[}4{]}, we find that EWS perform better at
 detecting CSD before re-emergence than before elimination.
 
 \hypertarget{materials-and-methods}{%
@@ -198,7 +199,7 @@ different dynamics in terms of outbreak sizes and length of
 inter-epidemic periods, and each time series has different amounts of
 demographic stochasticity due to differences in population size. Such
 differences provide a natural gradient of ``noise'' that may influence
-CSD (16--19). The data come from {[}\emph{somewhere/someone}{]}, and
+CSD {[}16--19{]}. The data come from {[}\emph{somewhere/someone}{]}, and
 used here with permission from {[}\emph{somewhere/someone}{]}.
 
 \begin{figure}
@@ -273,7 +274,7 @@ model seasonality in transmission. The B-spline bases (\(\xi_{i_{t}}\))
 are periodic with a 1 year period. The transmission rate (\(\beta_t\))
 is also subject to stochastic process noise at each time step,
 \(\Gamma_t\), which we model as gamma-distributed white (temporally
-uncorrelated) noise with mean 1 and variance \(\sigma^2\) (20).
+uncorrelated) noise with mean 1 and variance \(\sigma^2\) {[}20{]}.
 
 We do not include a death process in the model because the rate of
 infection is much faster than the rate of death. Excluding deaths means
@@ -308,7 +309,7 @@ accounting for measurement noise (\(\tau\)). To ensure identifiability,
 and to make the model easier to fit, we assumed the infectious period
 was fixed at \(1/\eta = 8\) days and the recovery period was fixed at
 \(1/\gamma = 5\) days. The birth rate (\(\mu_t\)) was multiplied by 0.3
-to account for the reported 70\% vaccination coverage (15).
+to account for the reported 70\% vaccination coverage {[}15{]}.
 
 MIF relies on particle filtering, which estimates the likelihood of
 fixed parameters by integrating state variables of a stochastic system.
@@ -320,11 +321,11 @@ of MIF, where a MIF iteration means one filtering pass through the time
 series. This procedure converges toward the maximimum likelihood
 estimates (MLEs), in theory.
 
-We used the IF2 algorithm (21) implemented in the R (22) package
-\texttt{pomp} (23, 24) to conduct the MIF procedure. To initialize MIF,
-we generated 5000 parameter sets using Latin Hypercube Sampling over
-large ranges of the parameter values. We then performed two rounds of
-MIF, each for 100 iterations, with 10000 particles, and geometric
+We used the IF2 algorithm {[}21{]} implemented in the R {[}22{]} package
+\texttt{pomp} {[}23,24{]} to conduct the MIF procedure. To initialize
+MIF, we generated 5000 parameter sets using Latin Hypercube Sampling
+over large ranges of the parameter values. We then performed two rounds
+of MIF, each for 100 iterations, with 10000 particles, and geometric
 cooling. For the first round of MIF we set
 \texttt{cooling.facter\ =\ 1}. For the second round, which was
 initialized using the collection of parameter sets from the end of the
@@ -364,7 +365,7 @@ were filtered at each time step. We used the mean predictions
 (\(\mathbb{E}(\text{cases}_t)\)) to assess model fit using a generalized
 coefficient of determination, calculated as:
 \(R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}\)
-(25).
+{[}25{]}.
 
 \hypertarget{simulating-re-emergence}{%
 \subsubsection{Simulating re-emergence}\label{simulating-re-emergence}}
@@ -404,7 +405,7 @@ To simulate elimination, we simulated a vaccine campaign in which
 vaccination coverage linearly increased over time to eventually reach
 100\%, i.e.~eradication (Fig. S3). We ran simulations for 100 years,
 starting with 50 years of dynamics at the baseline vaccine coverage
-reported for Niger of 70\%, \(p = 0.7\) (15). Note that vaccination
+reported for Niger of 70\%, \(p = 0.7\) {[}15{]}. Note that vaccination
 coverage is included in our model by discounting the birth rate of
 susceptibles by \(1-p\). At year 50, we initiated the vaccination
 campaign and let the model run for another 50 years. We ran simulations
@@ -428,13 +429,13 @@ at a time that results in an interval equal in length the test interval
 \subsection{Early warning signals}\label{early-warning-signals}}
 
 We considered nine candidate early warning signals (Table S1). We used
-the \texttt{spaero::get\_stats()} function (26) in R (22) to calculate
-EWS according to the formulas in Table S1. All EWS except the
+the \texttt{spaero::get\_stats()} function {[}26{]} in R {[}22{]} to
+calculate EWS according to the formulas in Table S1. All EWS except the
 coefficient of variation are expected to increase as \(R_E(t)\)
-approaches 1 from below (4, 11, 13). Less is known about the behavior of
-EWS as \(R_E(t)\) approaches 1 from above. But, theory does tell us
+approaches 1 from below {[}4,11,13{]}. Less is known about the behavior
+of EWS as \(R_E(t)\) approaches 1 from above. But, theory does tell us
 that, for SIR models, the mean should decrease, autocorrelation should
-increase, and the variance should decrease (4).
+increase, and the variance should decrease {[}4{]}.
 
 For each simulation of re-emergence and elimination, we calculated EWS
 for the time series of expected cases in the null and test intervals.
@@ -445,7 +446,7 @@ overlap between the distributions of each EWS from the null and test
 intervals. Higher values of AUC indicate a greater degree of separation
 and thus better performance of a particular EWS in terms of classifying
 whether \(R_E(t)\) is close to a critical transition. We used the
-\texttt{pROC:auc()} function (27) in R to calculate AUC values.
+\texttt{pROC:auc()} function {[}27{]} in R to calculate AUC values.
 
 \hypertarget{results}{%
 \section{Results}\label{results}}
@@ -456,8 +457,8 @@ predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Fig.
 \ref{scatters}A). Stochastic simulations of the models displayed
 dynamics typical of each city (Fig. S1), including the decline in
 seasonality amplitude as population size decreases (Fig.
-\ref{scatters}B) (15). Our model for Agadez performs poorly relative to
-the other cities. Maximum likelihood estimates and bootstrapped 95\%
+\ref{scatters}B) {[}15{]}. Our model for Agadez performs poorly relative
+to the other cities. Maximum likelihood estimates and bootstrapped 95\%
 confidence intervals for all parameters are in the SI text.
 
 \begin{figure}
@@ -483,46 +484,48 @@ regions are the bootstrapped 95\% confidence intervals.
 \label{scatters}}
 \end{figure}
 
-\begin{figure}
-\centering
-\includegraphics{measles-ews-manuscript_files/figure-latex/aucs-1.pdf}
-\caption{Performance of early warning signals (EWS) over fixed windows.
-EWS were calculated over two windows, one far from a critical transition
-and one near, for simulations of re-emergence (A) and elimination (B).
-EWS performance is quantified using the AUC metric, which we show here
-as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate
-higher ability to distinguish among time series near and far from a
-critical transition. The asterisks in (A) for Niamey note EWS with high
-AUC but for the wrong reason: skewness and kurtosis \emph{decrease} as
-\(R_E(t)\) approaches 1 rather than increase. This occurs because of the
-negative binomial sampling in the measurement component of our SEIR
-model (13). See Fig. Sx for visualization of how susceptible discounting
-factor and the vaccination speed map to number of weeks in the null and
-test intervals. \label{aucs}}
-\end{figure}
-
 In the approach to re-emergence, the EWS generally perform as expected,
-with Niamey being an exception (Fig. \ref{aucs}A). Skewness, kurtosis,
-and coefficient of variation performed poorly across all levels of
-susceptible depletion in all cities except Niamey. For Niamey, it
-appears these metrics perform well at the highest levels of susceptible
-depletion (i.e., low discounting factors). In fact, the high AUC values
-for Niamey result from exceptionally poor performance: they are all
-higher in the null interval rather than the test interval, contrary to
-theoretical expectations (Fig. S4). Thus, these metrics are unreliable.
+with Niamey being an exception (Fig. \ref{emerge-aucs}). Skewness,
+kurtosis, and coefficient of variation performed poorly across all
+levels of susceptible depletion in all cities except Niamey. For Niamey,
+it appears these metrics perform well at the highest levels of
+susceptible depletion (i.e., low discounting factors). In fact, the high
+AUC values for Niamey result from exceptionally poor performance: they
+are all higher in the null interval rather than the test interval,
+contrary to theoretical expectations (Fig. S4). Thus, these metrics are
+unreliable.
 
 For the other cities, variance, mean, index of dispersion, decay time,
 autocovariance, and autocorrelation all perform equally well at
-predicting re-emergence (Fig. \ref{aucs}A). Their performance declines
-as the amount of susceptible depletion decreases. This is expected
-because more rapid returns to \(R_E(t)=1\) result in shorter null and
-test intervals, making estimates of EWS less precise (12). Moreover, as
-the time to reach \(R_E(t)=1\) decreases, the chance of a bifurcation
-delay increases due to the changing equilibrium of \(R_0\) combined with
-demographic stochasticity (10, 12). Thus, re-emergence may prove
-difficult to anticipate in ``fast'' transmission systems, as
-demonstrated theoretically by (12) and seen empirically here in the
-Niamey dynamics (Figs. \ref{scatters}B, \ref{aucs}A).
+predicting re-emergence (Fig. \ref{emerge-aucs}C). Their performance
+declines as the amount of susceptible depletion decreases. This is
+expected because more rapid returns to \(R_E(t)=1\) result in shorter
+null and test intervals, making estimates of EWS less precise {[}12{]}.
+Moreover, as the time to reach \(R_E(t)=1\) decreases, the chance of a
+bifurcation delay increases due to the changing equilibrium of \(R_0\)
+combined with demographic stochasticity {[}10,12{]}. Thus, re-emergence
+may prove difficult to anticipate in ``fast'' transmission systems, as
+demonstrated theoretically by {[}12{]} and seen empirically here in the
+Niamey dynamics (Figs. \ref{scatters}B, \ref{emerge-aucs}C).
+
+\begin{figure}
+\centering
+\includegraphics{measles-ews-manuscript_files/figure-latex/emergence-results-1.pdf}
+\caption{Performance of early warning signals (EWS) over fixed windows
+on the approach to emergence. (A) A typical example of an emergence
+simulation for Maradi. The two vertical blue lines indicate the start
+(left-most line) and end (line for critical year) of the full window.
+The black line demarcates the division between the equal-length null and
+test intervals, in which we show the calculated variance. (B) Empirical
+densities of variance in the null and test intervals across 500
+simulations and the associated area under the curve (AUC) statistic. (C)
+Heatmap of AUC statistics for each EWS at each level of susceptible
+discount factor. AUC values closer to 0 or 1 indicate higher ability to
+distinguish among time series near and far from a critical transition.
+See Fig. Sx for visualization of how susceptible discounting factor and
+the vaccination speed map to number of weeks in the null and test
+intervals. \label{emerg-aucs}}
+\end{figure}
 
 The EWS did not perform as well when anticipating elimination, relative
 to emergence (Fig. \ref{aucs}B). Only three metrics are reliable: mean,
@@ -540,28 +543,14 @@ text, Fig. S7). But, all EWS performed worse when predicting the
 approach to emergence over the moving window (Fig. S7).
 
 A change in the variance of a dynamical system is one of the most
-well-studied early warning signals (7), and it performed well here (Fig.
-\ref{aucs}). Thus, we show the distributions of the variance in the null
-and test intervals for each city as an example of the changes expected
-(Fig. \ref{var-ex}). In many cases, the variance is expected to increase
-as a critical transition is approached (4, 9, 17), and we find this to
-be the case for re-emergence. The variance decreases on the approach to
-elimination, which is counter to generic theory but in line with
-expectations specific to an SIR disease transmission model (4).
-
-\begin{figure}
-\centering
-\includegraphics{measles-ews-manuscript_files/figure-latex/var-ews-1.pdf}
-\caption{Boxplots of the variance in null (far from \(R_E\) = 1) and
-test (close to \(R_E\) = 1) intervals. As expected by theory, the
-variance decreases on the approach to elimination and the variance
-increases on the approach to emergence. Greater separation between the
-null and test distributions leads to higher AUC values in Fig. 3. The
-plotted results from emergence simulations where the susceptible
-discounting factor is 1E-04 and from elimination simulations where the
-speed to herd immunity is 1.5E-05. Variance is log transformed for
-visual purposes. \label{var-ex}}
-\end{figure}
+well-studied early warning signals {[}7{]}, and it performed well here
+(Fig. \ref{aucs}). Thus, we show the distributions of the variance in
+the null and test intervals for each city as an example of the changes
+expected (Fig. \ref{var-ex}). In many cases, the variance is expected to
+increase as a critical transition is approached {[}4,9,17{]}, and we
+find this to be the case for re-emergence. The variance decreases on the
+approach to elimination, which is counter to generic theory but in line
+with expectations specific to an SIR disease transmission model {[}4{]}.
 
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
@@ -588,15 +577,15 @@ the 0.5 level of susceptible depletion are already low for most cities
 experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
 Our results should encourage efforts to develop model-independent early
-warning systems for infectious diseases (1). We have shown that critical
-slowing down precedes tipping points in real disease dynamics, but how
-to operationalize the phenomenon of critical slowing down remains an
-open research area (28). Emerging technologies like artifical
-intelligence might offer new ways to find optimal detection thresholds
-for early warning signals. But there will always be a role for expert
-judgement. Early warning signals, though powerful and now accompanied
-with robust empirical support, will likely be just one part of a
-decision-support toolkit.
+warning systems for infectious diseases {[}1{]}. We have shown that
+critical slowing down precedes tipping points in real disease dynamics,
+but how to operationalize the phenomenon of critical slowing down
+remains an open research area {[}28{]}. Emerging technologies like
+artifical intelligence might offer new ways to find optimal detection
+thresholds for early warning signals. But there will always be a role
+for expert judgement. Early warning signals, though powerful and now
+accompanied with robust empirical support, will likely be just one part
+of a decision-support toolkit.
 
 \hypertarget{acknowledgments}{%
 \section{Acknowledgments}\label{acknowledgments}}
@@ -611,14 +600,7 @@ University, which is supported by National Institute of General Medical
 Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics
 Services Group grant 1U24GM110707.
 
-\hypertarget{new-figures}{%
-\section{New figures}\label{new-figures}}
-
-\includegraphics{measles-ews-manuscript_files/figure-latex/emergence-1.pdf}
-
 \includegraphics{measles-ews-manuscript_files/figure-latex/elimination-1.pdf}
-
-```
 
 \hypertarget{references}{%
 \section*{References}\label{references}}
@@ -626,134 +608,159 @@ Services Group grant 1U24GM110707.
 
 \hypertarget{refs}{}
 \leavevmode\hypertarget{ref-Han2016}{}%
-1. Han BA, Drake JM (2016) Future directions in analytics for infectious
-disease intelligence. \emph{EMBO reports}:e201642534.
+1. Han BA, Drake JM. 2016 Future directions in analytics for infectious
+disease intelligence. \emph{EMBO reports}, e201642534.
+(doi:\href{https://doi.org/10.15252/embr.201642534}{10.15252/embr.201642534})
 
 \leavevmode\hypertarget{ref-Drake2017}{}%
-2. Drake JM, Hay SI (2017) Monitoring the path to the elimination of
+2. Drake JM, Hay SI. 2017 Monitoring the path to the elimination of
 infectious diseaes. \emph{Tropical Medicine and Infectious Disease}
-2(3):20.
+\textbf{2}, 20.
 
 \leavevmode\hypertarget{ref-Metcalf2017}{}%
-3. Metcalf CJE, Lessler J (2017) Opportunities and challenges in
-modeling emerging infectious diseases. \emph{Science}
-357(6347):149--152.
+3. Metcalf CJE, Lessler J. 2017 Opportunities and challenges in modeling
+emerging infectious diseases. \emph{Science} \textbf{357}, 149--152.
+(doi:\href{https://doi.org/10.1126/science.aam8335}{10.1126/science.aam8335})
 
 \leavevmode\hypertarget{ref-ORegan2013}{}%
-4. O'Regan SM, Drake JM (2013) Theory of early warning signals of
-disease emergenceand leading indicators of elimination.
-\emph{Theoretical Ecology} 6:333--357.
+4. O'Regan SM, Drake JM. 2013 Theory of early warning signals of disease
+emergenceand leading indicators of elimination. \emph{Theoretical
+Ecology} \textbf{6}, 333--357.
+(doi:\href{https://doi.org/10.1007/s12080-013-0185-5}{10.1007/s12080-013-0185-5})
 
 \leavevmode\hypertarget{ref-Heffernan2005}{}%
-5. Heffernan JM, Smith RJ, Wahl LM (2005) Perspectives on the basic
+5. Heffernan JM, Smith RJ, Wahl LM. 2005 Perspectives on the basic
 reproductive ratio. \emph{Journal of the Royal Society Interface}
-2(4):281--293.
+\textbf{2}, 281--293.
+(doi:\href{https://doi.org/10.1098/rsif.2005.0042}{10.1098/rsif.2005.0042})
 
 \leavevmode\hypertarget{ref-Scheffer2009}{}%
-6. Scheffer M, et al. (2009) Early-warning signals for critical
-transitions. \emph{Nature} 461:53--59.
+6. Scheffer M \emph{et al.} 2009 Early-warning signals for critical
+transitions. \emph{Nature} \textbf{461}, 53--59.
+(doi:\href{https://doi.org/10.1038/nature08227}{10.1038/nature08227})
 
 \leavevmode\hypertarget{ref-Scheffer2012}{}%
-7. Scheffer M, et al. (2012) Anticipating critical transitions.
-\emph{Science} 338(6105):344--348.
+7. Scheffer M \emph{et al.} 2012 Anticipating critical transitions.
+\emph{Science} \textbf{338}, 344--348.
+(doi:\href{https://doi.org/10.1126/science.1225244}{10.1126/science.1225244})
 
 \leavevmode\hypertarget{ref-VanNes2007}{}%
-8. Nes EH van, Scheffer M (2007) Slow Recovery from Perturbations as a
+8. Nes EH van, Scheffer M. 2007 Slow Recovery from Perturbations as a
 Generic Indicator of a Nearby Catastrophic Shift. \emph{The American
-Naturalist} 169(6):738--747.
+Naturalist} \textbf{169}, 738--747.
+(doi:\href{https://doi.org/10.1086/516845}{10.1086/516845})
 
 \leavevmode\hypertarget{ref-Carpenter2006}{}%
-9. Carpenter SR, Brock WA (2006) Rising variance: A leading indicator of
-ecological transition. \emph{Ecology Letters} 9(3):311--318.
+9. Carpenter SR, Brock WA. 2006 Rising variance: A leading indicator of
+ecological transition. \emph{Ecology Letters} \textbf{9}, 311--318.
+(doi:\href{https://doi.org/10.1111/j.1461-0248.2005.00877.x}{10.1111/j.1461-0248.2005.00877.x})
 
 \leavevmode\hypertarget{ref-Dibble2016}{}%
-10. Dibble CJ, O'Dea EB, Park AW, Drake JM (2016) Waiting time to
+10. Dibble CJ, O'Dea EB, Park AW, Drake JM. 2016 Waiting time to
 infectious disease emergence. \emph{Journal of the Royal Society
-Interface} 13:20160540.
+Interface} \textbf{13}, 20160540.
+(doi:\href{https://doi.org/10.1098/rsif.2016.0540}{10.1098/rsif.2016.0540})
 
 \leavevmode\hypertarget{ref-ORegan2016}{}%
-11. O'Regan SM, Lillie JW, Drake JM (2016) Leading indicators of
+11. O'Regan SM, Lillie JW, Drake JM. 2016 Leading indicators of
 mosquito-borne disease elimination. \emph{Theoretical Ecology}
-9(3):269--286.
+\textbf{9}, 269--286.
+(doi:\href{https://doi.org/10.1007/s12080-015-0285-5}{10.1007/s12080-015-0285-5})
 
 \leavevmode\hypertarget{ref-Brett2017}{}%
-12. Brett TS, Drake JM, Rohani P (2017) Anticipating the emergence of
+12. Brett TS, Drake JM, Rohani P. 2017 Anticipating the emergence of
 infectious diseases. \emph{Journal of the Royal Society Interface}
-14:20170115.
+\textbf{14}, 20170115.
+(doi:\href{https://doi.org/10.1098/rsif.2017.0115}{10.1098/rsif.2017.0115})
 
 \leavevmode\hypertarget{ref-Brett2018}{}%
-13. Brett TS, et al. (2018) Anticipating epidemic transitions with
-imperfect data. \emph{PLoS Computational Biology} 14(6):e1006204.
+13. Brett TS, O'Dea EB, Marty É, Miller PB, Park AW, Drake JM, Rohani P.
+2018 Anticipating epidemic transitions with imperfect data. \emph{PLoS
+Computational Biology} \textbf{14}, e1006204.
+(doi:\href{https://doi.org/10.1371/journal.pcbi.1006204}{10.1371/journal.pcbi.1006204})
 
 \leavevmode\hypertarget{ref-Miller2017}{}%
-14. Miller PB, O'Dea EB, Rohani P, Drake JM (2017) Forecasting
-infectious disease emergence subject to seasonal forcing.
-\emph{Theoretical Biology and Medical Modelling} 14:17.
+14. Miller PB, O'Dea EB, Rohani P, Drake JM. 2017 Forecasting infectious
+disease emergence subject to seasonal forcing. \emph{Theoretical Biology
+and Medical Modelling} \textbf{14}, 17.
+(doi:\href{https://doi.org/10.1186/s12976-017-0063-8}{10.1186/s12976-017-0063-8})
 
 \leavevmode\hypertarget{ref-Ferrari2008}{}%
-15. Ferrari MJ, et al. (2008) The dynamics of measles in sub-Saharan
-Africa. \emph{Nature} 451:679--684.
+15. Ferrari MJ, Grais RF, Bharti N, Conlan AJ, Bjørnstad ON, Wolfson LJ,
+Guerin PJ, Djibo A, Grenfell BT. 2008 The dynamics of measles in
+sub-Saharan Africa. \emph{Nature} \textbf{451}, 679--684.
+(doi:\href{https://doi.org/10.1038/nature06509}{10.1038/nature06509})
 
 \leavevmode\hypertarget{ref-Hastings2010}{}%
-16. Hastings A, Wysham DB (2010) Regime shifts in ecological systems can
-occur with no warning. \emph{Ecology Letters} 13(4):464--472.
+16. Hastings A, Wysham DB. 2010 Regime shifts in ecological systems can
+occur with no warning. \emph{Ecology Letters} \textbf{13}, 464--472.
+(doi:\href{https://doi.org/10.1111/j.1461-0248.2010.01439.x}{10.1111/j.1461-0248.2010.01439.x})
 
 \leavevmode\hypertarget{ref-Dakos2012a}{}%
-17. Dakos V, Van Nes EH, D'Odorico P, Scheffer M (2012) Robustness of
+17. Dakos V, Van Nes EH, D'Odorico P, Scheffer M. 2012 Robustness of
 variance and autocorrelation as indicators of critical slowing down.
-\emph{Ecology} 93(2):264--271.
+\emph{Ecology} \textbf{93}, 264--271.
+(doi:\href{https://doi.org/10.1890/11-0889.1}{10.1890/11-0889.1})
 
 \leavevmode\hypertarget{ref-ODea2018a}{}%
-18. O'Dea EB, Park AW, Drake JM (2018) Estimating the distance to an
+18. O'Dea EB, Park AW, Drake JM. 2018 Estimating the distance to an
 epidemic threshold. \emph{Journal of the Royal Society Interface}
-15:20180034.
+\textbf{15}, 20180034.
+(doi:\href{https://doi.org/10.1098/rsif.2018.0034}{10.1098/rsif.2018.0034})
 
 \leavevmode\hypertarget{ref-ORegan2018}{}%
-19. O'Regan SM, Burton DL (2018) How Stochasticity Influences Leading
+19. O'Regan SM, Burton DL. 2018 How Stochasticity Influences Leading
 Indicators of Critical Transitions. \emph{Bulletin of Mathematical
-Biology} 80(6):1630--1654.
+Biology} \textbf{80}, 1630--1654.
+(doi:\href{https://doi.org/10.1007/s11538-018-0429-z}{10.1007/s11538-018-0429-z})
 
 \leavevmode\hypertarget{ref-Breto2011}{}%
-20. Bretó C, Ionides EL (2011) Compound Markov counting processes and
+20. Bretó C, Ionides EL. 2011 Compound Markov counting processes and
 their applications to modeling infinitesimally over-dispersed systems.
-\emph{Stochastic Processes and their Applications} 121:2571--2591.
+\emph{Stochastic Processes and their Applications} \textbf{121},
+2571--2591.
+(doi:\href{https://doi.org/10.1016/j.spa.2011.07.005}{10.1016/j.spa.2011.07.005})
 
 \leavevmode\hypertarget{ref-Ionides2015}{}%
-21. Ionides EL, Nguyen D, Atchadé Y, Stoev S, King AA (2015) Inference
+21. Ionides EL, Nguyen D, Atchadé Y, Stoev S, King AA. 2015 Inference
 for dynamic and latent variable models via iterated, perturbed Bayes
 maps. \emph{Proceedings of the National Academy of Sciences}
-112(3):719--724.
+\textbf{112}, 719--724.
+(doi:\href{https://doi.org/10.1073/pnas.1410597112}{10.1073/pnas.1410597112})
 
 \leavevmode\hypertarget{ref-R2017}{}%
-22. R Core Team (2017) R: A language and environment for statistical
-computing. Available at: \url{https://www.r-project.org/}.
+22. R Core Team. 2017 R: A language and environment for statistical
+computing.
 
 \leavevmode\hypertarget{ref-King2016}{}%
-23. King AA, Nguyen D, Ionides EL (2016) Statistical Inference for
+23. King AA, Nguyen D, Ionides EL. 2016 Statistical Inference for
 Partially Observed Markov Processes via the R Package pomp.
-\emph{Journal Of Statistical Software} 69(12):1--43.
+\emph{Journal Of Statistical Software} \textbf{69}, 1--43.
+(doi:\href{https://doi.org/10.18637/jss.v069.i12}{10.18637/jss.v069.i12})
 
 \leavevmode\hypertarget{ref-King2018}{}%
-24. King AA, et al. (2018) pomp: Statistical Inference for Partially
+24. King AA \emph{et al.} 2018 pomp: Statistical Inference for Partially
 Observed Markov Processes (R package, version 1.18).
 
 \leavevmode\hypertarget{ref-Martinez-Bakker2015}{}%
-25. Martinez-Bakker M, King AA, Rohani P (2015) Unraveling the
-transmission ecology of polio. \emph{PLoS Biology}.
-doi:\href{https://doi.org/10.1371/journal.pbio.1002172}{10.1371/journal.pbio.1002172}.
+25. Martinez-Bakker M, King AA, Rohani P. 2015 Unraveling the
+transmission ecology of polio. \emph{PLoS Biology}
+(doi:\href{https://doi.org/10.1371/journal.pbio.1002172}{10.1371/journal.pbio.1002172})
 
 \leavevmode\hypertarget{ref-ODea2018}{}%
-26. O'Dea EB (2018) spaero: Software for Project AERO (R package version
+26. O'Dea EB. 2018 spaero: Software for Project AERO (R package version
 0.3.0).
 
 \leavevmode\hypertarget{ref-Robin2011}{}%
-27. Robin X, et al. (2011) pROC: an open-source package for R and S+ to
-analyze and compare ROC curves. \emph{BMC Bioinformatics} 12:77.
+27. Robin X, Turck N, Hainard A, Tiberti N, Lisacek F, Sanchez J-C,
+Müller M. 2011 pROC: an open-source package for R and S+ to analyze and
+compare ROC curves. \emph{BMC Bioinformatics} \textbf{12}, 77.
 
 \leavevmode\hypertarget{ref-Shmueli2010}{}%
-28. Shmueli G, Burkom H (2010) Statistical challenges facing early
-outbreak detection in biosurveillance. \emph{Technometrics}
-52(1):39--51.
+28. Shmueli G, Burkom H. 2010 Statistical challenges facing early
+outbreak detection in biosurveillance. \emph{Technometrics} \textbf{52},
+39--51.
+(doi:\href{https://doi.org/10.1198/TECH.2010.06134}{10.1198/TECH.2010.06134})
 
 \end{document}
 

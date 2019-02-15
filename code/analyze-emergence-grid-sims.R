@@ -9,7 +9,6 @@
 
 library(tidyverse)
 library(ggthemes)
-library(pROC)
 library(spaero)
 
 
@@ -259,11 +258,17 @@ write.csv(x = ews_out, file = "../results/ews-emergence.csv", row.names = FALSE)
 
 # Reformat results --------------------------------------------------------
 
-ews_long <- ews_out %>%
-  group_by(city, metric) %>%
+col_spec <- cols(
+  metric = col_character(),
+  sim = col_integer(),
+  value = col_double(),
+  half = col_character(),
+  city = col_character(),
+  susc_discount = col_double()
+)
+
+ews_long <- read_csv("../results/ews-emergence.csv", col_types = col_spec) %>%
   filter(metric != "variance_first_diff") %>%
-  # filter(value < 100) %>%
-  ungroup() %>%
   mutate(
     metric = ifelse(metric == "variance", "Variance", metric),
     metric = ifelse(metric == "variance_first_diff", "Var. 1st Diff.", metric),
@@ -280,9 +285,20 @@ ews_long <- ews_out %>%
 
 # Calculate AUC -----------------------------------------------------------
 
+calc_auc <- function(predictions, is_null){
+  # Function to calculate AUC, from Eamon.
+  # Returns exact same results as those from popular R packages.
+  
+  r <- rank(predictions)
+  r1 <- sum(r[!is_null])
+  n1 <- sum(!is_null)
+  n2 <- sum(is_null)
+  (r1 - n1 * (n1 + 1) / 2) / (n1 * n2)
+}
+
 cats <- tibble(
   half = c("first", "second"),
-  cat = c(0, 1)
+  cat = c(TRUE, FALSE)  # null (TRUE), test (FALSE)
 )
 
 ews_long <- ews_long %>%
@@ -293,8 +309,7 @@ for(do_city in unique(ews_long$city)){
   for(do_discount in unique(ews_long$susc_discount)){
     for(do_metric in unique(ews_long$metric)){
       tmp <- filter(ews_long, metric == do_metric & city == do_city & susc_discount == do_discount)
-      roc_obj <- roc(tmp$cat, tmp$value)
-      tmp_auc <- auc(roc_obj)
+      tmp_auc <- calc_auc(predictions = tmp$value, is_null = tmp$cat)
       tmp_tbl <- tibble(
         city = do_city,
         susc_discount = do_discount,
