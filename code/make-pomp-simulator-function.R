@@ -7,6 +7,7 @@
 
 make_pomp_simulator <- function(do_city, mles, years_to_sim = 30, 
                                 initial_population_size, susc_discount = 1,
+                                exposed_discount = 1, infected_discount = 1,
                                 vacc_coverage_ts = NULL)
 {
   library(tidyverse)
@@ -73,7 +74,8 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     R += dN0R               + dNIR - dNR0;
     
     cases += dNIR;  // cumulative reports at end of infectious period (I->R)
-    RE_seas = ((eta*beta*(vacc_discount * mu)) / (nu*(eta+nu)*(gamma+nu))) * (S / N);
+    RE_seas = (beta / gamma) * (S / N);
+    // RE_seas = ((eta*beta*(vacc_discount * mu)) / (nu*(eta+nu)*(gamma+nu))) * (S / N);
     "
   )
   
@@ -140,9 +142,9 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   initial_values <- Csnippet(
     "
     S = nearbyint(N*S_0*sfact);
-    E = nearbyint(N*E_0);
-    I = nearbyint(N*I_0);
-    R = nearbyint(N - (N*S_0*sfact + N*E_0 + N*I_0));
+    E = nearbyint(N*E_0*efact);
+    I = nearbyint(N*I_0*sfact);
+    R = nearbyint(N - (N*S_0*sfact + N*E_0*efact + N*I_0*ifact));
     cases = rho*N*I_0;
     RE_seas = 0;
     "
@@ -155,7 +157,8 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   the_data <- tibble(
     time = report_times,
     reports = NA
-  )
+  ) %>%
+    filter(time > 0.5)  # start in trough of seasonal transmission
   
   # Generate basis functions for seasonality
   covar_table <- periodic.bspline.basis(
@@ -178,10 +181,14 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
   }
   
   sfact <- susc_discount
+  efact <- exposed_discount
+  ifact <- infected_discount
   N1 <- initial_population_size
   global_str <- paste0(
     "int K = 6; double mu = 0.05; double nu = 0.05;", 
-    " double sfact = ", sfact, ";", 
+    " double sfact = ", sfact, ";",
+    " double efact = ", efact, ";",
+    " double ifact = ", ifact, ";",
     " double N = ", N1, ";"
   )
   
@@ -189,7 +196,9 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     vacc_discount <-  0.3
     global_str <- paste0(
       "int K = 6; double mu = 0.05; double nu = 0.05;", 
-      " double sfact = ", sfact, ";", 
+      " double sfact = ", sfact, ";",
+      " double efact = ", efact, ";",
+      " double ifact = ", ifact, ";",
       " double N = ", N1, ";",
       " double vacc_discount = ", vacc_discount, ";"
     )

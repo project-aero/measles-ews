@@ -484,7 +484,7 @@ regions are the bootstrapped 95\% confidence intervals.
 \label{scatters}}
 \end{figure}
 
-In the approach to re-emergence, the EWS generally perform as expected,
+On the approach to re-emergence, the EWS generally perform as expected,
 with Niamey being an exception (Fig. \ref{emerge-aucs}). Skewness,
 kurtosis, and coefficient of variation performed poorly across all
 levels of susceptible depletion in all cities except Niamey. For Niamey,
@@ -522,18 +522,35 @@ simulations and the associated area under the curve (AUC) statistic. (C)
 Heatmap of AUC statistics for each EWS at each level of susceptible
 discount factor. AUC values closer to 0 or 1 indicate higher ability to
 distinguish among time series near and far from a critical transition.
-See Fig. Sx for visualization of how susceptible discounting factor and
-the vaccination speed map to number of weeks in the null and test
-intervals. \label{emerg-aucs}}
+See Fig. Sx for visualization of how susceptible discounting factor maps
+to number of weeks in the null and test intervals. \label{emerge-aucs}}
 \end{figure}
 
 The EWS did not perform as well when anticipating elimination, relative
-to emergence (Fig. \ref{aucs}B). Only three metrics are reliable: mean,
-autocovariance, and variance. All three metrics decreased as \(R_E(t)\)
-approached the critical transition (Fig. S5). As in the case of
-anticipating elimination, AUC values decreased as the speed of the
+to emergence (Fig. \ref{elim-aucs}). Only three metrics are reliable:
+mean, autocovariance, and variance. All three metrics decreased as
+\(R_E(t)\) approached the critical transition (Fig. S5). As in the case
+of anticipating elimination, AUC values decreased as the speed of the
 vaccine campaign increased. Again, this is due to shorter null and test
 intervals.
+
+\begin{figure}
+\centering
+\includegraphics{measles-ews-manuscript_files/figure-latex/elimination-1.pdf}
+\caption{Performance of early warning signals (EWS) over fixed windows
+on the approach to elimination. (A) A typical example of an elimination
+simulation for Maradi. The two vertical blue lines indicate the start
+(left-most line) and end (line for critical year) of the full window.
+The black line demarcates the division between the equal-length null and
+test intervals, in which we show the calculated variance. (B) Empirical
+densities of variance in the null and test intervals across 500
+simulations and the associated area under the curve (AUC) statistic. (C)
+Heatmap of AUC statistics for each EWS at each speed of approach to herd
+immunity. AUC values closer to 0 or 1 indicate higher ability to
+distinguish among time series near and far from a critical transition.
+See Fig. Sx for visualization of how vaccination speed maps to number of
+weeks in the null and test intervals. \label{elim-aucs}}
+\end{figure}
 
 In all, the suite of EWS suggest that critical slowing down does occur
 in measles dynamics as a critical transition is approached. We found
@@ -544,13 +561,12 @@ approach to emergence over the moving window (Fig. S7).
 
 A change in the variance of a dynamical system is one of the most
 well-studied early warning signals {[}7{]}, and it performed well here
-(Fig. \ref{aucs}). Thus, we show the distributions of the variance in
-the null and test intervals for each city as an example of the changes
-expected (Fig. \ref{var-ex}). In many cases, the variance is expected to
-increase as a critical transition is approached {[}4,9,17{]}, and we
-find this to be the case for re-emergence. The variance decreases on the
-approach to elimination, which is counter to generic theory but in line
-with expectations specific to an SIR disease transmission model {[}4{]}.
+(Figs. \ref{emerge-aucs}, \ref{elim-aucs}). In many cases, the variance
+is expected to increase as a critical transition is approached
+{[}4,9,17{]}, and we find this to be the case for re-emergence. The
+variance decreases on the approach to elimination, which is counter to
+generic theory but in line with expectations specific to an SIR disease
+transmission model {[}4{]}.
 
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
@@ -599,8 +615,6 @@ located at the Pittsburgh Supercomputing Center at Carnegie Mellon
 University, which is supported by National Institute of General Medical
 Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics
 Services Group grant 1U24GM110707.
-
-\includegraphics{measles-ews-manuscript_files/figure-latex/elimination-1.pdf}
 
 \hypertarget{references}{%
 \section*{References}\label{references}}

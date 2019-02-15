@@ -1,0 +1,76 @@
+---
+title: "Effect of simulation start time on emergence simulations"
+author: "Andrew Tredennick"
+date: 2019-02-15
+output: html_notebook
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(pomp)
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, cache = FALSE)
+source("../../code/make-pomp-simulator-function.R")
+```
+
+# Motivation
+The results for Niamey are a little weird, in that variance (and some other EWS) decrease on the appraoch to emergence rather than increase.
+This could be because of the start time of the simulations.
+All simulations start in January, when the seasonal tranmission rate is at its highest.
+Likewise, emergence is rapid in Niamey, meaning the null and test intervals are short.
+In combination, this could lead to situations where variance is higher in the null interval at the beginning of the season due to higher case numbers and the null and test intervals don't both include several seasonal cycles, in which that effect would be averaged over.
+
+To test this potential explanation, here I am going to run some emergence simulations for Niamey from different start times (e.g., in the middle of the season/year).
+
+# Simulations
+
+```{r sim-it}
+do_city <- "Niamey"
+mle_file <- paste0("../../results/initial-mif-lls-", do_city, ".csv")
+mles <- read.csv(mle_file) %>% 
+  slice(2:n()) %>%  # ignore first row of storage NAs
+  filter(loglik == max(loglik, na.rm = TRUE)) %>%
+  dplyr::select(-do_grid, -loglik, -loglik_se)
+
+pomp_file <- paste0("../../code/measles-pomp-object-", do_city, ".RDS")
+fitted_pomp <- readRDS(pomp_file)
+
+discount_grid <- c(0.0001, seq(0.1, 1, length.out = 10))
+
+simulator_pomp <- make_pomp_simulator(
+  do_city, 
+  mles, 
+  years_to_sim = 40, 
+  initial_population_size = round(mean(fitted_pomp@covar[, "N"])), 
+  susc_discount = discount_grid[5],
+  exposed_discount = 0,
+  infected_discount = 0,
+  vacc_coverage_ts = NULL
+)
+  
+model_sims <- simulate(
+  simulator_pomp,
+  nsim = 500,
+  as.data.frame = TRUE,
+  include.data = FALSE) %>%
+  as_tibble()
+
+ggplot(filter(model_sims, trunc(time)<4), 
+       aes(x = time, y = reports, group = sim)) +
+  geom_line(alpha = 0.1)
+
+# re_one_year <- model_sims %>%
+#   mutate(year = round(time)) %>%  # create 'year' variable
+#   filter(RE_seas >= 1) %>%  # drop times where Re less than 1
+#   filter(year == min(year) + 1) %>%  # filter to critical transition year
+#   distinct(year, .keep_all = TRUE) %>%  # drop duplicates
+#   pull(year)
+# 
+# cases <- model_sims %>%
+#   filter(trunc(time) <= re_one_year) %>%
+#   pull(reports)
+# 
+# halfway <- trunc(length(cases)/2)
+# var(cases[1:halfway])
+# var(cases[halfway:length(cases)])
+
+```
