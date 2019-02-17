@@ -1,0 +1,50 @@
+---
+title: "Effect of simulation start time on emergence simulations"
+author: "Andrew Tredennick"
+date: 2019-02-15
+output: html_notebook
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(pomp)
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, cache = FALSE)
+source("../../code/make-pomp-simulator-function.R")
+```
+
+# Motivation
+I want to document, once and for all, how we will calculate the effective reproduction number ($R_E$) for the model fitting `pomp` model and the model simulating `pomp` model.
+Both models are *SEIR*, but the simulating model includes demography to maintain a constant equilibrium population size, whereas the fitting model includes known population size and more limitted demography (i.e., no deaths).
+
+### Fitting model
+The fitting model does not explicitly model the recovered class because we have known population size.
+Therefore, we only model unvaccinated births into the susceptible class and do not model deaths from any class.
+We calculate $R_E$ at time *t* as:
+
+$$
+R_E(t) = \frac{\beta_t}{\gamma} \times \frac{S_t}{N_t},
+$$
+where $\beta_t$ is tranmission rate at time *t*, $1/\gamma$ is the constant recovery period, $S_t$ is the number of susceptibles at time *t*, and $N_t$ is the total population size (known) at time *t*.
+
+### Simulating model
+The simulating model includes vaccinated births in the recovered class and deaths from all *SEIR* compartments.
+We set the birth rate ($\mu$) to equal the death rate ($\nu$; $\mu = \nu = 0.05$) to maintain a relatively constant population size (births and deaths are still stochastic, which is why population size will still vary).
+Following an online doc ([here](https://web.stanford.edu/~jhj1/teachingdocs/Jones-on-R0.pdf)), we calculate $R_0$ as:
+
+$$
+R_0 = \frac{\eta \beta \mu}{\nu (\eta + \nu)(\gamma + \nu)} 
+$$
+
+and $R_E(t)$ as:
+
+$$
+R_E(t) = \frac{\eta \beta_t ((1-p)\mu)}{\nu (\eta + \nu)(\gamma + \nu)} \times \frac{S_t}{N_t}
+$$
+where parameters are as in the previous $R_E$ equation with the addition of the latent period ($1/\eta$), birth rate ($\mu$), death rate ($\nu$), and the vaccination coverage (*p*).
+**But**, this equation seems to lead to $R_E$ values that are too low -- they never reach 1.
+Likewise, I seem to remember Eamon saying we don't need to worry about the latend period.
+I get more reasonable estimates (i.e., $R_E$ values that go above and then below 1 in a seasonal fashion), using the more generic equation:
+
+$$
+R_E(t) = \frac{\beta_t}{\gamma} \times \frac{S_t}{N_t}.
+$$
