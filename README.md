@@ -34,6 +34,13 @@ Likewise, progress during the model fitting stage -- different model fitting str
   + `fetch-clean-data.R`: This scripts reads in the raw case count and demographic data to make clean data structures for use in the `pomp` models and elsewhere. Clean data reside in the `data/clean-data/` subdirectory.
   + `find-beta-random-walk-intensity.R`: Runs the `pomp` MIF2 algorithm starting at the MLEs but let's tranmission rate take a random walk. The idea is to test for a directional trend in tranmission. The models suggest there is no directional trend.
   + `global-search-mif.R`: This is the key script for model fitting. It implements the `pomp` MIF2 algorithm across a grid of starting values for model parameters. This script **designed to be run on a High Performance Computing cluster only**. Depends on `fetch-clean-data.R` and `define-continuous-measles-pomp.R`.
+  + `initial-mif-job*.sh`: Bash scripts (* = 1,2,3,4,5) for running maximization by iterated filtering (MIF) on the Olympus High Performance Computing cluster. The scripts run instances of the `global-search-mif.R` script in parallel, in 1000 core batches.
+  + `make-pomp-filtering-function.R`: Defines a function for generating a `pomp` model for particle filtering.
+  + `make-pomp-simulating-function.R`: Defines a function for generating a `pomp` model for making long run simulations. The function is called to make simulators of emergence and elimination.
+  + `setup-mif-outputs.R`: A utility script to generates empty CSV files for storage of model parameters from MIF on the Olympus HPC.
+  + `simulate-bootstrap-series.R`: Simulates replicate stochastic realizations of 11 years of weekly case counts from the MLE parameter sets for each city. These series are used for fitting parameters again to perform a parametric bootstrap and estimate uncertainty around parameter values.
+  + `simulate-elimination-grid.R`: Simulates replicate elimination scenarios at different speeds of vaccination uptake.
+  + `simulate-emergence-grid.R`: Simulates replicate emergence scenarios at different levels of susceptible depletion.
 
 
 ---
