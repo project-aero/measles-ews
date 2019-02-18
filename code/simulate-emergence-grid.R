@@ -7,7 +7,7 @@
 #  Andrew Tredennick (atredenn@gmail.com)
 
 
-# Set up grid of susceptible depletions -----------------------------------
+# Set up grid of susceptible depletions ----------------------------------
 
 discount_grid <- c(0.0001, seq(0.1, 1, length.out = 10))
 

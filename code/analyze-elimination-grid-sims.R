@@ -9,17 +9,26 @@
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
-library(ggthemes)
 library(spaero)
 library(doParallel)
 library(parallel)
 library(foreach)
 
 
+# Set number of cores based on machine ------------------------------------
+
+avail_cores <- detectCores()
+if(avail_cores <= 4){
+  n_cores <- 3  # on PC
+} else{
+  n_cores <- 20  # on lab monster
+}
+
+
 # Define function to calculate R0 from seasonal params --------------------
 
 calc_R0 <- function(beta, qis, season, eta = (365/8), 
-                    nu = 0.05, gamma = (365/5), p = 0.7){
+                    nu = 0.05, gamma = (365/5)){
   B <- as.numeric((1 + exp(season %*% qis)) * beta)
   R0 <- (eta*B) / ((eta + nu)*(gamma + nu))
   return(R0)
@@ -87,7 +96,7 @@ counter <- 1
 for(do_file in sim_files){
   tmp_file <- paste0("../simulations/", do_file)
   tmp <- readRDS(tmp_file) %>%
-    filter(time > 0) %>%
+    filter(time > 0.6) %>%  # remove initial transient phase
     left_join(vacc_thresholds, by = "city") %>%
     filter(vacc_coverage <= threshold)
   all_sims_list[[counter]] <- tmp
@@ -96,6 +105,7 @@ for(do_file in sim_files){
 
 all_sims <- as_tibble(data.table::rbindlist(all_sims_list))
 rm(all_sims_list)
+
 
 # Format data for 2-window EWS --------------------------------------------
 
@@ -261,11 +271,25 @@ for(do_city in unique(data_for_ews$city)){
       filter(city == do_city & vacc_speed == do_speed) %>%
       pull(bandwidth)
     
-    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_stats, 
-                       bw = window_bandwidth)
+    # Calculate EWS for each sim of first half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_first <- foreach(i=1:ncol(first_half), .combine=cbind) %dopar%
+      my_get_stats(first_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
     
-    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_stats, 
-                        bw = window_bandwidth)
+    # Calculate EWS for each sim of second half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_second <- foreach(i=1:ncol(second_half), .combine=cbind) %dopar%
+      my_get_stats(second_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
+    
+    # ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_stats, 
+    #                    bw = window_bandwidth)
+    # 
+    # ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_stats, 
+    #                     bw = window_bandwidth)
     
     first_tbl <- tibble(
       metric = row.names(ews_first)
@@ -301,7 +325,7 @@ write.csv(x = ews_out, file = "../results/ews-elimination.csv", row.names = FALS
 
 col_spec <- cols(
   metric = col_character(),
-  sim = col_integer(),
+  sim = col_character(),
   value = col_double(),
   half = col_character(),
   city = col_character(),
@@ -415,9 +439,9 @@ write.csv(x = auc_tbl, "../results/elimination-grid-aucs.csv")
 # )
 # 
 # 
-# ggplot(auc_tbl, aes(x = as.factor(vacc_speed), y = metric, fill = abs(AUC-0.5))) +
+# ggplot(auc_tbl, aes(x = as.factor(vacc_speed), y = metric, fill = AUC)) +
 #   geom_tile() +
-#   viridis::scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+#   scale_fill_viridis_c(limits = c(0,1), direction = -1, option = "E", name = "| AUC - 0.5 |") +
 #   facet_wrap(~city, nrow = 1) +
 #   labs(x = "Speed of vaccination campaign", y = NULL) +
 #   theme_minimal() +

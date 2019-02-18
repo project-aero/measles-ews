@@ -8,8 +8,20 @@
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
-library(ggthemes)
 library(spaero)
+library(doParallel)
+library(parallel)
+library(foreach)
+
+
+# Set number of cores based on machine ------------------------------------
+
+avail_cores <- detectCores()
+if(avail_cores <= 4){
+  n_cores <- 3  # on PC
+} else{
+  n_cores <- 20  # on lab monster
+}
 
 
 # Load simulations --------------------------------------------------------
@@ -30,7 +42,8 @@ counter <- 1
 for(do_file in sim_files_reduced){
   tmp_file <- paste0("../simulations/", do_file)
   tmp <- readRDS(tmp_file) %>%
-    filter(time > 0)
+    filter(time > 0.6) %>%  # allow for a couple week burn in
+    mutate(susc_discount = round(susc_discount,1))  # corrects weird rounding error
   all_sims_list[[counter]] <- tmp
   counter <- counter+1
 }
@@ -84,26 +97,26 @@ re_one_year <- all_sims %>%
 
 # Plot RE series ----------------------------------------------------------
 
-plot_sims <- all_sims %>% 
-  filter(sim < 21 & time <= 25)  # just plot 20 reps for 25 years
-
-re_series <- ggplot() +
-  geom_hline(data = re_one_year, aes(yintercept = 1), linetype = 2) +
-  geom_segment(
-    data = re_one_year,
-    aes(x = year, xend = year, y = 0, yend = 1),
-    color = ptol_pal()(2)[2]
-  ) +
-  geom_line(
-    data = plot_sims,
-    aes(x = time, y = RE_seas, group = sim),
-    alpha = 0.1,
-    color = "grey55",
-    size = 0.3
-  ) +
-  labs(x = "Simulation year", y = expression(R[E](t))) +
-  facet_grid(susc_discount~city) +
-  theme_minimal() 
+# plot_sims <- all_sims %>% 
+#   filter(sim < 21 & time <= 25)  # just plot 20 reps for 25 years
+# 
+# re_series <- ggplot() +
+#   geom_hline(data = re_one_year, aes(yintercept = 1), linetype = 2) +
+#   geom_segment(
+#     data = re_one_year,
+#     aes(x = year, xend = year, y = 0, yend = 1),
+#     color = ptol_pal()(2)[2]
+#   ) +
+#   geom_line(
+#     data = plot_sims,
+#     aes(x = time, y = RE_seas, group = sim),
+#     alpha = 0.1,
+#     color = "grey55",
+#     size = 0.3
+#   ) +
+#   labs(x = "Simulation year", y = expression(R[E](t))) +
+#   facet_grid(susc_discount~city) +
+#   theme_minimal() 
 
 # ggsave(
 #   filename = "../figures/effective-r-emergence-grid.pdf", 
@@ -219,11 +232,25 @@ for(do_city in unique(data_for_ews$city)){
       filter(city == do_city & susc_discount == do_discount) %>%
       pull(bandwidth)
     
-    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_stats, 
-                       bw = window_bandwidth)
+    # Calculate EWS for each sim of first half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_first <- foreach(i=1:ncol(first_half), .combine=cbind) %dopar%
+      my_get_stats(first_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
     
-    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_stats, 
-                        bw = window_bandwidth)
+    # Calculate EWS for each sim of second half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_second <- foreach(i=1:ncol(second_half), .combine=cbind) %dopar%
+      my_get_stats(second_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
+    
+    # ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_stats, 
+    #                    bw = window_bandwidth)
+    # 
+    # ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_stats, 
+    #                     bw = window_bandwidth)
     
     first_tbl <- tibble(
       metric = row.names(ews_first)
@@ -260,7 +287,7 @@ write.csv(x = ews_out, file = "../results/ews-emergence.csv", row.names = FALSE)
 
 col_spec <- cols(
   metric = col_character(),
-  sim = col_integer(),
+  sim = col_character(),
   value = col_double(),
   half = col_character(),
   city = col_character(),
