@@ -31,7 +31,9 @@ Likewise, progress during the model fitting stage -- different model fitting str
   + `bootstrap-fit-mif.R`: Fits an *SEIR* model to weekly case count data using MIF as implemented with the `pomp::mif()` function. In this case, the "data" are stochastic realizations from the fitted model -- thus, model fitting is for a parametric bootstrap. This script **designed to be run on a High Performance Computing cluster only**. See `boot-mif-job*.sh` description above.
   + `define-continuous-measles-pomp.R`: This script generates `pomp` models to be used for model fitting. One `pomp` model is generated for each city and saved as `measles-pomp-object-*.RDS`, where * is the name of the focal city. These files are stored in the code directory for easy access.
   + `estimate-transmission-state.R`: This script peforms a plain vanilla particle filter at the fitted MLE parameters to generate one-step-ahead predictions for calculating a generalized *R*<sup>2</sup> for model fit. It was also initially designed to estimate *R*<sub>E</sub> over time when transmission rate was allowed to take a random walk. However, further analyses showed that the highest likelihood models do not include a random walk tranmission rate. In other words, we found no evidence of a directional temporal trend in transmission rate.
-  + `fetch-clean-data.R`
+  + `fetch-clean-data.R`: This scripts reads in the raw case count and demographic data to make clean data structures for use in the `pomp` models and elsewhere. Clean data reside in the `data/clean-data/` subdirectory.
+  + `find-beta-random-walk-intensity.R`: Runs the `pomp` MIF2 algorithm starting at the MLEs but let's tranmission rate take a random walk. The idea is to test for a directional trend in tranmission. The models suggest there is no directional trend.
+  + `global-search-mif.R`: This is the key script for model fitting. It implements the `pomp` MIF2 algorithm across a grid of starting values for model parameters. This script **designed to be run on a High Performance Computing cluster only**. Depends on `fetch-clean-data.R` and `define-continuous-measles-pomp.R`.
 
 
 ---
