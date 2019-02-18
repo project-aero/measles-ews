@@ -30,10 +30,11 @@ Likewise, progress during the model fitting stage -- different model fitting str
   + `boot-mif-job*.sh`: Bash scripts (* = 1,2,3,4,5) for running maximization by iterated filtering (MIF) on the Olympus High Performance Computing cluster. The scripts run instances of the `bootstrap-fit-mif.R` script in parallel, in 1000 core batches.
   + `bootstrap-fit-mif.R`: Fits an *SEIR* model to weekly case count data using MIF as implemented with the `pomp::mif()` function. In this case, the "data" are stochastic realizations from the fitted model -- thus, model fitting is for a parametric bootstrap. This script **designed to be run on a High Performance Computing cluster only**. See `boot-mif-job*.sh` description above.
   + `define-continuous-measles-pomp.R`: This script generates `pomp` models to be used for model fitting. One `pomp` model is generated for each city and saved as `measles-pomp-object-*.RDS`, where * is the name of the focal city. These files are stored in the code directory for easy access.
-  +
+  + `estimate-transmission-state.R`: This script peforms a plain vanilla particle filter at the fitted MLE parameters to generate one-step-ahead predictions for calculating a generalized *R*<sup>2</sup> for model fit. It was also initially designed to estimate *R*<sub>E</sub> over time when transmission rate was allowed to take a random walk. However, further analyses showed that the highest likelihood models do not include a random walk tranmission rate. In other words, we found no evidence of a directional temporal trend in transmission rate.
+  + `fetch-clean-data.R`
 
 
 ---
 
 ### Contact
-Andrew Tredennick [atredenn@gmail.com](mailto:atredenn@gmail.com]
+Andrew Tredennick ([atredenn@gmail.com](mailto:atredenn@gmail.com))
