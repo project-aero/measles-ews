@@ -41,7 +41,11 @@ Likewise, progress during the model fitting stage -- different model fitting str
   + `simulate-bootstrap-series.R`: Simulates replicate stochastic realizations of 11 years of weekly case counts from the MLE parameter sets for each city. These series are used for fitting parameters again to perform a parametric bootstrap and estimate uncertainty around parameter values.
   + `simulate-elimination-grid.R`: Simulates replicate elimination scenarios at different speeds of vaccination uptake.
   + `simulate-emergence-grid.R`: Simulates replicate emergence scenarios at different levels of susceptible depletion.
-
+- `data/`: Contains raw and cleaned versions of case count and demographic data. See ReadMes therein and the supplementary material on demographic data. Note that the raw data are provided to Project AERO by Matthew Ferrari. All subsequent use should be approved by M. Ferrari, J. Drake, and P. Rohani. There is also a subdirectory of spatial data for plotting the location of the four focal cities in this analysis.
+- `docs/`: Contains the manuscript and supplementary information documents. These are `.Rmd` files that are knitted to PDF. This directory also contains subdirectories for project notebooks (`notebooks/`) and the original project protocol (`protocol/`). Other subdirectories are made on the fly when knitting the Rmd to PDF.
+- `figures/`: This directory is now deprecated. It contains figures for the manuscript and SI that I am keeping here for posterity, but all manuscript and SI figures are made now made on the fly in the Rmd docs.
+- `results/`: Contains CSV and RDS files of analysis results. These are either intermediary and called by scripts for further analysis or are used in manuscript/SI docs to make figures/tables.
+- `simulations/`: Contains RDS files that store simulation results.
 
 ---
 
