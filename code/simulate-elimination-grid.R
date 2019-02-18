@@ -20,40 +20,6 @@ rho_curve_ramp <- function(t, start = 52*4, speed = 0.0015){
 }
 
 
-# Define function to calculate R0 from seasonal params --------------------
-
-calc_R0 <- function(beta, qis, season, eta = (365/8), 
-                    mu = 0.05, nu = 0.05, gamma = (365/5), p = 0.7){
-  B <- as.numeric((1 + exp(season %*% qis)) * beta)
-  R0 <- (eta*B*mu*(1-p)) / (nu*(eta + nu)*(gamma + nu))
-  return(R0)
-}
-
-
-# Make example plot of vaccination curve ----------------------------------
-
-# vacc_ex_tbl <- tibble(
-#   week = 0:520,
-#   coverage = sapply(0:520, FUN = rho_curve_ramp)
-# )
-# 
-# ggplot(vacc_ex_tbl, aes(week, coverage)) +
-#   geom_line(color = "dodgerblue4", size = 1) +
-#   geom_hline(aes(yintercept = 0.7), linetype = 2, 
-#              size = 0.25, color = "grey45") +
-#   geom_hline(aes(yintercept = 0.95), linetype = 2, 
-#              size = 0.25, color = "grey45") +
-#   labs(x = "Week", y = "Vaccination coverage") +
-#   annotate(geom = "text", x = 420, y = 0.71, color = "grey45",
-#            label = "Current vaccination coverage in Niger", size = 3) +
-#   annotate(geom = "text", x = 125, y = 0.94, color = "grey45",
-#            label = "Vaccination coverage for herd immunity", size = 3) +
-#   theme_classic(base_size = 14)
-# ggsave(filename =  "../figures/vaccination-coverage-example.pdf", 
-#        width = 6, height = 3.5, units = "in")
-  
-
-
 # Set up grid of vaccination roll out speeds ------------------------------
 
 # speed_grid <- seq(-5e-04, -1e-04, length.out = 6)  # exponential
@@ -70,7 +36,7 @@ library(doParallel)  # functions for parallel computing
 if(parallel::detectCores() <= length(speed_grid)){
   registerDoParallel(cores = detectCores() - 1)
 } else{
-  registerDoParallel()
+  registerDoParallel(cores = length(speed_grid))
 }
 
 source("make-pomp-simulator-function.R")
@@ -111,8 +77,6 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   N <- round(mean(fitted_pomp@covar[, "N"]))
   
-  R0 <- calc_R0(beta = beta, qis = qis, season = season)
-  crit_vacc_cover <- 1 - (1/max(R0))
   
   # Simulate from the new pomp object ---------------------------------------
   
@@ -132,6 +96,8 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       years_to_sim = years, 
       initial_population_size = round(mean(fitted_pomp@covar[, "N"])), 
       susc_discount = 1,
+      exposed_discount = 1,
+      infected_discount = 1,
       vacc_coverage_ts = vacc_coverage_ts
     )
     
@@ -141,45 +107,6 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       as.data.frame = TRUE,
       include.data = FALSE) %>%
       as_tibble() 
-    
-    # summ <- model_sims %>%
-    #   filter(time > 0) %>%
-    #   mutate(year = trunc(time)) %>%
-    #   group_by(year) %>%
-    #   summarise(avg_re = mean(RE_seas))
-    # par(mfrow = c(1, 2))
-    # plot(model_sims$S+model_sims$I+model_sims$E+model_sims$R, type = "l")
-    # vacc_start <- 50*365/7
-    # tcrit <- which(vacc_coverage_ts >= crit_vacc_cover)[1]/7
-    # window_start <- vacc_start - (tcrit - vacc_start)
-    # plot(model_sims$reports, type = "l", xlab = "week", ylab = "reports", col = "grey45")
-    # abline(v = vacc_start, col = "red", lwd =2, lty = 2)
-    # abline(v = tcrit, col = "dodgerblue4", lty = 2, lwd = 2)
-    # abline(v = window_start, col = "dodgerblue4", lty = 2, lwd = 2)
-    # par(mfrow = c(1,2))
-    # stats::var(model_sims$reports[window_start:vacc_start])
-    # stats::var(model_sims$reports[vacc_start:tcrit])
-    # plot(summ$avg_re, type = "l", col = "grey35", xlab = "year", ylab = expression(R[E]))
-    # abline(h = 1, col = "red", lty = 2, lwd = 2)
-    # abline(v = 50, col = "dodgerblue4", lty = 2, lwd = 2)
-    # 
-    # 
-    # plot_sim <- model_sims %>%
-    #   filter(sim == 1 & time > 0)
-    # weekly_vacc <- vacc_coverage_ts[seq(1, length(vacc_coverage_ts), 7)]
-    # 
-    # plot(plot_sim$time, plot_sim$RE_seas, type = "l", col = "grey")
-    # lines(plot_sim$time, predict(loess(RE_seas~time, data = plot_sim, span = 0.75)), col = "red")
-    # abline(h = 1)
-    # abline(v = 5)
-    # 
-    # par(mar = c(5, 4, 4, 4) + 0.1)
-    # plot(plot_sim$time, plot_sim$reports, type = "l", xlab = "Time (years)", ylab = "Reported infections")
-    # par(new = TRUE)
-    # plot(plot_sim$time, weekly_vacc[2:length(weekly_vacc)], xlab = "", ylab = "", xlim = par("usr")[1:2], xaxs = "i",
-    #      ylim = c(0.7, 1), type = "l", lwd = 1, axes = FALSE, col = "red")
-    # axis(4)
-    # mtext("Vaccination coverage", side = 4, line = 2.8)
     
     tmp_re_sims <- model_sims %>%
       dplyr::select(sim, time, RE_seas, reports, vacc_discount) %>%
@@ -196,3 +123,81 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   }
   
 }
+
+
+# Extra code --------
+
+# Define function to calculate R0 from seasonal params
+
+# calc_R0 <- function(beta, qis, season, eta = (365/8), 
+#                     mu = 0.05, nu = 0.05, gamma = (365/5), p = 0.7){
+#   B <- as.numeric((1 + exp(season %*% qis)) * beta)
+#   R0 <- (eta*B*mu*) / (nu*(eta + nu)*(gamma + nu))
+#   return(R0)
+# }
+
+
+# Make example plot of vaccination curve 
+
+# R0 <- calc_R0(beta = beta, qis = qis, season = season)
+# crit_vacc_cover <- 1 - (1/max(R0))
+
+# vacc_ex_tbl <- tibble(
+#   week = 0:520,
+#   coverage = sapply(0:520, FUN = rho_curve_ramp)
+# )
+# 
+# ggplot(vacc_ex_tbl, aes(week, coverage)) +
+#   geom_line(color = "dodgerblue4", size = 1) +
+#   geom_hline(aes(yintercept = 0.7), linetype = 2, 
+#              size = 0.25, color = "grey45") +
+#   geom_hline(aes(yintercept = 0.95), linetype = 2, 
+#              size = 0.25, color = "grey45") +
+#   labs(x = "Week", y = "Vaccination coverage") +
+#   annotate(geom = "text", x = 420, y = 0.71, color = "grey45",
+#            label = "Current vaccination coverage in Niger", size = 3) +
+#   annotate(geom = "text", x = 125, y = 0.94, color = "grey45",
+#            label = "Vaccination coverage for herd immunity", size = 3) +
+#   theme_classic(base_size = 14)
+# ggsave(filename =  "../figures/vaccination-coverage-example.pdf", 
+#        width = 6, height = 3.5, units = "in")
+
+
+# summ <- model_sims %>%
+#   filter(time > 0) %>%
+#   mutate(year = trunc(time)) %>%
+#   group_by(year) %>%
+#   summarise(avg_re = mean(RE_seas))
+# par(mfrow = c(1, 2))
+# plot(model_sims$S+model_sims$I+model_sims$E+model_sims$R, type = "l")
+# vacc_start <- 50*365/7
+# tcrit <- which(vacc_coverage_ts >= crit_vacc_cover)[1]/7
+# window_start <- vacc_start - (tcrit - vacc_start)
+# plot(model_sims$reports, type = "l", xlab = "week", ylab = "reports", col = "grey45")
+# abline(v = vacc_start, col = "red", lwd =2, lty = 2)
+# abline(v = tcrit, col = "dodgerblue4", lty = 2, lwd = 2)
+# abline(v = window_start, col = "dodgerblue4", lty = 2, lwd = 2)
+# par(mfrow = c(1,2))
+# stats::var(model_sims$reports[window_start:vacc_start])
+# stats::var(model_sims$reports[vacc_start:tcrit])
+# plot(summ$avg_re, type = "l", col = "grey35", xlab = "year", ylab = expression(R[E]))
+# abline(h = 1, col = "red", lty = 2, lwd = 2)
+# abline(v = 50, col = "dodgerblue4", lty = 2, lwd = 2)
+# 
+# 
+# plot_sim <- model_sims %>%
+#   filter(sim == 1 & time > 0)
+# weekly_vacc <- vacc_coverage_ts[seq(1, length(vacc_coverage_ts), 7)]
+# 
+# plot(plot_sim$time, plot_sim$RE_seas, type = "l", col = "grey")
+# lines(plot_sim$time, predict(loess(RE_seas~time, data = plot_sim, span = 0.75)), col = "red")
+# abline(h = 1)
+# abline(v = 5)
+# 
+# par(mar = c(5, 4, 4, 4) + 0.1)
+# plot(plot_sim$time, plot_sim$reports, type = "l", xlab = "Time (years)", ylab = "Reported infections")
+# par(new = TRUE)
+# plot(plot_sim$time, weekly_vacc[2:length(weekly_vacc)], xlab = "", ylab = "", xlim = par("usr")[1:2], xaxs = "i",
+#      ylim = c(0.7, 1), type = "l", lwd = 1, axes = FALSE, col = "red")
+# axis(4)
+# mtext("Vaccination coverage", side = 4, line = 2.8)

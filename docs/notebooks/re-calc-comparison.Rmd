@@ -1,7 +1,7 @@
 ---
-title: "Effect of simulation start time on emergence simulations"
+title: "Calculation of basic and effective reproduction numbers"
 author: "Andrew Tredennick"
-date: 2019-02-15
+date: 2019-02-19
 output: html_notebook
 ---
 
@@ -13,7 +13,7 @@ source("../../code/make-pomp-simulator-function.R")
 ```
 
 # Motivation
-I want to document, once and for all, how we will calculate the effective reproduction number ($R_E$) for the model fitting `pomp` model and the model simulating `pomp` model.
+I want to document, once and for all, how we are calculating the effective reproduction number ($R_E$) for the model fitting `pomp` model and the model simulating `pomp` model.
 Both models are *SEIR*, but the simulating model includes demography to maintain a constant equilibrium population size, whereas the fitting model includes known population size and more limitted demography (i.e., no deaths).
 
 ### Fitting model
@@ -25,6 +25,34 @@ $$
 R_E(t) = \frac{\beta_t}{\gamma} \times \frac{S_t}{N_t},
 $$
 where $\beta_t$ is tranmission rate at time *t*, $1/\gamma$ is the constant recovery period, $S_t$ is the number of susceptibles at time *t*, and $N_t$ is the total population size (known) at time *t*.
+
+```{r re-fitting}
+get_re <- function(beta, gamma = (1/5), s_over_n){
+  (beta/gamma) * (s_over_n)
+}
+
+beta <- seq(100, 700, by = 100)
+s_over_n <- seq(0, 0.001, length.out = 20)
+
+res <- tibble() 
+for(do_beta in beta){
+  for(do_frac in s_over_n){
+    tmp <- get_re(beta = do_beta, s_over_n = do_frac)
+    res %>%
+      bind_rows(tibble(
+        beta = do_beta,
+        s_over_n = do_frac,
+        re = tmp
+      )) -> res
+  }
+}
+
+ggplot(res, aes(x = s_over_n, y = re, color = as.factor(beta))) +
+  geom_line() +
+  labs(x = expression(italic(S/N)), y = expression(italic(R)[E])) +
+  ggthemes::scale_color_colorblind(name = expression(beta)) +
+  ggtitle("Effective reproduction number for fitting model")
+```
 
 ### Simulating model
 The simulating model includes vaccinated births in the recovered class and deaths from all *SEIR* compartments.
@@ -38,13 +66,36 @@ $$
 and $R_E(t)$ as:
 
 $$
-R_E(t) = \frac{\eta \beta_t ((1-p)\mu)}{\nu (\eta + \nu)(\gamma + \nu)} \times \frac{S_t}{N_t}
+R_E(t) = \frac{\eta \beta_t \mu}{\nu (\eta + \nu)(\gamma + \nu)} \times \frac{S_t}{N_t} = R_0\times\frac{S_t}{N_t}
 $$
-where parameters are as in the previous $R_E$ equation with the addition of the latent period ($1/\eta$), birth rate ($\mu$), death rate ($\nu$), and the vaccination coverage (*p*).
-**But**, this equation seems to lead to $R_E$ values that are too low -- they never reach 1.
-Likewise, I seem to remember Eamon saying we don't need to worry about the latend period.
-I get more reasonable estimates (i.e., $R_E$ values that go above and then below 1 in a seasonal fashion), using the more generic equation:
+where parameters are as in the previous $R_E$ equation with the addition of the latent period ($1/\eta$), birth rate ($\mu$), and death rate ($\nu$).
 
-$$
-R_E(t) = \frac{\beta_t}{\gamma} \times \frac{S_t}{N_t}.
-$$
+```{r re-simulating}
+get_re_sim <- function(beta, eta = 1/8, mu = 0.05, nu = 0.05,
+                       gamma = 1/5, s_over_n){
+  ((eta*beta*mu) / (nu*(eta+nu)*(gamma+nu))) * s_over_n
+}
+
+beta <- seq(100, 700, by = 100)
+s_over_n <- seq(0, 0.001, length.out = 20)
+
+res <- tibble() 
+for(do_beta in beta){
+  for(do_frac in s_over_n){
+    tmp <- get_re_sim(beta = do_beta, s_over_n = do_frac)
+    res %>%
+      bind_rows(tibble(
+        beta = do_beta,
+        s_over_n = do_frac,
+        re = tmp
+      )) -> res
+  }
+}
+
+ggplot(res, aes(x = s_over_n, y = re, color = as.factor(beta))) +
+  geom_line() +
+  labs(x = expression(italic(S/N)), y = expression(italic(R)[E])) +
+  ggthemes::scale_color_colorblind(name = expression(beta)) +
+  ggtitle("Effective reproduction number for simulating model")
+
+```
