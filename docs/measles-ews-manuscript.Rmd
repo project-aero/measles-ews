@@ -596,27 +596,27 @@ calc_auc <- function(predictions, is_null){
 var_auc <- round(calc_auc(variance_cats$variance, variance_cats$cat), 3)
 
 # Case time series
-ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports)) +
+ggplot(filter(one_sim, time < 11.5 & time > 0.6), aes(x = time, y = reports)) +
   geom_line(color = "tan", aes(alpha = used)) +
-  geom_vline(aes(xintercept = 0), color = "dodgerblue4", linetype = 2) +
+  geom_vline(aes(xintercept = 0.6), color = "dodgerblue4", linetype = 2) +
   geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", 
              linetype = 2) +
-  geom_vline(aes(xintercept = 7/2)) +
-  annotate(geom = "text", x = 1.75, y = 250, size = 3,
+  geom_vline(aes(xintercept = 8/2)) +
+  annotate(geom = "text", x = 2.35, y = 250, size = 3,
            label = "Null interval", fontface = "bold") +
-  annotate(geom = "text", x = 5.25, y = 250, size = 3,
+  annotate(geom = "text", x = 6, y = 250, size = 3,
            label = "Test interval", fontface = "bold") +
-  annotate(geom = "text", x = 1.75, y = 220, size = 3,
+  annotate(geom = "text", x = 2.35, y = 220, size = 3,
            label = paste("Variance =", 
                          filter(variance_one_sim, interval == "null") %>%
                            pull(variance))) +
-  annotate(geom = "text", x = 5.25, y = 220, size = 3,
+  annotate(geom = "text", x = 6, y = 220, size = 3,
            label = paste("Variance =", 
                          filter(variance_one_sim, interval == "test") %>%
                            pull(variance))) +
   scale_alpha_manual(values = c(0.4, 1)) +
   guides(alpha = FALSE) +
-  annotate(geom = "text", x = 6.3, y = 125, label = "critical\nyear", 
+  annotate(geom = "text", x = 7.3, y = 125, label = "critical\nyear", 
            size = 3, color = "dodgerblue4") +
   labs(x = "Simulation time (year)", y = "Reported cases") +
   theme_classic(base_size = 11) -> cases_series
@@ -642,6 +642,9 @@ emergence_aucs <- read.csv("../results/emergence-grid-aucs.csv") %>%
 #   x = as.factor(rep(1e-04, 2)),
 #   y = c(5.7, 7.7)
 # )
+
+emergence_aucs <- emergence_aucs %>%
+  mutate(susc_discount = ifelse(susc_discount == 0.0, 1e-04, susc_discount))
 
 ggplot() +
   geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = AUC)) +
