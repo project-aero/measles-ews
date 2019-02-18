@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.4.16)  15 FEB 2019 15:00
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.4.16)  18 FEB 2019 12:02
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -796,7 +796,7 @@ File: measles-ews-manuscript_files/figure-latex/emergence-results-1.pdf Graphic
  file (type pdf)
 <use measles-ews-manuscript_files/figure-latex/emergence-results-1.pdf>
 Package pdftex.def Info: measles-ews-manuscript_files/figure-latex/emergence-re
-sults-1.pdf  used on input line 513.
+sults-1.pdf  used on input line 512.
 (pdftex.def)             Requested size: 468.0pt x 276.40796pt.
 [5]
 <measles-ews-manuscript_files/figure-latex/elimination-1.pdf, id=150, 598.235pt
@@ -805,18 +805,18 @@ File: measles-ews-manuscript_files/figure-latex/elimination-1.pdf Graphic file
 (type pdf)
 <use measles-ews-manuscript_files/figure-latex/elimination-1.pdf>
 Package pdftex.def Info: measles-ews-manuscript_files/figure-latex/elimination-
-1.pdf  used on input line 539.
+1.pdf  used on input line 538.
 (pdftex.def)             Requested size: 468.0pt x 274.0522pt.
 
-LaTeX Warning: Reference `aucs' on page 6 undefined on input line 580.
+LaTeX Warning: Reference `aucs' on page 6 undefined on input line 579.
 
 
-LaTeX Warning: Reference `aucs' on page 6 undefined on input line 592.
+LaTeX Warning: Reference `aucs' on page 6 undefined on input line 591.
 
 [6 <./measles-ews-manuscript_files/figure-latex/scatters-r0-1.pdf>] [7 <./measl
 es-ews-manuscript_files/figure-latex/emergence-results-1.pdf>] [8 <./measles-ew
 s-manuscript_files/figure-latex/elimination-1.pdf>]
-Overfull \hbox (5.05649pt too wide) in paragraph at lines 651--655
+Overfull \hbox (5.05649pt too wide) in paragraph at lines 650--654
 [][]\T1/ptm/m/n/10 (-20) 6. Schef-fer M \T1/ptm/m/it/10 (-20) et al. \T1/ptm/m/
 n/10 (-20) 2009 Early-warning sig-nals for crit-i-cal tran-si-tions. \T1/ptm/m/
 it/10 (-20) Na-ture \T1/ptm/b/n/10 461\T1/ptm/m/n/10 (-20) , 53--59. (doi:[]10.
@@ -824,34 +824,34 @@ it/10 (-20) Na-ture \T1/ptm/b/n/10 461\T1/ptm/m/n/10 (-20) , 53--59. (doi:[]10.
  []
 
 [9]
-Overfull \hbox (17.12599pt too wide) in paragraph at lines 731--737
+Overfull \hbox (17.12599pt too wide) in paragraph at lines 730--736
 \T1/ptm/m/n/10 (-20) mally over-dispersed sys-tems. \T1/ptm/m/it/10 (-20) Stoch
 as-tic Pro-cesses and their Ap-pli-ca-tions \T1/ptm/b/n/10 121\T1/ptm/m/n/10 (-
 20) , 2571--2591. (doi:[]10.1016/j.spa.2011.07.005[]) 
  []
 
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 779.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 778.
 [10]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 779.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 778.
 (./measles-ews-manuscript.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 779.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 779.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 778.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 778.
 Package rerunfilecheck Info: File `measles-ews-manuscript.out' has not changed.
 
 (rerunfilecheck)             Checksum: 270E234B35E4D3373F6300EA0AFF8E82;1905.
 
 LaTeX Warning: There were undefined references.
 
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 779.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 778.
  ) 
 Here is how much of TeX's memory you used:
- 13145 strings out of 492649
- 189526 string characters out of 6129622
- 304861 words of memory out of 5000000
+ 13148 strings out of 492649
+ 189553 string characters out of 6129622
+ 304750 words of memory out of 5000000
  16519 multiletter control sequences out of 15000+600000
- 80882 words of font info for 265 fonts, out of 8000000 for 9000
+ 81012 words of font info for 267 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 38i,10n,38p,1248b,367s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 38i,10n,38p,1211b,367s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2018/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}{/usr/local/
 texlive/2018/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/texlive/2018/te
 xmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2018/tex
@@ -866,7 +866,7 @@ syr.pfb></usr/local/texlive/2018/texmf-dist/fonts/type1/urw/symbol/usyr.pfb></u
 sr/local/texlive/2018/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/t
 exlive/2018/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/201
 8/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on measles-ews-manuscript.pdf (10 pages, 465243 bytes).
+Output written on measles-ews-manuscript.pdf (10 pages, 465385 bytes).
 PDF statistics:
  338 PDF objects out of 1000 (max. 8388607)
  296 compressed objects within 3 object streams

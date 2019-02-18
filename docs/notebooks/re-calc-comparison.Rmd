@@ -60,20 +60,20 @@ We set the birth rate ($\mu$) to equal the death rate ($\nu$; $\mu = \nu = 0.05$
 Following an online doc ([here](https://web.stanford.edu/~jhj1/teachingdocs/Jones-on-R0.pdf)), we calculate $R_0$ as:
 
 $$
-R_0 = \frac{\eta \beta \mu}{\nu (\eta + \nu)(\gamma + \nu)} 
+R_0 = \frac{\eta \beta}{ (\eta + \nu)(\gamma + \nu)} 
 $$
 
 and $R_E(t)$ as:
 
 $$
-R_E(t) = \frac{\eta \beta_t \mu}{\nu (\eta + \nu)(\gamma + \nu)} \times \frac{S_t}{N_t} = R_0\times\frac{S_t}{N_t}
+R_E(t) = \frac{\eta \beta_t }{ (\eta + \nu)(\gamma + \nu)} \times \frac{S_t}{N_t}
 $$
 where parameters are as in the previous $R_E$ equation with the addition of the latent period ($1/\eta$), birth rate ($\mu$), and death rate ($\nu$).
 
 ```{r re-simulating}
 get_re_sim <- function(beta, eta = 1/8, mu = 0.05, nu = 0.05,
                        gamma = 1/5, s_over_n){
-  ((eta*beta*mu) / (nu*(eta+nu)*(gamma+nu))) * s_over_n
+  ((eta*beta) / (eta+nu)*(gamma+nu)) * s_over_n
 }
 
 beta <- seq(100, 700, by = 100)
