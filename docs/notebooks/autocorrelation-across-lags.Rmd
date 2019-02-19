@@ -1,0 +1,111 @@
+---
+title: "Beyond lag-1 autocorrelation"
+author: "Andrew Tredennick"
+date: 2019-02-19
+output: html_notebook
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(pomp)
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, cache = FALSE)
+```
+
+# Motivation
+For reasons I don't fully understand yet (ask Eamon), lag-1 autocorrelation is not a good EWS for approaching the transcritical bifurcation from above (elimination).
+Eamon suggests using his method from the "distance to an epidemic threshold" paper.
+
+## Fitting the oscillating decay model
+
+Function from Eamon.
+```{r}
+get_fit <- function(y, tstep, est_K = FALSE, cutoff = .06) {
+  x <- (seq_along(y) - 1) * tstep
+  start <- list()
+  im <- match(TRUE, abs(y) < cutoff)
+  xs <- x[1:(im - 1)]
+  ys <- y[1:(im - 1)]
+  start$gamma <- try(unname(coef(lm(log(I(abs(ys))) ~ xs))["xs"]))
+  if (!inherits(start$gamma, "try-error")){
+    spec <- spectrum(y, plot = FALSE, na.action = na.exclude)
+    start$omega <- spec$freq[which.max(spec$spec)] / tstep
+    start$a <- 0
+    fit_osc <- try(minpack.lm::nlsLM(
+      y~sqrt(1 + a^2) * exp(x * gamma) * sin(x * omega + atan2(1, a)),
+      start = start, na.action = na.exclude,
+      control = minpack.lm::nls.lm.control(maxiter = 1000)))
+    if (est_K) {
+      fit_decay <- try(minpack.lm::nlsLM(y~K * exp(x * gamma),
+                                         start = list(gamma = start$gamma, K = y[1]), na.action = na.exclude,
+                                         control = minpack.lm::nls.lm.control(maxiter = 1000)))
+    } else {
+      K <- y[1]
+      fit_decay <- try(minpack.lm::nlsLM(y~K * exp(x * gamma),
+                                         start = list(gamma = start$gamma),na.action = na.exclude,
+                                         control = minpack.lm::nls.lm.control(maxiter = 1000)))
+    }
+    if (inherits(fit_osc , "try-error")) {
+      e_osc <- Inf
+    } else {
+      e_osc <- fit_osc$m$resid()
+    }
+    if (inherits(fit_decay, "try-error")) {
+      e_decay <- Inf
+    } else {
+      e_decay <- fit_decay$m$resid()
+    }
+    nll <- function(resids) {
+      n <- length(resids)
+      (sum(resids ^ 2))
+    }
+    aic <- c(constant = nll(y), fit_decay = nll(e_decay) + 2 * (1 + est_K),
+             fit_osc = nll(e_osc) + 2 * 3)
+    fits <- list(constant = "constant_y=0", fit_decay = fit_decay, fit_osc = fit_osc)
+    
+    coefests <- try(coef(fits[[which.min(aic)]])[c("omega", "gamma", "a")])
+    if (inherits(coefests, "try-error")){
+      coefests <- c(NA, NA, NA)
+    }
+    names(coefests) <- c("omega", "gamma", "a")
+    c(list(coef = coefests), fits)
+  } else {
+    c(list(coef = c("omega" = NA, "gamma" = NA, "a" = NA),
+           fits = list(constant = "contant_y=0",
+                       fit_decay = NA, fit_osc = NA)))
+  }
+}
+```
+
+Use it on elimination windows.
+```{r}
+elim_file <- "../../simulations/elimination-simulations-grid-Maradi-1.5e-05.RDS"
+cases <- readRDS(elim_file) %>%
+  filter(sim == 10) %>%
+  mutate(year = trunc(time)) %>%
+  group_by(year) %>%
+  summarise(reports = sum(reports)) %>%
+  pull(reports)
+
+first <- cases[1:(length(cases)/2)]
+second <- cases[((length(cases)/2)+1):length(cases)]
+y1 <- acf(first, lag.max = length(first)-30, plot = FALSE)
+y2 <- acf(second, lag.max = length(second)-30, plot = FALSE)
+
+acf_fits1 <- get_fit(y = as.numeric(y1[[1]]), tstep = 1)
+acf_fits2 <- get_fit(y = as.numeric(y2[[1]]), tstep = 1)
+w1 <- coef(acf_fits1$fit_osc)
+w2 <- coef(acf_fits2$fit_osc)
+print(w1)
+print(w2)
+
+acf_func <- function(x, gamma, omega, a){
+  sqrt(1 + a^2) * exp(x * gamma) * sin(x * omega + atan2(1, a))
+}
+
+null <- acf_func(x = seq(0,20,1), gamma = w1["gamma"], omega = w1["omega"], a = w1["a"])
+test <- acf_func(x = seq(0,20,1), gamma = w2["gamma"], omega = w2["omega"], a = w2["a"])
+plot(null, type = "l")
+lines(test, col = "red")
+```
+
+
