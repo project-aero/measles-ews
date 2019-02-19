@@ -1,0 +1,66 @@
+---
+title: "Non-mechanistic baseline models"
+author: "Andrew Tredennick"
+date: 2019-02-19
+output: html_notebook
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(pomp)
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, cache = FALSE)
+```
+
+# Motivation
+To understand whether our fitted *SEIR* models are "good", it can be helpful to compare their fit against non-mechanistic benchmarks.
+There are two I will consider here:
+
+1. A negative binomial sampling model that assumes that all observations are independent and identically distributed (IID).
+2. A seasonal autoregressive moving average model that allows for dependence among observations.
+
+### Compare models
+```{r compare}
+data_file <- "../../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+measles <- readRDS(data_file) %>%
+  filter(year > 1994)
+
+nb_lik <- function(theta) {
+  -sum(dnbinom(as.vector(cases),size=exp(theta[1]),prob=exp(theta[2]),log=TRUE))
+} 
+
+all_logliks <- tibble()
+for(do_city in unique(measles$region)){
+  cases <- measles %>%
+    filter(region == do_city) %>%
+    pull(cases)
+  
+  # Negative binomial iid sampling model
+  nb_mle <- optim(c(0,-5), nb_lik)
+  nb_nll <- -nb_mle$value
+  
+  # SARIMA model
+  log_y <- log(as.vector(cases)+1)
+  arma_fit <- arima(log_y,order=c(2,0,2),seasonal=list(order=c(1,0,1),period=52), method = "CSS")
+  arma_nll <- arma_fit$loglik-sum(log_y)
+  
+  # SEIR fit log likelihood
+  mif_city <- str_sub(do_city, 1, 6)
+  seir_nll <- read_csv(file = paste0("../../results/initial-mif-lls-", mif_city, ".csv")) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    pull(loglik)
+  
+  # Store results
+  all_logliks %>%
+    bind_rows(
+      tibble(
+        City = mif_city,
+        `Neg. Binomial` = nb_nll,
+        SARIMA = arma_nll,
+        SEIR = seir_nll
+      )
+    ) -> all_logliks
+}
+
+knitr::kable(all_logliks, caption = "Negative log likelihoods for different model fits.")
+```
