@@ -65,7 +65,7 @@
 \setcounter{secnumdepth}{0}
 % Pandoc header
 
-\journal{Journal Name}
+\journal{Proceedings of the Royal Society B}
 \usepackage{lineno}
 \linenumbers
 \usepackage{mathptmx}
@@ -191,8 +191,8 @@ detecting CSD before re-emergence than before elimination.
 \subsection{Data}\label{data}}
 
 We used weekly measles case report data from four Nigerien cities:
-Agadez, Maradi, Niamey, and Zinder (Fig. \ref{data-plot}A). The data
-were collected over an 11 year period from 1995-2005 (Fig.
+Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}A). The data
+were collected over an 11 year period from 1995-2005 (figure
 \ref{data-plot}B). These data are ideal for testing theory on CSD in
 disease dynamics because each city has different population sizes, has
 different dynamics in terms of outbreak sizes and length of
@@ -353,11 +353,8 @@ among the 50 MIF paramete sets. Last, we calculated summary statistics
 (mean, median, quantiles) from the distribution of 100 MLE parameters
 (SI text).
 
-\hypertarget{model-simulations}{%
-\subsection{Model simulations}\label{model-simulations}}
-
 \hypertarget{model-data-comparisons}{%
-\subsubsection{Model-data comparisons}\label{model-data-comparisons}}
+\subsection{Model-data comparisons}\label{model-data-comparisons}}
 
 We used the MLE parameter sets to make one-week-ahead predictions and to
 test the ability of early warning signals to anticipate the critical
@@ -371,7 +368,7 @@ coefficient of determination, calculated as:
 {[}25{]}.
 
 \hypertarget{simulating-re-emergence}{%
-\subsubsection{Simulating re-emergence}\label{simulating-re-emergence}}
+\subsection{Simulating re-emergence}\label{simulating-re-emergence}}
 
 To simulate re-emergence of measles, we manipulated the initial size of
 the susceptible pool to simulate an increase from low \(R_E(t)\) to high
@@ -394,7 +391,7 @@ Next, we split each simulated time series into null and test intervals.
 First, across all simulations for a city-susceptible discount
 combination, we found the simulation year in which \(R_E(t)\) reaches or
 exceeds 1 and excluded years past that year (SI text). We split the
-remaining time series into two windows of equal length (Fig. S2). The
+remaining time series into two windows of equal length (figure S2). The
 null interval is the first window, where \(R_E(t)\) is increasing but
 far from 1. The test interval is the second window, where \(R_E(t)\) is
 increasing and approaching 1. We did this for each city and for each
@@ -402,11 +399,11 @@ level of susceptible depletion. We calculated EWS over null and test
 intervals separately.
 
 \hypertarget{simulating-elimination}{%
-\subsubsection{Simulating elimination}\label{simulating-elimination}}
+\subsection{Simulating elimination}\label{simulating-elimination}}
 
 To simulate elimination, we simulated a vaccine campaign in which
 vaccination coverage linearly increased over time to eventually reach
-100\%, i.e.~eradication (Fig. S3). We ran simulations for 100 years,
+100\%, i.e.~eradication (figure S3). We ran simulations for 100 years,
 starting with 50 years of dynamics at the baseline vaccine coverage
 reported for Niger of 70\%, \(p = 0.7\) {[}15{]}. Note that vaccination
 coverage is included in our model by discounting the birth rate of
@@ -426,10 +423,11 @@ which vaccination coverage reached the vaccination threshold of
 parameters (SI text). We define the null interval as the window of time
 that ends at the start of the vaccination campaign (year 49) and starts
 at a time that results in an interval equal in length the test interval
-(Fig. S3). EWS were then calculated for each interval.
+(figure S3). EWS were then calculated for each interval.
 
-\hypertarget{early-warning-signals}{%
-\subsection{Early warning signals}\label{early-warning-signals}}
+\hypertarget{calculating-early-warning-signals}{%
+\subsection{Calculating early warning
+signals}\label{calculating-early-warning-signals}}
 
 We considered nine candidate early warning signals (Table S1). We used
 the \texttt{spaero::get\_stats()} function {[}26{]} in R {[}22{]} to
@@ -486,30 +484,30 @@ intervals. \label{scatters}}
 \hypertarget{results}{%
 \section{Results}\label{results}}
 
-The fitted models adequately reproduce observed dynamics (Fig.
+The fitted models adequately reproduce observed dynamics (figure
 \ref{data-plot}B), with in-sample \(R^2\)s from one-week-ahead
-predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Fig.
+predictions ranging from 0.54 for Agadez to 0.89 for Maradi (figure
 \ref{scatters}A). The fitted models also had higher negative log
 likelihoods than two benchmarking models: a negative binomial sampling
 model assuming identical and idependently distributed observations and a
 seasonal moving average model (SI Table Sx). Stochastic simulations of
-the models displayed dynamics typical of each city (Fig. S1), including
-the decline in seasonality amplitude as population size decreases (Fig.
-\ref{scatters}B) {[}15{]}. Our model for Agadez performs poorly relative
-to the other cities. Maximum likelihood estimates and bootstrapped 95\%
-confidence intervals for all parameters are in the SI text (Tables
-Sx-Sz).
+the models displayed dynamics typical of each city (figure S1),
+including the decline in seasonality amplitude as population size
+decreases (figure \ref{scatters}B) {[}15{]}. Our model for Agadez
+performs poorly relative to the other cities. Maximum likelihood
+estimates and bootstrapped 95\% confidence intervals for all parameters
+are in the SI text (Tables Sx-Sz).
 
 On the approach to re-emergence the EWS generally perform as expected by
 theory. Most EWS increased as the critical transition is approached,
-resulting in positive AUC values near 1 (Fig. \ref{emerge-aucs}).
+resulting in positive AUC values near 1 (figure \ref{emerge-aucs}).
 Skewness, kurtosis, and coefficient of variation performed poorly across
 all levels of susceptible depletion in all cities. Thus, these metrics
 are unreliable.
 
 Variance, mean, index of dispersion, decay time, autocovariance, and
 autocorrelation all perform equally well at predicting re-emergence
-(Fig. \ref{emerge-aucs}C). Their performance declines as the amount of
+(figure \ref{emerge-aucs}C). Their performance declines as the amount of
 susceptible depletion decreases. This is expected because more rapid
 returns to \(R_E(t)=1\) result in shorter null and test intervals,
 making estimates of EWS less precise {[}12{]}. Moreover, as the time to
@@ -518,7 +516,7 @@ increases because of the changing equilibrium of \(R_0\) combined with
 demographic stochasticity {[}10,12{]}. Thus, re-emergence may prove
 difficult to anticipate in ``fast'' transmission systems, as
 demonstrated theoretically by {[}12{]} and seen here when susceptible
-depletion was relatively small (Fig. \ref{emerge-aucs}C).
+depletion was relatively small (figure \ref{emerge-aucs}C).
 
 \begin{figure}
 \centering
@@ -539,12 +537,12 @@ to number of weeks in the null and test intervals. \label{emerge-aucs}}
 \end{figure}
 
 The EWS did not perform as well when anticipating elimination, relative
-to emergence (Fig. \ref{elim-aucs}). Only three metrics are reliable:
+to emergence (figure \ref{elim-aucs}). Only three metrics are reliable:
 mean, autocovariance, and variance. All three metrics decreased as
-\(R_E(t)\) approached the critical transition (Fig. S5). As in the case
-of anticipating elimination, AUC values decreased as the speed of the
-vaccine campaign increased. Again, this is because of shorter null and
-test intervals.
+\(R_E(t)\) approached the critical transition (figure S5). As in the
+case of anticipating elimination, AUC values decreased as the speed of
+the vaccine campaign increased. Again, this is because of shorter null
+and test intervals.
 
 \begin{figure}
 \centering
@@ -568,8 +566,8 @@ In all, the suite of EWS suggest that critical slowing down does occur
 in measles dynamics as a critical transition is approached. We found
 similar results for the approach to elimination when calculating EWS
 over a moving window of 35 weeks in the null and test intervals (SI
-text, Fig. S7). But, all EWS performed worse when predicting the
-approach to emergence over the moving window (Fig. S7).
+text, figure S7). But, all EWS performed worse when predicting the
+approach to emergence over the moving window (figure S7).
 
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
@@ -580,7 +578,7 @@ elimination of measles. This evidence comes from the fact that several
 EWS accurately anticipate the critical transition.
 
 A potential limitation of our findings is that the levels of susceptible
-depletion we modeled (Fig. \ref{emerge-aucs}C) might be lower than the
+depletion we modeled (figure \ref{emerge-aucs}C) might be lower than the
 levels that occur in reality. To check the relevance of this limitation,
 we calculated the level of susceptible depletion after outbreaks
 (defined as years where the total number of cases reached 80\% of the
@@ -592,7 +590,7 @@ outbreaks in Zinder. These statistics do not detract from our main
 findings of CSD in measles dynamics, but they do suggest that EWS might
 be less useful in some cases than in others. For example, AUC values for
 emergence at the 0.5 level of susceptible depletion are already low for
-most cities (Fig. \ref{aucs}A). Thus, EWS are not practical for cities
+most cities (figure \ref{aucs}A). Thus, EWS are not practical for cities
 that rarely experience levels of susceptible depletion below 0.5 (e.g.,
 Agadez).
 

@@ -37,7 +37,7 @@ csl: proceedings-of-the-royal-society-b.csl
 output: rticles::elsevier_article
 layout: 3p # review # review = doublespace, 3p = singlespace, 5p = two-column
 preamble: |
-  \journal{Journal Name}
+  \journal{Proceedings of the Royal Society B}
   \usepackage{lineno}
   \linenumbers
   \usepackage{mathptmx}
@@ -148,8 +148,8 @@ Moreoever, and contrary to theoretical expectations [@ORegan2013], we find that 
 # Materials and Methods
 
 ## Data
-We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (Fig. \ref{data-plot}A).
-The data were collected over an 11 year period from 1995-2005 (Fig. \ref{data-plot}B).
+We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}A).
+The data were collected over an 11 year period from 1995-2005 (figure \ref{data-plot}B).
 These data are ideal for testing theory on CSD in disease dynamics because each city has different population sizes, has different dynamics in terms of outbreak sizes and length of inter-epidemic periods, and each time series has different amounts of demographic stochasticity due to differences in population size.
 Such differences provide a natural gradient of "noise" that may influence CSD [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
 The data come from [*somewhere/someone*], and used here with permission from [*somewhere/someone*].
@@ -164,20 +164,22 @@ the_map <- ggplot(region_boundaries)+
     aes(x = lon, y = lat, label = label),
     box.padding   = 0.35, 
     point.padding = 0.3,
-    size = 2
+    size = 2,
+    family = "Times"
   ) + 
-  annotate("text", x = 12, y = 20, label = "Niger", fontface = 3, size = 5) +
-  labs(x = "Longitude", y = "Latitude") +
-  theme_minimal()
+  annotate("text", x = 12, y = 20, label = "Niger", fontface = 3, size = 5, family = "Times") +
+  labs(x = "longitude", y = "latitude") +
+  theme_minimal(base_family = "Times")
 
 the_series <- ggplot(pred_cases, aes(x = date)) +
   geom_ribbon(aes(ymin = lower_est, ymax = upper_est), color = "black") +
   geom_line(aes(y = observed_cases), color = ptol_pal()(3)[2], size = 0.4) +
   facet_wrap(~city_name, scales = "free_y", ncol = 1) +
-  labs(x = "Date", y = "Reported cases") +
-  theme_minimal()
+  labs(x = "date", y = "reported cases") +
+  theme_minimal(base_family = "Times")
 
-plot_grid(the_map, the_series, ncol = 2, labels = "AUTO", label_size = 12)
+plot_grid(the_map, the_series, ncol = 2, labels = c("(a)", "(b)"), 
+          label_size = 12, label_fontfamily = "Times", label_fontface = 3)
 ```
 
 ## Stochastic *SEIR* model
@@ -262,15 +264,13 @@ We reduced the number of parameter sets due to the computational constraints of 
 Third, we identified the MLE parameter set for each of the 100 bootstrap simulations from among the 50 MIF paramete sets.
 Last, we calculated summary statistics (mean, median, quantiles) from the distribution of 100 MLE parameters (SI text).
 
-## Model simulations
-
-### Model-data comparisons
+## Model-data comparisons
 We used the MLE parameter sets to make one-week-ahead predictions and to test the ability of early warning signals to anticipate the critical transition at $R_E(t) = 1$.
 To make one-week-ahead predictions, we used particle filtering with 50000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
 <!-- To estimate a trend in tranmission rate, we allowed mean transmission to take a random walk throughout the filter and retained the filtered distribution of particles for mean transmission and $R_E(t$). -->
 
-### Simulating re-emergence
+## Simulating re-emergence
 To simulate re-emergence of measles, we manipulated the initial size of the susceptible pool to simulate an increase from low $R_E(t)$ to high $R_E(t)$.
 Doing so allows us to test whether EWS can distinguish between windows of time when $R_E(t)$ is far from a critical transition and when $R_E(t)$ is near a critical transition.
 We reduced the initial fraction of susceptible individuals by multplying the MLE for $S_{(t=0)}$ by six discounting factors: 1e-4, 0.1, 0.2, 0.3, 0.4, and 0.5.
@@ -281,14 +281,14 @@ Because the model is stochastic, we repeated these simulations 500 times for eac
 
 Next, we split each simulated time series into null and test intervals.
 First, across all simulations for a city-susceptible discount combination, we found the simulation year in which $R_E(t)$ reaches or exceeds 1 and excluded years past that year (SI text).
-We split the remaining time series into two windows of equal length (Fig. S2).
+We split the remaining time series into two windows of equal length (figure S2).
 The null interval is the first window, where $R_E(t)$ is increasing but far from 1.
 The test interval is the second window, where $R_E(t)$ is increasing and approaching 1.
 We did this for each city and for each level of susceptible depletion.
 We calculated EWS over null and test intervals separately.
 
-### Simulating elimination
-To simulate elimination, we simulated a vaccine campaign in which vaccination coverage linearly increased over time to eventually reach 100\%, i.e. eradication (Fig. S3).
+## Simulating elimination
+To simulate elimination, we simulated a vaccine campaign in which vaccination coverage linearly increased over time to eventually reach 100\%, i.e. eradication (figure S3).
 We ran simulations for 100 years, starting with 50 years of dynamics at the baseline vaccine coverage reported for Niger of 70\%, $p = 0.7$ [@Ferrari2008].
 Note that vaccination coverage is included in our model by discounting the birth rate of susceptibles by $1-p$.
 At year 50, we initiated the vaccination campaign and let the model run for another 50 years.
@@ -298,10 +298,10 @@ As in the re-emergence simulations, we set the birth rate equal to the death rat
 We then split each time series into null and test intervals for calculating EWS.
 We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which vaccination coverage reached the vaccination threshold of $1 - 1/R_0$.
 $R_0$ was calculated for each city using the MLE parameters (SI text).
-We define the null interval as the window of time that ends at the start of the vaccination campaign (year 49) and starts at a time that results in an interval equal in length the test interval (Fig. S3).
+We define the null interval as the window of time that ends at the start of the vaccination campaign (year 49) and starts at a time that results in an interval equal in length the test interval (figure S3).
 EWS were then calculated for each interval.
 
-## Early warning signals
+## Calculating early warning signals
 
 We considered nine candidate early warning signals (Table S1).
 We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table S1.
@@ -342,18 +342,18 @@ scatters <- ggplot(pred_cases, aes(x = log(observed_cases+1), y = log(mean_cases
   geom_label(data = r_squares, 
              aes(x = 1.7, y = 7.3, label = paste0("italic(R)^2 == ", 
                                                   round(R2,2))), 
-             label.size = NA, parse = TRUE, size = 3) +
-  labs(y = "Expected log(cases + 1)", x = "Observed log(cases + 1)") +
+             label.size = NA, parse = TRUE, size = 3, family = "Times") +
+  labs(y = "expected log(cases + 1)", x = "observed log(cases + 1)") +
   facet_wrap(~city_name, nrow = 2, scales = "free") +
   scale_y_continuous(limits = c(0,8)) +
   scale_x_continuous(limits = c(0,8)) +
   scale_color_colorblind()+
   guides(color = FALSE)+
-  theme_classic(base_size = 10) +
+  theme_classic(base_size = 10, base_family = "Times") +
   theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
         strip.text = element_text(face = "bold"),
-        plot.title = element_text(face = "bold")) +
-  ggtitle("A. Model-data agreement")
+        plot.title = element_text(face = "bold")) 
+  # ggtitle("Model-data agreement")
 
 calc_R0 <- function(beta = NULL, B = NULL, qis = NULL, season = NULL, 
                     eta = (365/8), nu = 0.05, gamma = (365/5)){
@@ -510,40 +510,42 @@ rnaughts <- ggplot(all_R_0s, aes(x = date)) +
   scale_color_colorblind(name = NULL) +
   guides(fill = FALSE) +
   facet_wrap(~city,nrow = 2, scales = "free") +
-  labs(x = "Time of year", y = expression(italic(R[0]))) +
+  labs(x = "time of year", y = expression(italic(R[0]))) +
   scale_x_date(date_labels = "%b", date_breaks = "2 months") +
   scale_y_continuous(limits = c(0,35))+
-  theme_classic(base_size = 10) +
+  theme_classic(base_size = 10, base_family = "Times") +
   theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
         strip.text = element_text(face = "bold"),
-       plot.title = element_text(face = "bold")) +
-  ggtitle("B. Seasonal basic reproduction number")
+       plot.title = element_text(face = "bold")) 
+  # ggtitle("Seasonal basic reproduction number")
 
-plot_grid(scatters, rnaughts, labels = NULL, scale = 0.9, label_size = 12)
+plot_grid(scatters, rnaughts, scale = 0.9, labels = c("(a)", "(b)"), 
+          label_size = 12, label_fontfamily = "Times", label_fontface = 3)
 ```
 
 
 # Results
 
-The fitted models adequately reproduce observed dynamics (Fig. \ref{data-plot}B), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (Fig. \ref{scatters}A).
+The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}B), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (figure \ref{scatters}A).
 The fitted models also had higher negative log likelihoods than two benchmarking models: a negative binomial sampling model assuming identical and idependently distributed observations and a seasonal moving average model (SI Table Sx).
-Stochastic simulations of the models displayed dynamics typical of each city (Fig. S1), including the decline in seasonality amplitude as population size decreases (Fig. \ref{scatters}B) [@Ferrari2008].
+Stochastic simulations of the models displayed dynamics typical of each city (figure S1), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}B) [@Ferrari2008].
 Our model for Agadez performs poorly relative to the other cities.
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the SI text (Tables Sx-Sz).
 
 On the approach to re-emergence the EWS generally perform as expected by theory.
-Most EWS increased as the critical transition is approached, resulting in positive AUC values near 1 (Fig. \ref{emerge-aucs}).
+Most EWS increased as the critical transition is approached, resulting in positive AUC values near 1 (figure \ref{emerge-aucs}).
 Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities.
 Thus, these metrics are unreliable.
 
-Variance, mean, index of dispersion, decay time, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (Fig. \ref{emerge-aucs}C).
+Variance, mean, index of dispersion, decay time, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (figure \ref{emerge-aucs}C).
 Their performance declines as the amount of susceptible depletion decreases.
 This is expected because more rapid returns to $R_E(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise [@Brett2017].
 Moreover, as the time to reach $R_E(t)=1$ decreases, the chance of a bifurcation delay increases because of the changing equilibrium of $R_0$ combined with demographic stochasticity [@Dibble2016; @Brett2017].
-Thus, re-emergence may prove difficult to anticipate in "fast" transmission systems, as demonstrated theoretically by @Brett2017 and seen here when susceptible depletion was relatively small (Fig. \ref{emerge-aucs}C).
+Thus, re-emergence may prove difficult to anticipate in "fast" transmission systems, as demonstrated theoretically by @Brett2017 and seen here when susceptible depletion was relatively small (figure \ref{emerge-aucs}C).
 
 ```{r emergence-results, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to emergence. (A) A typical example of an emergence simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (B) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (C) Heatmap of AUC statistics for each EWS at each level of susceptible discount factor. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See Fig. Sx for visualization of how susceptible discounting factor maps to number of weeks in the null and test intervals.  \\label{emerge-aucs}"}
-mycols <- c("#91CDF0", "#EF6677")
+# mycols <- c("#91CDF0", "#EF6677")
+mycols <- c("#008FD5", "#FF2700")  # fivethirtyeight blue/red
 
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
@@ -607,34 +609,34 @@ ggplot(filter(one_sim, time < 11.5 & time > 0.6), aes(x = time, y = reports)) +
              linetype = 2) +
   geom_vline(aes(xintercept = 8/2)) +
   annotate(geom = "text", x = 2.35, y = 250, size = 3,
-           label = "Null interval", fontface = "bold") +
+           label = "null interval", fontface = "bold", family = "Times") +
   annotate(geom = "text", x = 6, y = 250, size = 3,
-           label = "Test interval", fontface = "bold") +
-  annotate(geom = "text", x = 2.35, y = 220, size = 3,
-           label = paste("Variance =", 
+           label = "test interval", fontface = "bold", family = "Times") +
+  annotate(geom = "text", x = 2.35, y = 220, size = 3, family = "Times",
+           label = paste("variance =", 
                          filter(variance_one_sim, interval == "null") %>%
                            pull(variance))) +
-  annotate(geom = "text", x = 6, y = 220, size = 3,
-           label = paste("Variance =", 
+  annotate(geom = "text", x = 6, y = 220, size = 3, family = "Times",
+           label = paste("variance =", 
                          filter(variance_one_sim, interval == "test") %>%
                            pull(variance))) +
   scale_alpha_manual(values = c(0.4, 1)) +
   guides(alpha = FALSE) +
   annotate(geom = "text", x = 7.3, y = 125, label = "critical\nyear", 
-           size = 3, color = "dodgerblue4") +
-  labs(x = "Simulation time (year)", y = "Reported cases") +
-  theme_classic(base_size = 11) -> cases_series
+           size = 3, color = "dodgerblue4", family = "Times") +
+  labs(x = "simulation time (year)", y = "reported cases") +
+  theme_classic(base_size = 11, base_family = "Times") -> cases_series
 
 # Distribution of variance across simulations
 ggplot(variance_all_sim, aes(x = log(variance + 1), fill = interval)) +
   geom_density(size = 0.5, alpha = 0.65, color = "white") +
-  annotate(geom = "text", x = 3, y = 1.2, size = 3,
-           label = paste("Area under the curve:", var_auc)) +
-  scale_fill_manual(values = mycols, name = "Interval",
-                    labels = c("Null", "Test")) +
-  labs(x = "Log(variance + 1)", y = "Density") +
+  annotate(geom = "text", x = 3, y = 1.2, size = 3, family = "Times",
+           label = paste("area under the curve:", var_auc)) +
+  scale_fill_manual(values = mycols, name = "interval",
+                    labels = c("null", "test")) +
+  labs(x = "log(variance + 1)", y = "density") +
   coord_cartesian(xlim = c(0, 4)) +
-  theme_classic(base_size = 11) +
+  theme_classic(base_size = 11, base_family = "Times") +
   theme(legend.position = c(0.8, 0.8)) -> dist_plot
 
 # AUC heatmap
@@ -648,30 +650,33 @@ emergence_aucs <- read.csv("../results/emergence-grid-aucs.csv") %>%
 # )
 
 emergence_aucs <- emergence_aucs %>%
-  mutate(susc_discount = ifelse(susc_discount == 0.0, 1e-04, susc_discount))
+  mutate(susc_discount = ifelse(susc_discount == 0.0, 1e-04, susc_discount)) %>%
+  mutate(metric = tolower(metric))
 
 ggplot() +
   geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = AUC)) +
   # geom_text(data = star_tbl, aes(x = x, y = y, label = "*"), color = "white", size = 6) +
   scale_fill_viridis(limits = c(0,1), direction = -1, option = "E", name = "AUC") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = "Proportion of mean susceptibles", y = NULL) +
-  theme_minimal() +
+  labs(x = "proportion of mean susceptibles", y = NULL) +
+  theme_minimal(base_family = "Times") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"),
         strip.text = element_text(face = "bold"),
         plot.title = element_text(size = 11, face = "bold")) -> aucs
 
-row2 <- cowplot::plot_grid(aucs, labels = "C")
-row1 <- cowplot::plot_grid(cases_series, dist_plot, scale = 0.9, labels = "AUTO")
+
+row2 <- cowplot::plot_grid(aucs, labels = "(c)", label_size = 12, label_fontfamily = "Times", label_fontface = 3)
+row1 <- cowplot::plot_grid(cases_series, dist_plot, scale = 0.9, labels = c("(a)", "(b)"), 
+          label_size = 12, label_fontfamily = "Times", label_fontface = 3)
 final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
 print(final)
 ```
 
 
-The EWS did not perform as well when anticipating elimination, relative to emergence (Fig. \ref{elim-aucs}).
+The EWS did not perform as well when anticipating elimination, relative to emergence (figure \ref{elim-aucs}).
 Only three metrics are reliable: mean, autocovariance, and variance.
-All three metrics decreased as $R_E(t)$ approached the critical transition (Fig. S5).
+All three metrics decreased as $R_E(t)$ approached the critical transition (figure S5).
 As in the case of anticipating elimination, AUC values decreased as the speed of the vaccine campaign increased.
 Again, this is because of shorter null and test intervals.
 
@@ -694,26 +699,26 @@ ggplot() +
              color = "grey45", linetype = 1) +
   geom_line(data = ews_data_example, aes(x = time, y = reports),
             color = "tan", size = 0.3) +
-  annotate(geom = "text", x = 28, y = 1450, size = 3,
-           label = "Null interval", fontface = "bold") +
-  annotate(geom = "text", x = 70, y = 1450, size = 3,
-           label = "Test interval", fontface = "bold") +
-  annotate(geom = "text", x = 36, y = 900, 
+  annotate(geom = "text", x = 28, y = 1450, size = 3, family = "Times",
+           label = "null interval", fontface = "bold") +
+  annotate(geom = "text", x = 70, y = 1450, size = 3, family = "Times",
+           label = "test interval", fontface = "bold") +
+  annotate(geom = "text", x = 36, y = 900, family = "Times",
            label = "start of\nvaccination campaign", 
-           size = 2, color = "grey25") +
-  annotate(geom = "text", x = 79, y = 900, 
+           size = 2.5, color = "grey25") +
+  annotate(geom = "text", x = 79, y = 900, family = "Times",
            label = "coverage reaches\nherd immunity",
-           size = 2, color = "dodgerblue4") +
-  annotate(geom = "text", x = 28, y = 1300, size = 3,
-           label = paste("Variance =", 
+           size = 2.5, color = "dodgerblue4") +
+  annotate(geom = "text", x = 28, y = 1300, size = 3, family = "Times",
+           label = paste("variance =", 
                          filter(variance_example, half == "first") %>% 
                            pull(variance))) +
-  annotate(geom = "text", x = 70, y = 1300, size = 3,
-           label = paste("Variance =", 
+  annotate(geom = "text", x = 70, y = 1300, size = 3, family = "Times",
+           label = paste("variance =", 
                          filter(variance_example, half == "second") %>% 
                            pull(variance))) +
-  labs(x = "Simulation time (year)", y = "Reported cases") +
-  theme_classic(base_size = 11) -> cases_series
+  labs(x = "simulation time (year)", y = "reported cases") +
+  theme_classic(base_size = 11, base_family = "Times") -> cases_series
 
 # Plot variance distributions
 all_variances <- read_csv("../results/ews-elimination.csv") %>%
@@ -737,18 +742,19 @@ var_auc <- round(calc_auc(variance_cats$variance, variance_cats$cat),2)
 
 ggplot(data = all_variances, aes(x = log(variance + 1), fill = interval)) +
   geom_density(size = 0.5, alpha = 0.65, color = "white") +
-  annotate(geom = "text", x = 10, y = 0.4, size = 3,
-           label = paste("Area under the curve:", var_auc)) +
-  scale_fill_manual(values = mycols, name = "Interval", 
-                    labels = c("Null", "Test")) +
-  labs(x = "Log(variance + 1)", y = "Density") +
+  annotate(geom = "text", x = 10, y = 0.4, size = 3, family = "Times",
+           label = paste("area under the curve:", var_auc)) +
+  scale_fill_manual(values = mycols, name = "interval",
+                    labels = c("null", "test")) +
+  labs(x = "log(variance + 1)", y = "density") +
   coord_cartesian(xlim = c(6, 11)) +
-  theme_classic(base_size = 11) +
+  theme_classic(base_size = 11, base_family = "Times") +
   theme(legend.position = c(0.8, 0.8)) -> dist_plot
 
 # AUC heatmap
 elimination_aucs <- read.csv("../results/elimination-grid-aucs.csv") %>%
-  filter(metric != "Decay time")
+  filter(metric != "Decay time") %>%
+  mutate(metric = tolower(metric))
 
 ggplot() +
   geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), 
@@ -756,25 +762,26 @@ ggplot() +
   scale_fill_viridis(limits = c(0,1), direction = -1, option = "E",
                      name = "AUC") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = expression(paste("Rate to full vaccine coverage (", 
+  labs(x = expression(paste("rate to full vaccine coverage (", 
                             phantom()%*%phantom(), 10^4, ")")), 
        y = NULL) +
-  theme_minimal(base_size = 11) +
+  theme_minimal(base_size = 11, base_family = "Times") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"),
          strip.text = element_text(face = "bold"),
         plot.title = element_text(size = 11, face = "bold")) -> aucs
 
-row2 <- cowplot::plot_grid(aucs, labels = "C")
-row1 <- cowplot::plot_grid(cases_series, dist_plot, 
-                           scale = 0.9, labels = "AUTO")
+row2 <- cowplot::plot_grid(aucs, labels = "(c)", label_size = 12, 
+                           label_fontfamily = "Times", label_fontface = 3)
+row1 <- cowplot::plot_grid(cases_series, dist_plot, scale = 0.9, labels = c("(a)", "(b)"), 
+          label_size = 12, label_fontfamily = "Times", label_fontface = 3)
 final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
 print(final)
 ```
 
 In all, the suite of EWS suggest that critical slowing down does occur in measles dynamics as a critical transition is approached.
-We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, Fig. S7).
-But, all EWS performed worse when predicting the approach to emergence over the moving window (Fig. S7).
+We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, figure S7).
+But, all EWS performed worse when predicting the approach to emergence over the moving window (figure S7).
 
 <!-- A change in the variance of a dynamical system is one of the most well-studied early warning signals [@Scheffer2012], and it performed well here (Figs. \ref{emerge-aucs}, \ref{elim-aucs}). -->
 <!-- Thus, we show the distributions of the variance in the null and test intervals for each city as an example of the changes expected (Fig. \ref{var-ex}). -->
@@ -843,11 +850,11 @@ fracs_less_than_half <- outbreak_years %>%
 percs <- fracs_less_than_half$frac_less*100
 ```
 
-A potential limitation of our findings is that the levels of susceptible depletion we modeled (Fig. \ref{emerge-aucs}C) might be lower than the levels that occur in reality.
+A potential limitation of our findings is that the levels of susceptible depletion we modeled (figure \ref{emerge-aucs}C) might be lower than the levels that occur in reality.
 To check the relevance of this limitation, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (SI text).
 We found that susceptible depletion was less than 0.5, the smallest susceptible depletion level we tested, for `r round(percs[1], 1)`% of outbreaks in Agadez, `r round(percs[2])`% of outbreaks in Maradi, `r round(percs[3])`% of outbreaks in Niamey, and `r round(percs[4])`% of outbreaks in Zinder.
 These statistics do not detract from our main findings of CSD in measles dynamics, but they do suggest that EWS might be less useful in some cases than in others.
-For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (Fig. \ref{aucs}A).
+For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{aucs}A).
 Thus, EWS are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
 Our results should encourage efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
@@ -860,79 +867,5 @@ Early warning signals, though powerful and now accompanied with empirical suppor
 This research was funded by the National Institute of General Medical Sciences of the National Institutes of Health (Award Number U01GM110744).
 The funders had no role in study design, data collection and analysis, decision to publish, or preparation of the manuscript.
 This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
-
-
-```{r aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over fixed windows. EWS were calculated over two windows, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition. The asterisks in (A) for Niamey note EWS with high AUC but for the wrong reason: skewness and kurtosis *decrease* as $R_E(t)$ approaches 1 rather than increase. This occurs because of the negative binomial sampling in the measurement component of our SEIR model [@Brett2018]. See Fig. Sx for visualization of how susceptible discounting factor and the vaccination speed map to number of weeks in the null and test intervals.  \\label{aucs}", eval=FALSE}
-library(viridis)
-
-emergence_aucs <- read.csv("../results/emergence-grid-aucs.csv")
-elimination_aucs <- read.csv("../results/elimination-grid-aucs.csv")
-
-star_tbl <- tibble(
-  city = "Niamey",
-  x = as.factor(rep(1e-04, 2)),
-  y = c(5.7, 7.7)
-)
-
-emerge_plot <- ggplot() +
-  geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
-  geom_text(data = star_tbl, aes(x = x, y = y, label = "*"), color = "white", size = 6) +
-  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
-  facet_wrap(~city, nrow = 1) +
-  labs(x = "Level of susceptible depletion", y = NULL) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(panel.spacing = unit(1, "lines"),
-        plot.title = element_text(size = 11, face = "bold")) +
-  ggtitle("A. Anticipating emergence")
-
-eliminate_plot <- ggplot() +
-  geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = abs(AUC-0.5))) +
-  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
-  facet_wrap(~city, nrow = 1) +
-  labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(panel.spacing = unit(1, "lines"),
-        plot.title = element_text(size = 11, face = "bold")) +
-  ggtitle("B. Anticipating elimination")
-
-cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = NULL, label_size = 12)
-```
-
-```{r var-ews, fig.width=4, fig.height=4, fig.cap="Boxplots of the variance in null (far from $R_E$ = 1) and test (close to $R_E$ = 1) intervals. As expected by theory, the variance decreases on the approach to elimination and the variance increases on the approach to emergence. Greater separation between the null and test distributions leads to higher AUC values in Fig. 3. The plotted results from emergence simulations where the susceptible discounting factor is 1E-04 and from elimination simulations where the speed to herd immunity is 1.5E-05. Variance is log transformed for visual purposes. \\label{var-ex}", eval = FALSE}
-do_metric <- "variance"
-
-emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
-  filter(metric == do_metric & susc_discount == 1e-04)  %>%
-  mutate(
-    metric = as.character(metric),
-    metric = ifelse(metric == "variance", "Variance", metric),
-    type = "Emerge."
-  )
-
-elimin_ews <- read.csv("../results/ews-elimination.csv") %>%
-  filter(metric == do_metric & vacc_speed == 1.5e-05)  %>%
-  mutate(
-    metric = as.character(metric),
-    metric = ifelse(metric == "variance", "Variance", metric),
-    type = "Elimin."
-  )
-
-all_ews <- bind_rows(emerge_ews, elimin_ews)
-
-mycols <- c("#91CDF0", "#EF6677")
-
-ggplot(all_ews, aes(x = type, y = log(value), fill = half)) +
-  geom_boxplot(outlier.size = 0.6, outlier.shape = 1, width = 0.5, lwd = 0.2) +
-  facet_wrap(~city, scales = "free", nrow = 2) +
-  scale_fill_manual(values = mycols, name = "Interval", labels = c("Null", "Test")) +
-  labs(x = NULL, y = "log(Variance)") +
-  theme_classic(base_size = 10) +
-  theme(panel.spacing = unit(1, "lines"),
-        strip.background = element_blank(),
-        strip.text = element_text(face = "bold"),
-        plot.title = element_text(face = "bold"))
-```
 
 # References
