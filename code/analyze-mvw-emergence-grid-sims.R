@@ -11,9 +11,10 @@
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
-library(ggthemes)
-library(pROC)
 library(spaero)
+library(doParallel)
+library(parallel)
+library(foreach)
 
 
 # Set number of cores based on machine ------------------------------------
@@ -82,8 +83,8 @@ re_one_year <- all_sims %>%
 data_for_ews <- tibble()
 
 # For testing...
-do_city <- "Maradi"
-do_discount <- 1e-04
+# do_city <- "Maradi"
+# do_discount <- 1e-04
 
 for(do_city in unique(all_sims$city)){
   for(do_discount in unique(all_sims$susc_discount)){
@@ -116,29 +117,6 @@ for(do_city in unique(all_sims$city)){
       left_join(ews_time_ids, by = "time") %>%
       filter(is.na(half) == FALSE)
     
-    # test1 <- filter(tmp_ews_data, sim == 2 & half == "first")
-    # test2 <- filter(tmp_ews_data, sim == 2 & half == "second")
-    # test_stats1 <- spaero::get_stats(test1$reports,
-    #                   center_trend = "local_constant",
-    #                   center_kernel = "uniform",
-    #                   center_bandwidth = 35,
-    #                   stat_trend = "local_constant",
-    #                   stat_kernel = "uniform",
-    #                   stat_bandwidth = 35,
-    #                   lag = 1,
-    #                   backward_only = TRUE)$taus
-    # test_stats2 <- spaero::get_stats(test2$reports,
-    #                                  center_trend = "local_constant",
-    #                                  center_kernel = "uniform",
-    #                                  center_bandwidth = 35,
-    #                                  stat_trend = "local_constant",
-    #                                  stat_kernel = "uniform",
-    #                                  stat_bandwidth = 35,
-    #                                  lag = 1,
-    #                                  backward_only = TRUE)$taus
-    # 
-    # rbind(unlist(test_stats1), unlist(test_stats2))
-    
     data_for_ews <- bind_rows(data_for_ews, tmp_ews_data)
   }
 }
@@ -165,8 +143,8 @@ my_get_taus <- function(x, bw){
 }
 
 # For testing...
-do_city <- "Maradi"
-do_discount <- 1e-04
+# do_city <- "Maradi"
+# do_discount <- 1e-04
 
 ews_out <- {}
 window_bandwidth <- 35  # from Miller et al. 2017

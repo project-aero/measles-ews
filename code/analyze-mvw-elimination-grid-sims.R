@@ -11,8 +11,6 @@
 # Load libraries ----------------------------------------------------------
 
 library(tidyverse)
-library(ggthemes)
-library(pROC)
 library(spaero)
 library(doParallel)
 library(parallel)
@@ -181,8 +179,8 @@ my_get_taus <- function(x, bw){
 }
 
 # For testing...
-do_city <- "Maradi"
-do_speed <- 8.3e-05
+# do_city <- "Maradi"
+# do_speed <- 8.3e-05
 
 ews_out <- {}
 window_bandwidth <- 35  # from Miller et al. 2017

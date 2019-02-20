@@ -105,7 +105,8 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
       simulator_pomp,
       nsim = 500,
       as.data.frame = TRUE,
-      include.data = FALSE) %>%
+      include.data = FALSE,
+      seed = 172856) %>%
       as_tibble() 
     
     tmp_re_sims <- model_sims %>%
