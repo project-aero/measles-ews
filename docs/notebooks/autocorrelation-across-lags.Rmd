@@ -79,33 +79,60 @@ get_fit <- function(y, tstep, est_K = FALSE, cutoff = .06) {
 Use it on elimination windows.
 ```{r}
 elim_file <- "../../simulations/elimination-simulations-grid-Maradi-1.5e-05.RDS"
-cases <- readRDS(elim_file) %>%
-  filter(sim == 10) %>%
-  mutate(year = trunc(time)) %>%
-  group_by(year) %>%
-  summarise(reports = sum(reports)) %>%
-  pull(reports)
+all_sims <- readRDS(elim_file)
 
-first <- cases[1:(length(cases)/2)]
-second <- cases[((length(cases)/2)+1):length(cases)]
-y1 <- acf(first, lag.max = length(first)-30, plot = FALSE)
-y2 <- acf(second, lag.max = length(second)-30, plot = FALSE)
-
-acf_fits1 <- get_fit(y = as.numeric(y1[[1]]), tstep = 1)
-acf_fits2 <- get_fit(y = as.numeric(y2[[1]]), tstep = 1)
-w1 <- coef(acf_fits1$fit_osc)
-w2 <- coef(acf_fits2$fit_osc)
-print(w1)
-print(w2)
-
-acf_func <- function(x, gamma, omega, a){
-  sqrt(1 + a^2) * exp(x * gamma) * sin(x * omega + atan2(1, a))
+decays <- tibble()
+for(i in unique(all_sims$sim)){
+  cases <- all_sims %>%
+    filter(sim == i) %>%
+    pull(reports)
+  
+  first <- cases[1:(length(cases)/2)]
+  second <- cases[((length(cases)/2)+1):length(cases)]
+  y1 <- acf(first, lag.max = length(first)-30, plot = FALSE)
+  y2 <- acf(second, lag.max = length(second)-30, plot = FALSE)
+  
+  acf_fits1 <- get_fit(y = as.numeric(y1[[1]]), tstep = 1/52)
+  acf_fits2 <- get_fit(y = as.numeric(y2[[1]]), tstep = 1/52)
+  tmp1 <- acf_fits1$coef["gamma"]
+  tmp2 <- acf_fits2$coef["gamma"]
+  
+  decays %>%
+    bind_rows(
+      tibble(
+        sim = i,
+        set = c("null", "test"),
+        decay_rate = c(tmp1, tmp2)
+      )
+    ) -> decays
 }
 
-null <- acf_func(x = seq(0,20,1), gamma = w1["gamma"], omega = w1["omega"], a = w1["a"])
-test <- acf_func(x = seq(0,20,1), gamma = w2["gamma"], omega = w2["omega"], a = w2["a"])
-plot(null, type = "l")
-lines(test, col = "red")
+ggplot(decays, aes(x = set, y = decay_rate)) +
+  geom_boxplot()
+
+pROC::auc(response = decays$set, predictor = decays$decay_rate)
+
+# 
+# acf_func <- function(x, gamma, omega, a){
+#   sqrt(1 + a^2) * exp(x * gamma) * sin(x * omega + atan2(1, a))
+# }
+# 
+# d1 <- sqrt(w1["gamma"]^2 + w1["omega"]^2)
+# d2 <- sqrt(w2["gamma"]^2 + w2["omega"]^2)
+# print(c(d1,d2))
+# null <- acf_func(x = seq(0,2,1/52), gamma = w1["gamma"], omega = w1["omega"], a = w1["a"])
+# test <- acf_func(x = seq(0,2,1/52), gamma = w2["gamma"], omega = w2["omega"], a = w2["a"])
+# plot(null, type = "l")
+# lines(test, col = "red")
+```
+
+```{r}
+
+ystar <- acf_func(x = seq(0,20,1/52), gamma = -0.07, omega = 2, a = 0)
+ystar_noise <- ystar + rnorm(length(ystar), 0, 0)
+plot(ystar_noise)
+test <- get_fit(ystar_noise, tstep = 1/52)
+test$coef
 ```
 
 
