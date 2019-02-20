@@ -16,6 +16,16 @@ library(pROC)
 library(spaero)
 
 
+# Set number of cores based on machine ------------------------------------
+
+avail_cores <- detectCores()
+if(avail_cores <= 4){
+  n_cores <- 3  # on PC
+} else{
+  n_cores <- 20  # on lab monster
+}
+
+
 # Load simulations --------------------------------------------------------
 
 # This chunck loops over all the relevant emergence simulation files
@@ -34,7 +44,8 @@ counter <- 1
 for(do_file in sim_files_reduced){
   tmp_file <- paste0("../simulations/", do_file)
   tmp <- readRDS(tmp_file) %>%
-    filter(time > 0)
+    filter(time > 0.6) %>%  # allow for a couple week burn in
+    mutate(susc_discount = round(susc_discount,1))  # corrects weird rounding error
   all_sims_list[[counter]] <- tmp
   counter <- counter+1
 }
@@ -185,11 +196,19 @@ for(do_city in unique(data_for_ews$city)){
       dplyr::select(-time) %>%
       as.matrix()
     
-    ews_first <- apply(X = first_half, MARGIN = 2, FUN = my_get_taus, 
-                       bw = window_bandwidth)
+    # Calculate EWS for each sim of first half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_first <- foreach(i=1:ncol(first_half), .combine=cbind) %dopar%
+      my_get_taus(first_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
     
-    ews_second <- apply(X = second_half, MARGIN = 2, FUN = my_get_taus, 
-                        bw = window_bandwidth)
+    # Calculate EWS for each sim of second half, in parallel
+    cl <- makeCluster(n_cores)
+    registerDoParallel(cl)
+    ews_second <- foreach(i=1:ncol(second_half), .combine=cbind) %dopar%
+      my_get_taus(second_half[,i], bw = window_bandwidth)
+    stopCluster(cl)
     
     first_tbl <- tibble(
       metric = row.names(ews_first)
@@ -248,9 +267,20 @@ ews_long <- ews_out %>%
 
 # Calculate AUC -----------------------------------------------------------
 
+calc_auc <- function(predictions, is_null){
+  # Function to calculate AUC, from Eamon.
+  # Returns exact same results as those from popular R packages.
+  
+  r <- rank(predictions)
+  r1 <- sum(r[!is_null])
+  n1 <- sum(!is_null)
+  n2 <- sum(is_null)
+  (r1 - n1 * (n1 + 1) / 2) / (n1 * n2)
+}
+
 cats <- tibble(
   half = c("first", "second"),
-  cat = c(0, 1)
+  cat = c(TRUE, FALSE)  # null (TRUE), test (FALSE)
 )
 
 ews_long <- ews_long %>%
@@ -261,8 +291,7 @@ for(do_city in unique(ews_long$city)){
   for(do_discount in unique(ews_long$susc_discount)){
     for(do_metric in unique(ews_long$metric)){
       tmp <- filter(ews_long, metric == do_metric & city == do_city & susc_discount == do_discount)
-      roc_obj <- roc(tmp$cat, tmp$value)
-      tmp_auc <- auc(roc_obj)
+      tmp_auc <- calc_auc(predictions = tmp$value, is_null = tmp$cat)
       tmp_tbl <- tibble(
         city = do_city,
         susc_discount = do_discount,

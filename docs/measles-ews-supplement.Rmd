@@ -7,7 +7,7 @@ output:
     number_sections: true
     toc_depth: 2
 date: "`r Sys.Date()`"
-csl: pnas.csl
+csl: proceedings-of-the-royal-society-b.csl
 bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
 header-includes:
   - \renewcommand{\thefootnote}{\fnsymbol{footnote}}
@@ -57,8 +57,8 @@ birth_data <- annual_births %>%
   mutate(time = year+0.000)
 
 ggplot() +
-  geom_line(data = filter(demog_clean, time <= 2005), aes(x = time, y = birth_per_person_per_year)) +
-  geom_point(data = birth_data, aes(x = time, y = rate_per_person_per_year)) +
+  geom_line(data = filter(demog_clean, time <= 2005), aes(x = time, y = birth_per_person_per_year), color = "grey35") +
+  geom_point(data = birth_data, aes(x = time, y = rate_per_person_per_year), color = "grey35") +
   labs(x = "Time", y = expression(paste("Annual per capita birth rate (", mu, ")"))) +
   scale_color_colorblind(name = NULL) +
   theme_minimal() -> birth_plot
@@ -145,6 +145,80 @@ ggplot() +
   theme_minimal()
 ```
 
+# Comparisons with benchmarking models
+Here we compare our fitted *SEIR* models to two non-mechanistic benchmarking models.
+Doing so allows us to gain some intuition as to whether accounting for mechanism (i.e., transmission dynamics) improves model fit and eventual inference.
+The first benchmarking model is a negative binomial sampling model (NBM) that simply assumes all observations are independent and identically distributed.
+The second benchmarking model is a seasonal moving average model (SARIMA) that can account for data dependencies and seasonal periodicity.
+Beating the SARIMA is a harder test than beating the NBM.
+
+We fitted both models to the weekly case count observations for each city using maximum likelihood.
+After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where *k* is the number of estimated parameters in the model and *L* is the model's likelihood.
+The NBM model has 2 parameters, the SARIMA model has 7 parameters, and the SEIR model has 14 parameters.
+The results in table S1 show the AIC values for each model.
+The AIC values for the *SEIR* models are lowest for all cities, suggesting that the addition of mechanism via explicit disease transmission dynamics substantially improves model fit.
+
+```{r aic-comp}
+data_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+measles <- readRDS(data_file) %>%
+  filter(year > 1994)
+
+nb_lik <- function(theta) {
+  -sum(dnbinom(as.vector(cases),size=exp(theta[1]),prob=exp(theta[2]),log=TRUE))
+} 
+
+all_logliks <- tibble()
+for(do_city in unique(measles$region)){
+  cases <- measles %>%
+    filter(region == do_city) %>%
+    pull(cases)
+  
+  # Negative binomial iid sampling model
+  nb_mle <- optim(c(0,-5), nb_lik)
+  nb_nll <- -nb_mle$value
+  
+  # SARIMA model
+  log_y <- log(as.vector(cases)+1)
+  arma_fit <- arima(log_y,order=c(2,0,2),seasonal=list(order=c(1,0,1),period=52), method = "CSS")
+  arma_nll <- arma_fit$loglik-sum(log_y)
+  
+  # SEIR fit log likelihood
+  mif_city <- str_sub(do_city, 1, 6)
+  seir_nll <- read.csv(file = paste0("../results/initial-mif-lls-", mif_city, ".csv")) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    pull(loglik)
+  
+  # Store results
+  all_logliks %>%
+    bind_rows(
+      tibble(
+        City = mif_city,
+        `Neg. Binomial` = nb_nll,
+        SARIMA = arma_nll,
+        SEIR = seir_nll
+      )
+    ) -> all_logliks
+}
+
+num_params <- tibble(
+  `Neg. Binomial` = 2,
+  SARIMA = 7,
+  SEIR = 14
+) %>%
+  gather(model, k)
+
+all_logliks %>%
+  gather(model, loglik, -City) %>%
+  left_join(num_params) %>%
+  mutate(
+    AIC = round(2*k - 2*loglik)
+  ) %>%
+  dplyr::select(-loglik, -k) %>%
+  spread(key = model, value = AIC) %>%
+  knitr::kable(format = "pandoc", caption = "AIC values for the benchmarking and SEIR models.")
+```
+
 # Long-run simulations from the fitted the SEIR models
 For fitting the SEIR model, we used known population size interpolated between years.
 This meant we were able to ignore certain demographic processes.
@@ -166,7 +240,7 @@ R_{t+dt} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
 \end{align}
 
 \noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
-Parameter definitions are in Table S1.
+Transition definitions are in Table S2.
 
 | Random variable | Transition | $\left(\Delta S, \Delta E, \Delta I, \Delta R\right)$ |
 | ---------- | ----------------------------| ---------- |
@@ -181,7 +255,7 @@ Parameter definitions are in Table S1.
 | $n_{0R}$ | Births into the *R* compartment, vaccinated | (0, 0, 0, 1) |
 | $n_{R0}$ | Number of deaths leaving *R* | (0, 0, 0, -1) |
 
-Table: Caption here.
+Table: Transitions in the simulating model.
 
 The stochastic random variables are specified as follows:
 
@@ -227,9 +301,10 @@ In this model, the basic reproduction number can be calculated as:
 $$
 R_0 = \frac{\eta \beta \mu}{\nu (\eta + \nu)(\gamma + \nu)}.
 $$
+
 The model described above was implemented in the `R` package `pomp` [@King2016; @King2018] to simulate the re-emergence and elimination scenarios.
 
-# Estimating the timing of critical transitions
+# Computing the time of critical transitions
 To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.
 For re-emergence, we defined the year of the critical transition as the year just after the effective reproduction number ($R_E$) reaches or exceeds the critical value of 1. 
 For example, if $R_E$ reaches or exceeds 1 at some point during the fifth year of the simulation, then the critical transition year is defined as the sixth year of the simulation. 
@@ -268,7 +343,7 @@ re_series <- ggplot(one_sim, aes(x = time, y = mean_re)) +
   geom_line(color = "tan", aes(alpha = used)) +
   geom_hline(aes(yintercept = 1), color = "grey35", linetype = 3) +
   geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
-  annotate(geom = "text", x = 9, y = 0.2, label = "critical\nyear", size = 3, color = "dodgerblue4") +
+  annotate(geom = "text", x = 10, y = 0.2, label = "critical\nyear", size = 3, color = "dodgerblue4") +
   scale_alpha_manual(values = c(0.4, 1)) +
   guides(alpha = FALSE) +
   labs(x = "Simulation time (year)", y = expression(R[E])) +
@@ -283,7 +358,7 @@ cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports))
   annotate(geom = "text", x = 5.25, y = 250, label = "Test window") +
   scale_alpha_manual(values = c(0.4, 1)) +
   guides(alpha = FALSE) +
-  annotate(geom = "text", x = 6.35, y = 150, label = "critical\nyear", size = 3, color = "dodgerblue4") +
+  annotate(geom = "text", x = 7.35, y = 150, label = "critical\nyear", size = 3, color = "dodgerblue4") +
   labs(x = "Simulation time (year)", y = "Reported cases") +
   theme_classic(base_size = 12)
 
@@ -387,7 +462,7 @@ To confirm that the EWS are behaving as expected, and to document cases in which
 
 ```{r ews-hists, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
-  filter(metric != "variance_first_diff" & susc_discount == 1e-04)  %>%
+  filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
   mutate(metric = as.character(metric)) %>%
   mutate(
     metric = ifelse(metric == "variance", "Variance", metric),
@@ -715,8 +790,8 @@ emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
 elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")
 
 emerge_plot <- ggplot() +
-  geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = abs(AUC-0.5))) +
-  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = AUC)) +
+  scale_fill_viridis(limits = c(0,1), direction = -1, option = "E", name = "AUC") +
   facet_wrap(~city, nrow = 1) +
   labs(x = "Level of susceptible depletion", y = NULL) +
   theme_minimal() +
@@ -726,8 +801,8 @@ emerge_plot <- ggplot() +
   ggtitle("Anticipating emergence over a moving window")
 
 eliminate_plot <- ggplot() +
-  geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = abs(AUC-0.5))) +
-  scale_fill_viridis(limits = c(0,0.5), direction = -1, option = "C", name = "| AUC - 0.5 |") +
+  geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = AUC)) +
+  scale_fill_viridis(limits = c(0,1), direction = -1, option = "E", name = "AUC") +
   facet_wrap(~city, nrow = 1) +
   labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
   theme_minimal() +

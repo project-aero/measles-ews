@@ -292,9 +292,20 @@ ews_long <- ews_out %>%
 
 # Calculate AUC -----------------------------------------------------------
 
+calc_auc <- function(predictions, is_null){
+  # Function to calculate AUC, from Eamon.
+  # Returns exact same results as those from popular R packages.
+  
+  r <- rank(predictions)
+  r1 <- sum(r[!is_null])
+  n1 <- sum(!is_null)
+  n2 <- sum(is_null)
+  (r1 - n1 * (n1 + 1) / 2) / (n1 * n2)
+}
+
 cats <- tibble(
   half = c("first", "second"),
-  cat = c(0, 1)
+  cat = c(TRUE, FALSE)  # null (TRUE), test (FALSE)
 )
 
 ews_long <- ews_long %>%
@@ -306,8 +317,7 @@ for(do_city in unique(ews_long$city)){
     for(do_metric in unique(ews_long$metric)){
       tmp <- filter(ews_long, metric == do_metric & 
                       city == do_city & vacc_speed == do_speed)
-      roc_obj <- roc(tmp$cat, tmp$value)
-      tmp_auc <- auc(roc_obj)
+      tmp_auc <- calc_auc(predictions = tmp$value, is_null = tmp$cat)
       tmp_tbl <- tibble(
         city = do_city,
         vacc_speed = do_speed,

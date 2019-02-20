@@ -191,11 +191,11 @@ detecting CSD before re-emergence than before elimination.
 \subsection{Data}\label{data}}
 
 We used weekly measles case report data from four Nigerien cities:
-Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}A). The data
-were collected over an 11 year period from 1995-2005 (figure
-\ref{data-plot}B). These data are ideal for testing theory on CSD in
-disease dynamics because each city has different population sizes, has
-different dynamics in terms of outbreak sizes and length of
+Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}\emph{a}). The
+data were collected over an 11 year period from 1995-2005 (figure
+\ref{data-plot}\emph{b}). These data are ideal for testing theory on CSD
+in disease dynamics because each city has different population sizes,
+has different dynamics in terms of outbreak sizes and length of
 inter-epidemic periods, and each time series has different amounts of
 demographic stochasticity due to differences in population size. Such
 differences provide a natural gradient of ``noise'' that may influence
@@ -353,19 +353,25 @@ among the 50 MIF paramete sets. Last, we calculated summary statistics
 (mean, median, quantiles) from the distribution of 100 MLE parameters
 (SI text).
 
-\hypertarget{model-data-comparisons}{%
-\subsection{Model-data comparisons}\label{model-data-comparisons}}
+\hypertarget{model-assessment}{%
+\subsection{Model assessment}\label{model-assessment}}
 
-We used the MLE parameter sets to make one-week-ahead predictions and to
-test the ability of early warning signals to anticipate the critical
-transition at \(R_E(t) = 1\). To make one-week-ahead predictions, we
-used particle filtering with 50000 particles and retained the mean and
-standard deviation of all latent states across all particles before they
-were filtered at each time step. We used the mean predictions
-(\(\mathbb{E}(\text{cases}_t)\)) to assess model fit using a generalized
-coefficient of determination, calculated as:
+We used the MLE parameter sets to make one-week-ahead predictions and
+compared observed and expected case counts. To make one-week-ahead
+predictions, we used particle filtering with 50000 particles and
+retained the mean and standard deviation of all latent states across all
+particles before they were filtered at each time step. We used the mean
+predictions (\(\mathbb{E}(\text{cases}_t)\)) to assess model fit using a
+generalized coefficient of determination, calculated as:
 \(R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}\)
-{[}25{]}.
+{[}25{]}. In addition to comparing model expectations to in-sample
+observed data, we also compared our fitted SEIR models to two
+benchmarking models: a negative binomial sampling model that assumes
+identical and independently distributed observations and a seasonal
+moving average model (SI text). We fit the benchmarking models to the
+observed data and then compared models using Akaike's Information
+Criterion (AIC) to account for differences in the number of model
+parameters {[}26{]}.
 
 \hypertarget{simulating-re-emergence}{%
 \subsection{Simulating re-emergence}\label{simulating-re-emergence}}
@@ -378,25 +384,31 @@ transition and when \(R_E(t)\) is near a critical transition. We reduced
 the initial fraction of susceptible individuals by multplying the MLE
 for \(S_{(t=0)}\) by six discounting factors: 1e-4, 0.1, 0.2, 0.3, 0.4,
 and 0.5. These discounting factors represent situations of susceptible
-depletion after outbreaks of various size. We then simulated the model
-forward for forty years using mean birth rate for the entire country
-(\(\mu = 0.05\)) and setting the death rate equal to the birth rate
-(\(\mu = \nu = 0.05\)) to achieve a constant total population size over
-the course of the simulation. Forty years was long enough for \(R_E(t)\)
+depletion after outbreaks of various size. After defining \(S_{(t=0)}\)
+based on the discounting factor, we then set the initial number of
+recovered individuals to \(R_{(t=0)} = N - S_{(t=0)}\) and set the
+initial number of exposed and infected individuals to zero. Population
+size, \emph{N}, was set to the mean population size for each city over
+the 1995-2005 time period. We then simulated the model forward for forty
+years using mean birth rate for the entire country (\(\mu = 0.05\)) and
+setting the death rate equal to the birth rate (\(\mu = \nu = 0.05\)) to
+achieve a constant eqiulibrium total population size over the course of
+the simulation (total population size does vary, though, because of
+stochasticity in the model). Forty years was long enough for \(R_E(t)\)
 to reach or exceed 1 for each city. Because the model is stochastic, we
 repeated these simulations 500 times for each city-susceptible discount
 combination.
 
 Next, we split each simulated time series into null and test intervals.
-First, across all simulations for a city-susceptible discount
+First, averaging across all simulations for a city-susceptible discount
 combination, we found the simulation year in which \(R_E(t)\) reaches or
 exceeds 1 and excluded years past that year (SI text). We split the
-remaining time series into two windows of equal length (figure S2). The
-null interval is the first window, where \(R_E(t)\) is increasing but
-far from 1. The test interval is the second window, where \(R_E(t)\) is
-increasing and approaching 1. We did this for each city and for each
-level of susceptible depletion. We calculated EWS over null and test
-intervals separately.
+remaining time series into two windows of equal length (figure
+\ref{emerge-aucs}\emph{a}). The null interval is the first window, where
+\(R_E(t)\) is increasing but far from 1. The test interval is the second
+window, where \(R_E(t)\) is increasing and approaching 1. We did this
+for each city and for each level of susceptible depletion. We calculated
+EWS over null and test intervals separately.
 
 \hypertarget{simulating-elimination}{%
 \subsection{Simulating elimination}\label{simulating-elimination}}
@@ -412,25 +424,28 @@ campaign and let the model run for another 50 years. We ran simulations
 across six vaccination ``speeds'' (the rate at which
 \(p \rightarrow 1\); SI text), simulating situations of slow and fast
 approaches to elimination. As in the re-emergence simulations, we set
-the birth rate equal to the death rate to achieve a constant total
+the birth rate equal to the death rate to achieve a constant equilibrium
 population size.
 
 We then split each time series into null and test intervals for
 calculating EWS. We define the test interval as the window of time
 between the start of the vaccination campaign (year 50) and the time at
 which vaccination coverage reached the vaccination threshold of
-\(1 - 1/R_0\). \(R_0\) was calculated for each city using the MLE
-parameters (SI text). We define the null interval as the window of time
-that ends at the start of the vaccination campaign (year 49) and starts
-at a time that results in an interval equal in length the test interval
-(figure S3). EWS were then calculated for each interval.
+\(1 - 1/R_0\) (figure \ref{elim-aucs}\emph{a}). \(R_0\) was calculated
+for each city using the MLE parameters as:
+\(R_0 = \left[\eta \beta \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]\),
+where \(\beta\) is the maximum seasonal transmission rate. We define the
+null interval as the window of time that ends at the start of the
+vaccination campaign (year 49) and starts at a time that results in an
+interval equal in length the test interval (figure
+\ref{elim-aucs}\emph{a}). EWS were then calculated for each interval.
 
 \hypertarget{calculating-early-warning-signals}{%
 \subsection{Calculating early warning
 signals}\label{calculating-early-warning-signals}}
 
 We considered nine candidate early warning signals (Table S1). We used
-the \texttt{spaero::get\_stats()} function {[}26{]} in R {[}22{]} to
+the \texttt{spaero::get\_stats()} function {[}27{]} in R {[}22{]} to
 calculate EWS according to the formulas in Table S1. All EWS except the
 coefficient of variation are expected to increase as \(R_E(t)\)
 approaches 1 from below {[}4,11,13{]}. Less is known about the behavior
@@ -455,7 +470,7 @@ have lower ranks), \(n_{\text{test}}\) is the number of test of
 statistics and \(n_{\text{null}}\) is the number of null statistics. The
 AUC of an EWS is the probability that a randomly chosen EWS value from
 the test set is higher than an EWS value randomly chosen from the null
-set {[}27{]}. Therefore, AUC should be high (closer to 1) when an EWS is
+set {[}28{]}. Therefore, AUC should be high (closer to 1) when an EWS is
 expected to increase as a critical transition is approached, whereas AUC
 should be low (closer to 0) when an EWS is expected to decrease.
 
@@ -485,15 +500,13 @@ intervals. \label{scatters}}
 \section{Results}\label{results}}
 
 The fitted models adequately reproduce observed dynamics (figure
-\ref{data-plot}B), with in-sample \(R^2\)s from one-week-ahead
+\ref{data-plot}\emph{b}), with in-sample \(R^2\)s from one-week-ahead
 predictions ranging from 0.54 for Agadez to 0.89 for Maradi (figure
-\ref{scatters}A). The fitted models also had higher negative log
-likelihoods than two benchmarking models: a negative binomial sampling
-model assuming identical and idependently distributed observations and a
-seasonal moving average model (SI Table Sx). Stochastic simulations of
+\ref{scatters}\emph{a}). The fitted models also had lower AIC values
+than two benchmarking models (SI Table Sx). Stochastic simulations of
 the models displayed dynamics typical of each city (figure S1),
 including the decline in seasonality amplitude as population size
-decreases (figure \ref{scatters}B) {[}15{]}. Our model for Agadez
+decreases (figure \ref{scatters}\emph{b}) {[}15{]}. Our model for Agadez
 performs poorly relative to the other cities. Maximum likelihood
 estimates and bootstrapped 95\% confidence intervals for all parameters
 are in the SI text (Tables Sx-Sz).
@@ -507,16 +520,16 @@ are unreliable.
 
 Variance, mean, index of dispersion, decay time, autocovariance, and
 autocorrelation all perform equally well at predicting re-emergence
-(figure \ref{emerge-aucs}C). Their performance declines as the amount of
-susceptible depletion decreases. This is expected because more rapid
-returns to \(R_E(t)=1\) result in shorter null and test intervals,
+(figure \ref{emerge-aucs}\emph{c}). Their performance declines as the
+amount of susceptible depletion decreases. This is expected because more
+rapid returns to \(R_E(t)=1\) result in shorter null and test intervals,
 making estimates of EWS less precise {[}12{]}. Moreover, as the time to
 reach \(R_E(t)=1\) decreases, the chance of a bifurcation delay
 increases because of the changing equilibrium of \(R_0\) combined with
 demographic stochasticity {[}10,12{]}. Thus, re-emergence may prove
 difficult to anticipate in ``fast'' transmission systems, as
 demonstrated theoretically by {[}12{]} and seen here when susceptible
-depletion was relatively small (figure \ref{emerge-aucs}C).
+depletion was relatively small (figure \ref{emerge-aucs}\emph{c}).
 
 \begin{figure}
 \centering
@@ -541,8 +554,8 @@ to emergence (figure \ref{elim-aucs}). Only three metrics are reliable:
 mean, autocovariance, and variance. All three metrics decreased as
 \(R_E(t)\) approached the critical transition (figure S5). As in the
 case of anticipating elimination, AUC values decreased as the speed of
-the vaccine campaign increased. Again, this is because of shorter null
-and test intervals.
+the vaccine campaign increased (figure \ref{elim-aucs}\emph{c}). Again,
+this is because of shorter null and test intervals.
 
 \begin{figure}
 \centering
@@ -598,7 +611,7 @@ Our results should encourage efforts to develop model-independent early
 warning systems for infectious diseases {[}1{]}. We have shown that
 critical slowing down precedes tipping points in real disease dynamics,
 but how to operationalize the phenomenon of critical slowing down
-remains an open research area {[}28{]}. Emerging technologies like
+remains an open research area {[}29{]}. Emerging technologies like
 artifical intelligence might offer new ways to find optimal detection
 thresholds for early warning signals. But there will always be a role
 for expert judgement. Early warning signals, though powerful and now
@@ -763,17 +776,23 @@ Observed Markov Processes (R package, version 1.18).
 transmission ecology of polio. \emph{PLoS Biology}
 (doi:\href{https://doi.org/10.1371/journal.pbio.1002172}{10.1371/journal.pbio.1002172})
 
+\leavevmode\hypertarget{ref-Akaike1973}{}%
+26. Akaike H. 1973 Information theory and an extension of the maximum
+likelihood princilple. In \emph{Proceedings of the 2nd international
+symposium on information theory}, pp. 267--281.
+(doi:\href{https://doi.org/10.1007/978-0-387-98135-2}{10.1007/978-0-387-98135-2})
+
 \leavevmode\hypertarget{ref-ODea2018}{}%
-26. O'Dea EB. 2018 spaero: Software for Project AERO (R package version
+27. O'Dea EB. 2018 spaero: Software for Project AERO (R package version
 0.3.0).
 
 \leavevmode\hypertarget{ref-Fawcett2006}{}%
-27. Fawcett T. 2006 An introduction to ROC analysis. \emph{Pattern
+28. Fawcett T. 2006 An introduction to ROC analysis. \emph{Pattern
 Recognition Letters} \textbf{27}, 861--874.
 (doi:\href{https://doi.org/https://doi.org/10.1016/j.patrec.2005.10.010}{https://doi.org/10.1016/j.patrec.2005.10.010})
 
 \leavevmode\hypertarget{ref-Shmueli2010}{}%
-28. Shmueli G, Burkom H. 2010 Statistical challenges facing early
+29. Shmueli G, Burkom H. 2010 Statistical challenges facing early
 outbreak detection in biosurveillance. \emph{Technometrics} \textbf{52},
 39--51.
 (doi:\href{https://doi.org/10.1198/TECH.2010.06134}{10.1198/TECH.2010.06134})

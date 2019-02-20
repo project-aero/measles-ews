@@ -74,7 +74,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     R += dN0R               + dNIR - dNR0;
     
     cases += dNIR;  // cumulative reports at end of infectious period (I->R)
-    RE_seas = ((eta*beta) / (eta+nu)*(gamma+nu)) * (S / N);
+    RE_seas = ((eta*beta) / ((eta+nu)*(gamma+nu))) * (S / N);
     // RE_seas = (beta / gamma) * (S / N);  // simple formula for fitting model
     "
   )
