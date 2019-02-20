@@ -118,7 +118,7 @@ for(do_file in pred_files){
 Forecasts of the emergence and re-emergence of infectious diseases have the potential to save lives, money, and human productivity by allowing for proactive, rather than reactive, preparedness measures [@Han2016].
 Similarly, indicators of the elimination of infectious diseases can signal the effectiveness of ``end game'' strategies aimed at disease eradication [@Drake2017].
 Predicting (re)emergence and elimination is possible with complex mathematical models of disease transmission, but their success relies on detailed understanding of the underlying transmission dynamics and adequate data [@Metcalf2017].
-We often do not have enough information to parameterize such models.
+We often do not have enough information (or time) to parameterize such models.
 An alternative approach is to use model-independent statistical signals that portend infectious disease (re)emergence and elimination by detecting critical slowing down as the system approaches a critical transition [@ORegan2013].
 
 Emergence and elimination of an infectious disease both involve a critical transition (technically, a *transcritical bifurcation*).
@@ -128,10 +128,33 @@ Thus, subcritical ($R_0 < 1$) and supercritical ($R_0 > 1$) systems represent al
 Critical transitions in stochastic systems, such as systems of disease transmission, are often associated with critical slowing down, a reduction in the resilience of a system to perturbations [@VanNes2007].
 Critical slowing down (CSD), in turn, is associated with changes in the dynamical features of the system: early warning signals (EWS) such as an increase in the variance and autocorrelation [@Carpenter2006; @Scheffer2009].
 Recent theoretical work suggests that CSD occurs as disease dynamics approach $R_0 = 1$ from below (emergence) [@ORegan2013; @Dibble2016] and from above (elimination) [@ORegan2013; @ORegan2016; @Drake2017], and that several EWS anticipate the critical transition [@Brett2017; @Brett2018; @Miller2017].
-Empirical tests of EWS and associated CSD are, however, scarce.
-Documenting CSD in real disease dynamics is an essential first step toward the development of model-independent outbreak detection systems [@Han2016].
+These findings suggest that early warning signals could be operationalized to develop early warning systems of disease emergence, elimination, or outbreaks of endemic diseases.
 
-Here, we use empirically-based model simulations of measles dynamics to test whether CSD anticipates critical transitions in real disease dynamics.
+However, operationalizing EWS, and deploying early warning systems based on them, faces many challenges.
+For example, using EWS in an "online mode" requires choosing temporal windows over which EWS are calculated.
+These moving windows should be long enough to provide reliable statistics, but short enough to "forget" the past so as to not overwhelm information contained in new observations.
+This will be especially important for diseases that fluctuate seasonally, where EWS might always increase and then decrease over the course of the year, requiring the end-user to reset computations each season.
+Another challenge is defining thresholds for detection of an upcoming tipping point.
+Detection thresholds can be based on the absolute value of an EWS (e.g., warning if variance exceeds some value), the trend in an EWS over time (e.g., warning if the correlation of variance with time exceeds some value), or an algorithmic combination of many factors (e.g., variance and autocorrelation increases above some value three observation periods in a row).
+Developing (semi)objective algorithms for combining EWS, their values, and their trends to best detect disease emergence and elimination is a surmountable task, but one that will take considerable research effort.
+
+Given the amount of research still required to operationalize EWS, it is imperative that we stress test the hypothesis that EWS anticipate critical transitions before we allocate time and resources to the task of deploying early warning systems.
+One way to stress test EWS is through empirical case studies: can EWS anticipate emergence and elimination in real disease time series?
+However, uncritical application of EWS to observed data could lead to researchers getting the right answer for the wrong reasons.
+That is, EWS might perform well for a given time series, but for reasons having nothing to do with critical slowing down.
+Indeed, without known the critical point (i.e., when $R_0(t) = 1$) it is impossible to know if EWS are in fact sending us the signal we think they are.
+
+Another option is to use empirically based models of disease transmission to test EWS.
+This offers several advantages.
+First, using a model to simulate time series of cases means we also have access to a time series of $R_0(t)$, which allows us to know precisely when the critical transition occurs.
+This means we know whether we are getting the right answer for the right reason.
+Second, we can simulate replicate time series to account for the inherent stochasticity of disease transmission.
+This means our conclusions are not based on one-off events.
+Third, we can specifically simulate emergence and elimination events.
+This means we can separate the stress testing of EWS from the research necessary to operationalize EWS.
+Thus, we have all the flexibility of a theoretical model, but we remain tethered to reality because the model parameters are fitted to real data.
+
+Here, we use empirically based model simulations of measles dynamics to test whether CSD anticipates critical transitions in real disease dynamics.
 We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa [@Ferrari2008], and the elimination of measles by a vaccination campaign.
 We seek to answer two related questions.
 First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
