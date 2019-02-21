@@ -296,7 +296,6 @@ To make one-week-ahead predictions, we used particle filtering with 50000 partic
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
 In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarking models: a negative binomial sampling model that assumes independent and identically distributed observations and a seasonal moving average model (SI text).
 We fit the benchmarking models to the observed data and then compared models using Akaike's Information Criterion (AIC) to account for differences in the number of model parameters [@Akaike1973].
-<!-- Comparing our fitted mechanistic models to non-mechanistic benchmarking models allows us to assess whether our fitted models are lending mechanistic insight and thus worthy of further inference. -->
 
 ## Simulating re-emergence
 To simulate re-emergence of measles, we manipulated the initial size of the susceptible pool to simulate an increase from low $R_E(t)$ to high $R_E(t)$.
@@ -332,7 +331,6 @@ We define the null interval as the window of time that ends at the start of the 
 EWS were then calculated for each interval.
 
 ## Calculating early warning signals
-
 We considered nine candidate early warning signals (Table S1).
 We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table S1.
 All EWS except the coefficient of variation are expected to increase as $R_E(t)$ approaches 1 from below [@ORegan2013; @ORegan2016; @Brett2018].
@@ -557,17 +555,17 @@ plot_grid(scatters, rnaughts, scale = 0.9, labels = c("(a)", "(b)"),
 # Results
 
 The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}*b*), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (figure \ref{scatters}*a*).
-The fitted models also had lower AIC values than two benchmarking models (SI Table Sx).
+The fitted models also had lower AIC values than two benchmarking models (SI table Sx).
 Stochastic simulations of the models displayed dynamics typical of each city (figure S1), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
-Our model for Agadez performs poorly relative to the other cities.
-Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the SI text (Tables Sx-Sz).
+Our model for Agadez performs poorly relative to the other cities, but still better than non-mechanistic models (SI table Sx).
+Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the SI text (tables Sx-Sz).
 
-On the approach to re-emergence the EWS generally perform as expected by theory.
+The EWS generally perform as expected by theory on the approach to re-emergence.
 Most EWS increased as the critical transition is approached, resulting in positive AUC values near 1 (figure \ref{emerge-aucs}).
 Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities.
 Thus, these metrics are unreliable.
 
-Variance, mean, index of dispersion, decay time, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (figure \ref{emerge-aucs}*c*).
+Variance, mean, index of dispersion, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (figure \ref{emerge-aucs}*c*).
 Their performance declines as the amount of susceptible depletion decreases.
 This is expected because more rapid returns to $R_E(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise [@Brett2017].
 Moreover, as the time to reach $R_E(t)=1$ decreases, the chance of a bifurcation delay increases because of the changing equilibrium of $R_0$ combined with demographic stochasticity [@Dibble2016; @Brett2017].
@@ -813,10 +811,6 @@ In all, the suite of EWS suggest that critical slowing down does occur in measle
 We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, figure S7).
 But, all EWS performed worse when predicting the approach to emergence over the moving window (figure S7).
 
-<!-- A change in the variance of a dynamical system is one of the most well-studied early warning signals [@Scheffer2012], and it performed well here (Figs. \ref{emerge-aucs}, \ref{elim-aucs}). -->
-<!-- Thus, we show the distributions of the variance in the null and test intervals for each city as an example of the changes expected (Fig. \ref{var-ex}). -->
-<!-- In many cases, the variance is expected to increase as a critical transition is approached [@Carpenter2006; @Dakos2012a; @ORegan2013], and we find this to be the case for re-emergence. -->
-<!-- The variance decreases on the approach to elimination, which is counter to generic theory but in line with expectations specific to an SIR disease transmission model [@ORegan2013]. -->
 
 # Discussion
 
