@@ -274,7 +274,7 @@ To narrow in on the maximum likelihood estimates, MIF lets parameters take a ran
 The variance of the random walk decreases at each iteration of MIF, where a MIF iteration means one filtering pass through the time series.
 This procedure converges toward the maximimum likelihood estimates (MLEs), in theory.
 
-We used the IF2 algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` [@King2016; @King2018] to conduct the MIF procedure.
+We used the IF2 algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` version 1.18 [@King2016; @King2018] to conduct the MIF procedure.
 To initialize MIF, we generated 5000 parameter sets using Latin Hypercube Sampling over large ranges of the parameter values.
 We then performed two rounds of MIF, each for 100 iterations, with 10000 particles, and geometric cooling.
 For the first round of MIF we set `cooling.facter = 1`.

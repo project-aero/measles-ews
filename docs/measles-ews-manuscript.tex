@@ -65,7 +65,13 @@
 \setcounter{secnumdepth}{0}
 % Pandoc header
 
-\journal{Proceedings of the Royal Society B}\usepackage{lineno}\linenumbers\usepackage{mathptmx}\renewcommand{\theaffn}{\arabic{affn}}\usepackage{setspace}\onehalfspacing
+\journal{Proceedings of the Royal Society B}
+\usepackage{lineno}
+\linenumbers
+\usepackage{mathptmx}
+\renewcommand{\theaffn}{\arabic{affn}}
+\usepackage{setspace}
+\onehalfspacing
 
 \begin{document}
 \begin{frontmatter}
@@ -372,11 +378,11 @@ series. This procedure converges toward the maximimum likelihood
 estimates (MLEs), in theory.
 
 We used the IF2 algorithm {[}27{]} implemented in the R {[}28{]} package
-\texttt{pomp} {[}29,30{]} to conduct the MIF procedure. To initialize
-MIF, we generated 5000 parameter sets using Latin Hypercube Sampling
-over large ranges of the parameter values. We then performed two rounds
-of MIF, each for 100 iterations, with 10000 particles, and geometric
-cooling. For the first round of MIF we set
+\texttt{pomp} version 1.18 {[}29,30{]} to conduct the MIF procedure. To
+initialize MIF, we generated 5000 parameter sets using Latin Hypercube
+Sampling over large ranges of the parameter values. We then performed
+two rounds of MIF, each for 100 iterations, with 10000 particles, and
+geometric cooling. For the first round of MIF we set
 \texttt{cooling.facter\ =\ 1}. For the second round, which was
 initialized using the collection of parameter sets from the end of the
 first round, we set \texttt{cooling.factor\ =\ 0.9}. We computed the log
