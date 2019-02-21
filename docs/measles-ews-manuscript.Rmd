@@ -638,21 +638,21 @@ ggplot(filter(one_sim, time < 11.5 & time > 0.6), aes(x = time, y = reports)) +
   geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", 
              linetype = 2) +
   geom_vline(aes(xintercept = 8/2)) +
-  annotate(geom = "text", x = 2.35, y = 250, size = 3,
+  annotate(geom = "text", x = 2.35, y = 50, size = 3,
            label = "null interval", fontface = "bold", family = "Times") +
-  annotate(geom = "text", x = 6, y = 250, size = 3,
+  annotate(geom = "text", x = 6, y = 50, size = 3,
            label = "test interval", fontface = "bold", family = "Times") +
-  annotate(geom = "text", x = 2.35, y = 220, size = 3, family = "Times",
+  annotate(geom = "text", x = 2.35, y = 45, size = 3, family = "Times",
            label = paste("variance =", 
                          filter(variance_one_sim, interval == "null") %>%
                            pull(variance))) +
-  annotate(geom = "text", x = 6, y = 220, size = 3, family = "Times",
+  annotate(geom = "text", x = 6, y = 45, size = 3, family = "Times",
            label = paste("variance =", 
                          filter(variance_one_sim, interval == "test") %>%
                            pull(variance))) +
   scale_alpha_manual(values = c(0.4, 1)) +
   guides(alpha = FALSE) +
-  annotate(geom = "text", x = 7.3, y = 125, label = "critical\nyear", 
+  annotate(geom = "text", x = 7.3, y = 25, label = "critical\nyear", 
            size = 3, color = "dodgerblue4", family = "Times") +
   labs(x = "simulation time (year)", y = "reported cases") +
   theme_classic(base_size = 11, base_family = "Times") -> cases_series
