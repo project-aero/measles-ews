@@ -234,28 +234,77 @@ tmp_ews_data <- tmpsims %>%
   left_join(ews_time_ids, by = "time") %>%
   filter(is.na(half) == FALSE)
 
-spec_array_null <- array(data = NA, dim = c(500, 2142, 103))
-spec_array_test <- array(data = NA, dim = c(500, 2142, 103))
-for(i in 1:length(unique(tmp_ews_data$sim))){
-  tmp1 <- tmp_ews_data %>%
-    filter(sim == i & half == "first") %>%
-    pull(reports)
-  tmp2 <- tmp_ews_data %>%
-    filter(sim == i & half == "second") %>%
-    pull(reports)
+# spec_array_null <- array(data = NA, dim = c(500, 2142, 103))
+# spec_array_test <- array(data = NA, dim = c(500, 2142, 103))
+# for(i in 1:length(unique(tmp_ews_data$sim))){
+#   tmp1 <- tmp_ews_data %>%
+#     filter(sim == i & half == "first") %>%
+#     pull(reports)
+#   tmp2 <- tmp_ews_data %>%
+#     filter(sim == i & half == "second") %>%
+#     pull(reports)
+#   
+#   spec1 <- t(biwavelet::wt(data.frame(time = 1:length(tmp1),cases = tmp1))$power)
+#   spec2 <- t(biwavelet::wt(data.frame(time = 1:length(tmp2),cases = tmp2))$power)
+#   spec_array_null[i, , ] <- spec1
+#   spec_array_test[i, , ] <- spec2
+# }
+# 
+# spec_mean_null <- colMeans(spec_array_null, dims = 1, na.rm = TRUE)
+# spec_mean_test <- colMeans(spec_array_test, dims = 1, na.rm = TRUE)
+# par(mfrow = c(1,2))
+# image(spec_mean_null, main = "Null")
+# image(spec_mean_test, main = "Test")
+```
+
+```{r wavelet-ews}
+
+wavelet_median <- function (x){
+  y1 <- x
+  x1 = seq_along(y1)
+  t1 <- data.frame(time=x1, incid=y1)
   
-  spec1 <- t(biwavelet::wt(data.frame(time = 1:length(tmp1),cases = tmp1))$power)
-  spec2 <- t(biwavelet::wt(data.frame(time = 1:length(tmp2),cases = tmp2))$power)
-  spec_array_null[i, , ] <- spec1
-  spec_array_test[i, , ] <- spec2
+  ## Continuous bias corrected wavelet transform (liu et al 2007)
+  wt.t1 <- biwavelet::wt(t1, do.sig=FALSE)
+  
+  Power <- wt.t1$power.corr
+  probfun <- function(x) cumsum(x) / sum(x)
+  ppower <- apply(Power, 2, probfun)
+  islower50 <- ppower < 0.5
+  get_med_ind <- function(x) match(FALSE, x)
+  inds <- apply(islower50, 2, get_med_ind)
+  median <- wt.t1$scale[inds]
+  mean(median)
 }
 
-spec_mean_null <- colMeans(spec_array_null, dims = 1, na.rm = TRUE)
-spec_mean_test <- colMeans(spec_array_test, dims = 1, na.rm = TRUE)
-par(mfrow = c(1,2))
-image(spec_mean_null, main = "Null")
-image(spec_mean_test, main = "Test")
+first_mat <- tmp_ews_data %>%
+  filter(sim < 200) %>%
+  filter(half == "first") %>%
+  dplyr::select(time, sim, reports) %>%
+  spread(sim, reports) %>%
+  dplyr::select(-time) %>%
+  as.matrix()
+second_mat <- tmp_ews_data %>%
+  filter(sim < 200) %>%
+  filter(half == "second") %>%
+  dplyr::select(time, sim, reports) %>%
+  spread(sim, reports) %>%
+  dplyr::select(-time) %>%
+  as.matrix()
 
+w1 <- apply(first_mat, MARGIN = 2, FUN = wavelet_median)
+w2 <- apply(second_mat, MARGIN = 2, FUN = wavelet_median)
+
+power_plot <- tibble(
+  first_power = w1,
+  second_power = w2
+) %>%
+  gather()
+
+ggplot(power_plot, aes(x = key, y = value)) +
+  geom_boxplot()
+
+pROC::auc(response = power_plot$key, predictor = power_plot$value)
 
 # wave_df <- data.frame(time = 1:length(cases),
 #                       cases = cases)
