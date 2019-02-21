@@ -18,6 +18,7 @@ header-includes:
   - \usepackage{float}
   - \floatplacement{figure}{H}
   - \usepackage{amsmath,amssymb}
+  - \usepackage{mathptmx}
 ---
 
 ```{r libraries, include=FALSE, message=FALSE, warning=FALSE}
@@ -119,9 +120,10 @@ for(do_file in pomp_files){
   city_mle_ids <- grep(tmp_city, mle_files)
   tmp_mles <- read.csv(paste0("../results/", mle_files[city_mle_ids])) %>%
     drop_na() %>%
-    filter(loglik == max(loglik))
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(-loglik, -loglik_se, -do_grid)
   
-  tmp_sim <- simulate(
+  tmp_sim <- pomp::simulate(
     tmp_pomp,
     params = unlist(tmp_mles),
     nsim = 10,

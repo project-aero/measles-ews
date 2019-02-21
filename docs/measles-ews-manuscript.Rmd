@@ -1,11 +1,11 @@
 ---
-title: "Critical slowing down anticipates emergence and elimination of measles"
+title: "Anticipating disease emergence and elimination: a test of early warning signals using empirically based models"
 author:
   - name: "Andrew T. Tredennick"
     affiliation: UGA,CEID
-    footnote: Corresponding Author
+    footnote: "Current address: Western Ecosystems Technology, Inc., 200 S. Second Street, Laramie, WY 82070, USA"
     email: atredenn@gmail.com
-  - name: "Eamon O'Dea"
+  - name: "Eamon B. O'Dea"
     affiliation: UGA,CEID
   - name: "TBD"
     affiliation: other
@@ -42,6 +42,8 @@ preamble: |
   \linenumbers
   \usepackage{mathptmx}
   \renewcommand{\theaffn}{\arabic{affn}}
+  \usepackage{setspace}
+  \onehalfspacing
 extra: \usepackage[nomarkers]{endfloat}
 ---
 
@@ -125,12 +127,12 @@ Emergence and elimination of an infectious disease both involve a critical trans
 The transition typically occurs at the critical point where the basic reproduction number ($R_0$, the number of secondary cases that arise from a single infected case in a fully susceptible population) is equal to one [@Heffernan2005].
 Thus, subcritical ($R_0 < 1$) and supercritical ($R_0 > 1$) systems represent alternative modes of fluctuation [@Scheffer2009; @Scheffer2012; @ORegan2013].
 
-Critical transitions in stochastic systems, such as systems of disease transmission, are often associated with critical slowing down, a reduction in the resilience of a system to perturbations [@VanNes2007].
+Critical transitions in stochastic systems, such as systems of disease transmission, are often associated with critical slowing down, a reduction in the resilience of a system to perturbations [@Wissel1984; @VanNes2007].
 Critical slowing down (CSD), in turn, is associated with changes in the dynamical features of the system: early warning signals (EWS) such as an increase in the variance and autocorrelation [@Carpenter2006; @Scheffer2009].
 Recent theoretical work suggests that CSD occurs as disease dynamics approach $R_0 = 1$ from below (emergence) [@ORegan2013; @Dibble2016] and from above (elimination) [@ORegan2013; @ORegan2016; @Drake2017], and that several EWS anticipate the critical transition [@Brett2017; @Brett2018; @Miller2017].
-These findings suggest that early warning signals could be operationalized to develop early warning systems of disease emergence, elimination, or outbreaks of endemic diseases.
+These findings suggest that early warning signals could be operationalized to develop early warning systems of disease emergence and elimination, or outbreaks of endemic diseases.
 
-However, operationalizing EWS, and deploying early warning systems based on them, faces many challenges.
+However, operationalizing EWS, and deploying early warning systems based on them, faces many challenges [@Boettiger2013; @Han2016].
 For example, using EWS in an "online mode" requires choosing temporal windows over which EWS are calculated.
 These moving windows should be long enough to provide reliable statistics, but short enough to "forget" the past so as to not overwhelm information contained in new observations.
 This will be especially important for diseases that fluctuate seasonally, where EWS might always increase and then decrease over the course of the year, requiring the end-user to reset computations each season.
@@ -139,9 +141,10 @@ Detection thresholds can be based on the absolute value of an EWS (e.g., warning
 Developing (semi)objective algorithms for combining EWS, their values, and their trends to best detect disease emergence and elimination is a surmountable task, but one that will take considerable research effort.
 
 Given the amount of research still required to operationalize EWS, it is imperative that we stress test the hypothesis that EWS anticipate critical transitions before we allocate time and resources to the task of deploying early warning systems.
-One way to stress test EWS is through empirical case studies: can EWS anticipate emergence and elimination in real disease time series?
+One way to stress test EWS is through empirical case studies: Can EWS anticipate emergence and elimination in real disease time series?
 However, uncritical application of EWS to observed data could lead to researchers getting the right answer for the wrong reasons.
-That is, EWS might perform well for a given time series, but for reasons having nothing to do with critical slowing down.
+EWS might perform well for a given time series, but for reasons having nothing to do with critical slowing down.
+Likewise, critical transitions may occur in the absence of early warning signals [@Boettiger2012a].
 Indeed, without known the critical point (i.e., when $R_0(t) = 1$) it is impossible to know if EWS are in fact sending us the signal we think they are.
 
 Another option is to use empirically based models of disease transmission to test EWS.
@@ -149,7 +152,7 @@ This offers several advantages.
 First, using a model to simulate time series of cases means we also have access to a time series of $R_0(t)$, which allows us to know precisely when the critical transition occurs.
 This means we know whether we are getting the right answer for the right reason.
 Second, we can simulate replicate time series to account for the inherent stochasticity of disease transmission.
-This means our conclusions are not based on one-off events.
+This means our conclusions are not based on one-off events that bias conclusions [@Boettiger2012].
 Third, we can specifically simulate emergence and elimination events.
 This means we can separate the stress testing of EWS from the research necessary to operationalize EWS.
 Thus, we have all the flexibility of a theoretical model, but we remain tethered to reality because the model parameters are fitted to real data.
@@ -161,23 +164,23 @@ First, can CSD distinguish between time series of disease incidence when the und
 If so, then CSD can anticipate disease re-emergence and elimination.
 Second, how does the distance to and the rate of approaching the threshold impact the anticipatory skill of CSD?
 
-To answer these questions, we fit mechanistic models of disease transmission to time series of measles incidence in four Nigerien cities.
+To answer these questions, we fit mechanistic models of disease transmission to time series of measles incidence in four Nigerien cities [@Ferrari2008; @Bharti2011].
 We then use the fitted models to perform model experiments designed to test the performance of several EWS, which quantify CSD, at anticipating re-emergence and elimination.
 Our results confirm theoretical expectations about several EWS and associated CSD.
 In particular, we show that CSD before a critical transition is detectable by several EWS in realistic scenarios, and they do so using much shorter time series than used in theoretical studies.
 However, our study highlights the limitations of EWS in situations where disease re-emergence and elimination occurs rapidly.
 Moreoever, and contrary to theoretical expectations [@ORegan2013], we find that EWS perform better at detecting CSD before re-emergence than before elimination.
 
-# Materials and Methods
+# Materials and methods
 
 ## Data
 We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}*a*).
 The data were collected over an 11 year period from 1995-2005 (figure \ref{data-plot}*b*).
 These data are ideal for testing theory on CSD in disease dynamics because each city has different population sizes, has different dynamics in terms of outbreak sizes and length of inter-epidemic periods, and each time series has different amounts of demographic stochasticity due to differences in population size.
 Such differences provide a natural gradient of "noise" that may influence CSD [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
-The data come from [*somewhere/someone*], and used here with permission from [*somewhere/someone*].
+The data are provided by the Niger Ministry of Health [@NigerMinistryofHealth2008].
 
-```{r data-plot, fig.width=8.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (A) Locations and population sizes (in parantheses) of our four focal cities in Niger. (B) Time series of weekly reported cases (yellow solid lines) and the 95% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
+```{r data-plot, fig.width=8.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (*a*) Locations and population sizes (in parantheses) of our four focal cities in Niger. (*b*) Time series of weekly reported cases (yellow solid lines) and the 95% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
 
 the_map <- ggplot(region_boundaries)+
   geom_sf(fill = "grey90", col = "grey80", size = 0.3) +
@@ -236,13 +239,13 @@ These probabilities reflect the processes of tranmission, transition from the la
 \end{align}
 
 \noindent{}where $\beta_t$ is time-varying rate of transmission, $\eta$ is time-invariant rate from the exposed class to the infectious class, and $\gamma$ is time-invariant recovery rate.
-We model rate of transmission as:
+We model rate of transmission as,
 
 \begin{equation}
-\beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t.
+\beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t,
 \end{equation}
 
-$\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+\noindent{} where $\beta$ is the minimum transmission rate over the season, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
 
@@ -346,7 +349,7 @@ The AUC of an EWS is the probability that a randomly chosen EWS value from the t
 Therefore, AUC should be high (closer to 1) when an EWS is expected to increase as a critical transition is approached, whereas AUC should be low (closer to 0) when an EWS is expected to decrease.
 
 
-```{r scatters-r0, fig.width=8.5, fig.height=4, fig.cap="Accuracy of the fitted *SEIR* models and estimated seasonality. (A) Comparison of in-sample model predictions and observations for each city. Expected cases are one-week-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases (SI text). (B) The estimated seasonality of the basic reproductive ratio ($R_0$) for each city. $R_0$ was calculated as: $\\frac{\\eta \\beta_t}{(\\eta+\\nu)(\\gamma+\\nu)}$, where $1/\\eta$ is the infectious period, $1/\\gamma$ is the recovery period, $\\beta_t$ is the time-specific rate of transmission, and $\\nu$ is the death rate. Only $\\beta_t$ is estimated by our model. We set $1/\\eta$ = 8 days, $1/\\gamma$ = 5 days, and $\\mu = \\nu$ = 0.05 for calculating $R_0$ as shown in this figure. The white line is $R_0$ calculated using the MLE parameters; shaded regions are the bootstrapped 95% confidence intervals. \\label{scatters}"}
+```{r scatters-r0, fig.width=8.5, fig.height=4, fig.cap="Accuracy of the fitted *SEIR* models and estimated seasonality. (*a*) Comparison of in-sample model predictions and observations for each city. Expected cases are one-week-ahead predictions from the fitted models. The dashed line shows 1:1. Coefficients of determination ($R^2$) were calculated as the reduction in the sum-of-squared errors from model predictions relative to a null model of the mean number of cases (SI text). (*b*) The estimated seasonality of the basic reproductive ratio ($R_0$) for each city. $R_0$ was calculated as: $\\frac{\\eta \\beta_t}{(\\eta+\\nu)(\\gamma+\\nu)}$, where $1/\\eta$ is the infectious period, $1/\\gamma$ is the recovery period, $\\beta_t$ is the time-specific rate of transmission, and $\\nu$ is the death rate. Only $\\beta_t$ is estimated by our model. We set $1/\\eta$ = 8 days, $1/\\gamma$ = 5 days, and $\\mu = \\nu$ = 0.05 for calculating $R_0$ as shown in this figure. The white line is $R_0$ calculated using the MLE parameters; shaded regions are the bootstrapped 95% confidence intervals. \\label{scatters}"}
 r_squares <- pred_cases %>%
   group_by(city_name) %>%
   mutate(
@@ -570,7 +573,7 @@ This is expected because more rapid returns to $R_E(t)=1$ result in shorter null
 Moreover, as the time to reach $R_E(t)=1$ decreases, the chance of a bifurcation delay increases because of the changing equilibrium of $R_0$ combined with demographic stochasticity [@Dibble2016; @Brett2017].
 Thus, re-emergence may prove difficult to anticipate in "fast" transmission systems, as demonstrated theoretically by @Brett2017 and seen here when susceptible depletion was relatively small (figure \ref{emerge-aucs}*c*).
 
-```{r emergence-results, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to emergence. (A) A typical example of an emergence simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (B) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (C) Heatmap of AUC statistics for each EWS at each level of susceptible discount factor. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See Fig. Sx for visualization of how susceptible discounting factor maps to number of weeks in the null and test intervals.  \\label{emerge-aucs}"}
+```{r emergence-results, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to emergence. (*a*) A typical example of an emergence simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each level of susceptible discount factor. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See Fig. Sx for visualization of how susceptible discounting factor maps to number of weeks in the null and test intervals.  \\label{emerge-aucs}"}
 # mycols <- c("#91CDF0", "#EF6677")
 mycols <- c("#008FD5", "#FF2700")  # fivethirtyeight blue/red
 
@@ -707,7 +710,7 @@ All three metrics decreased as $R_E(t)$ approached the critical transition (figu
 As in the case of anticipating elimination, AUC values decreased as the speed of the vaccine campaign increased (figure \ref{elim-aucs}*c*).
 Again, this is because of shorter null and test intervals.
 
-```{r elimination, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to elimination. (A) A typical example of an elimination simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (B) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (C) Heatmap of AUC statistics for each EWS at each speed of approach to herd immunity. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See Fig. Sx for visualization of how vaccination speed maps to number of weeks in the null and test intervals.  \\label{elim-aucs}"}
+```{r elimination, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to elimination. (*a*) A typical example of an elimination simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each speed of approach to herd immunity. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See Fig. Sx for visualization of how vaccination speed maps to number of weeks in the null and test intervals.  \\label{elim-aucs}"}
 example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
 ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
 
@@ -877,11 +880,11 @@ fracs_less_than_half <- outbreak_years %>%
 percs <- fracs_less_than_half$frac_less*100
 ```
 
-A potential limitation of our findings is that the levels of susceptible depletion we modeled (figure \ref{emerge-aucs}C) might be lower than the levels that occur in reality.
+A potential limitation of our findings is that the levels of susceptible depletion we modeled (figure \ref{emerge-aucs}*c*) might be lower than the levels that occur in reality.
 To check the relevance of this limitation, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (SI text).
 We found that susceptible depletion was less than 0.5, the smallest susceptible depletion level we tested, for `r round(percs[1], 1)`% of outbreaks in Agadez, `r round(percs[2])`% of outbreaks in Maradi, `r round(percs[3])`% of outbreaks in Niamey, and `r round(percs[4])`% of outbreaks in Zinder.
 These statistics do not detract from our main findings of CSD in measles dynamics, but they do suggest that EWS might be less useful in some cases than in others.
-For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{aucs}A).
+For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{aucs}*c*).
 Thus, EWS are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
 Our results should encourage efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
@@ -890,9 +893,16 @@ Emerging technologies like artifical intelligence might offer new ways to find o
 But there will always be a role for expert judgement.
 Early warning signals, though powerful and now accompanied with empirical support, will likely be just one part of a decision-support toolkit.
 
-# Acknowledgments
+# Acknowledgements
+We thank Tobias Brett and Andrew Park for comments on the modeling approach, and Paige Miller and Éric Marty for helpful comments on early versions of this work.
+
+# Funding
 This research was funded by the National Institute of General Medical Sciences of the National Institutes of Health (Award Number U01GM110744).
 The funders had no role in study design, data collection and analysis, decision to publish, or preparation of the manuscript.
 This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
+
+# Authors' contributions
+ATT concieved of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
+All authors gave final approval for publication and agree to be held accountable for the work performed therein.
 
 # References
