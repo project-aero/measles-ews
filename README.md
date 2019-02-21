@@ -1,6 +1,15 @@
 # measles-ews
 Data and code for project aimed at detecting critical slowing down in measles dynamics from four cities in Niger.
 
+**NOTE**: The code in this repository relies on `pomp` version 1.18. 
+You may get errors if using other versions. 
+To download this specific version, use `devtools`:
+
+```
+install_packages("devtools")
+devtools::install_version("pomp", version = "1.18", repos = "http://cran.us.r-project.org")
+```
+
 ## Overview
 The main goal of this project is to detect critical slowing in real disease dynamics.
 To do so, we use a model-based approach, which allows us to simulate approaches to transcritical bifurcations.
