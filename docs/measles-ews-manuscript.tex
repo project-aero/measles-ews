@@ -65,13 +65,7 @@
 \setcounter{secnumdepth}{0}
 % Pandoc header
 
-\journal{Proceedings of the Royal Society B}
-\usepackage{lineno}
-\linenumbers
-\usepackage{mathptmx}
-\renewcommand{\theaffn}{\arabic{affn}}
-\usepackage{setspace}
-\onehalfspacing
+\journal{Proceedings of the Royal Society B}\usepackage{lineno}\linenumbers\usepackage{mathptmx}\renewcommand{\theaffn}{\arabic{affn}}\usepackage{setspace}\onehalfspacing\usepackage[nomarkers]{endfloat}\usepackage{xcolor}
 
 \begin{document}
 \begin{frontmatter}
@@ -80,7 +74,7 @@
 signals using empirically based models}
     \author[UGA,CEID]{Andrew T. Tredennick\corref{c1}}
    \ead{atredenn@gmail.com} 
-   \cortext[c1]{Current address: Western Ecosystems Technology, Inc., 200 S. Second
+   \cortext[c1]{Current address: Western EcoSystems Technology, Inc., 200 S. Second
 Street, Laramie, WY 82070, USA}
     \author[UGA,CEID]{Eamon B. O'Dea}
   
@@ -165,8 +159,8 @@ However, operationalizing EWS, and deploying early warning systems based
 on them, faces many challenges {[}1,16{]}. For example, using EWS in an
 ``online mode'' requires choosing temporal windows over which EWS are
 calculated. These moving windows should be long enough to provide
-reliable statistics, but short enough to ``forget'' the past so as to
-not overwhelm information contained in new observations. This will be
+reliable statistics, but short enough to forget the past so as to not
+overwhelm information contained in new observations. This will be
 especially important for diseases that fluctuate seasonally, where EWS
 might always increase and then decrease over the course of the year,
 requiring the end-user to reset computations each season. Another
@@ -646,6 +640,30 @@ of critical slowing down before critical transitions to re-emergence and
 elimination of measles. This evidence comes from the fact that several
 EWS accurately anticipate the critical transition.
 
+Evidence of CSD is strongest for scenarios of re-emergence. This is
+because the autocorrelation and other EWS increased on the approach to
+\(R_E = 1\) (fig. \ref{emerge-aucs}\emph{c}). Increases in EWS besides
+the autocorrelation, such as the variance, are necessary but
+insufficient evidence of CSD because such EWS can also increase when a
+critical transition does not exist (\textbf{CITATION?}). However, an
+increase in the autocorrelation, coupled with coincident increases in
+other EWS, provides stronger evidence of CSD (\textbf{CITATION?}).
+\textcolor{blue}{JOHN: I remember you making the points in the previous two sentences in a meeting once. Can you provide citations?}
+
+The autocorrelation was not a strong indicator of the transition to
+elimination (fig. \ref{elim-aucs}\emph{c}), suggesting weaker evidence
+for CSD. Other EWS (variane, autocovariance, and mean) did show altered
+behavior as the transition to elimination was approached, but these EWS
+were less sensitive under elimination scenarios compared to re-emergence
+scenarios. These results suggest that CSD might not preempt disease
+elimination or that CSD is harder to detect when a disease is fading out
+rather than emerging. We have reasons to expect CSD at the elimination
+threshold based on theoretical modeling studies {[}2,4,12{]}, but most
+theory has been developed for SIR models rather than the SEIR model we
+employed here. Still, we think it is more likely that CSD is simply
+harder to detect in noisy systems approaching elimination.
+\textcolor{blue}{EAMON: Can you add text on why this might be the case?}
+
 A potential limitation of our findings is that the levels of susceptible
 depletion we modeled (figure \ref{emerge-aucs}\emph{c}) might be lower
 than the levels that occur in reality. To check the relevance of this
@@ -659,9 +677,9 @@ and 26\% of outbreaks in Zinder. These statistics do not detract from
 our main findings of CSD in measles dynamics, but they do suggest that
 EWS might be less useful in some cases than in others. For example, AUC
 values for emergence at the 0.5 level of susceptible depletion are
-already low for most cities (figure \ref{aucs}\emph{c}). Thus, EWS are
-not practical for cities that rarely experience levels of susceptible
-depletion below 0.5 (e.g., Agadez).
+already low for most cities (figure \ref{emerge-aucs}\emph{c}). Thus,
+EWS are not practical for cities that rarely experience levels of
+susceptible depletion below 0.5 (e.g., Agadez).
 
 Our results should encourage efforts to develop model-independent early
 warning systems for infectious diseases {[}1{]}. We have shown that

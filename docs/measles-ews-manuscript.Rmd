@@ -3,7 +3,7 @@ title: "Anticipating disease emergence and elimination: a test of early warning 
 author:
   - name: "Andrew T. Tredennick"
     affiliation: UGA,CEID
-    footnote: "Current address: Western Ecosystems Technology, Inc., 200 S. Second Street, Laramie, WY 82070, USA"
+    footnote: "Current address: Western EcoSystems Technology, Inc., 200 S. Second Street, Laramie, WY 82070, USA"
     email: atredenn@gmail.com
   - name: "Eamon B. O'Dea"
     affiliation: UGA,CEID
@@ -44,6 +44,8 @@ preamble: |
   \renewcommand{\theaffn}{\arabic{affn}}
   \usepackage{setspace}
   \onehalfspacing
+  \usepackage[nomarkers]{endfloat}
+  \usepackage{xcolor}
 extra: \usepackage[nomarkers]{endfloat}
 ---
 
@@ -134,7 +136,7 @@ These findings suggest that early warning signals could be operationalized to de
 
 However, operationalizing EWS, and deploying early warning systems based on them, faces many challenges [@Boettiger2013; @Han2016].
 For example, using EWS in an "online mode" requires choosing temporal windows over which EWS are calculated.
-These moving windows should be long enough to provide reliable statistics, but short enough to "forget" the past so as to not overwhelm information contained in new observations.
+These moving windows should be long enough to provide reliable statistics, but short enough to forget the past so as to not overwhelm information contained in new observations.
 This will be especially important for diseases that fluctuate seasonally, where EWS might always increase and then decrease over the course of the year, requiring the end-user to reset computations each season.
 Another challenge is defining thresholds for detection of an upcoming tipping point.
 Detection thresholds can be based on the absolute value of an EWS (e.g., warning if variance exceeds some value), the trend in an EWS over time (e.g., warning if the correlation of variance with time exceeds some value), or an algorithmic combination of many factors (e.g., variance and autocorrelation increases above some value three observation periods in a row).
@@ -817,6 +819,19 @@ But, all EWS performed worse when predicting the approach to emergence over the 
 Using empirically-based disease transmission models, we found evidence of critical slowing down before critical transitions to re-emergence and elimination of measles.
 This evidence comes from the fact that several EWS accurately anticipate the critical transition.
 
+Evidence of CSD is strongest for scenarios of re-emergence.
+This is because the autocorrelation and other EWS increased on the approach to $R_E = 1$ (fig. \ref{emerge-aucs}*c*).
+Increases in EWS besides the autocorrelation, such as the variance, are necessary but insufficient evidence of CSD because such EWS can also increase when a critical transition does not exist (**CITATION?**).
+However, an increase in the autocorrelation, coupled with coincident increases in other EWS, provides stronger evidence of CSD (**CITATION?**).
+\textcolor{blue}{JOHN: I remember you making the points in the previous two sentences in a meeting once. Can you provide citations?}
+
+The autocorrelation was not a strong indicator of the transition to elimination (fig. \ref{elim-aucs}*c*), suggesting weaker evidence for CSD.
+Other EWS (variane, autocovariance, and mean) did show altered behavior as the transition to elimination was approached, but these EWS were less sensitive under elimination scenarios compared to re-emergence scenarios.
+These results suggest that CSD might not preempt disease elimination or that CSD is harder to detect when a disease is fading out rather than emerging.
+We have reasons to expect CSD at the elimination threshold based on theoretical modeling studies [@ORegan2013; @ORegan2016; @Drake2017], but most theory has been developed for SIR models rather than the SEIR model we employed here.
+Still, we think it is more likely that CSD is simply harder to detect in noisy systems approaching elimination.
+\textcolor{blue}{EAMON: Can you add text on why this might be the case?}
+
 ```{r susc-deplete}
 # Define threshold for outbreak year --------------------------------------
 
@@ -878,7 +893,7 @@ A potential limitation of our findings is that the levels of susceptible depleti
 To check the relevance of this limitation, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (SI text).
 We found that susceptible depletion was less than 0.5, the smallest susceptible depletion level we tested, for `r round(percs[1], 1)`% of outbreaks in Agadez, `r round(percs[2])`% of outbreaks in Maradi, `r round(percs[3])`% of outbreaks in Niamey, and `r round(percs[4])`% of outbreaks in Zinder.
 These statistics do not detract from our main findings of CSD in measles dynamics, but they do suggest that EWS might be less useful in some cases than in others.
-For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{aucs}*c*).
+For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{emerge-aucs}*c*).
 Thus, EWS are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
 Our results should encourage efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
