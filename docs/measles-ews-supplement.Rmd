@@ -19,6 +19,7 @@ header-includes:
   - \floatplacement{figure}{H}
   - \usepackage{amsmath,amssymb}
   - \usepackage{mathptmx}
+  - \newcommand{\comment}[1]{\ignorespaces}
 ---
 
 ```{r libraries, include=FALSE, message=FALSE, warning=FALSE}
@@ -294,6 +295,8 @@ $\beta$ is the mean transmission rate, $\psi$ accounts for measles infections fr
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
 
+\comment{I think the size of the process time step needs to be stated somewhere. Was it 1 day?}
+
 Finally, observations were simulated from the model on a weekly time step by drawing cases from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days (*x*), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $\text{cases} \sim \text{Negative binomial}(\rho x, \tau)$.
 
 In this model, the basic reproduction number can be calculated as:
@@ -368,13 +371,13 @@ plot_grid(re_series, cases_series, nrow = 2, align = "v",
 
 For simulations of disease elimination by increasing the vaccination coverage of the population, we define the critical time as the time at which vaccination coverage reaches the threshold needed for herd immunity.
 This vaccination threshold is defined as $p = 1 - 1/R_0$.
-Because our transmission function is seasonal, we first calculated time-specific $R_0$ as: $R_{0(t)} = \frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the infectious period, $1/\gamma$ is the recovery period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\mu = \nu$ = 0.05.
+Because our transmission function is seasonal, we first calculated time-specific $R_0$ as: $R_0(t) = \frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\mu = \nu$ = 0.05.
 Figure 2 in the main text shows these values.
-We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$, such that: $p = 1 - 1/\text{max}(R_{0(t)})$.
+We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$, such that: $p = 1 - 1/\text{max}(R_0(t))$.
 We set the time at which vaccination coverage is equal to *p* as the endpoint for the EWS analysis.
 All elimination simulations had vaccination campaigns that started at year 50.
 So, we define the test interval as the times between year 50 and the year at which vaccination coverage is equal to *p*.
-We then defined the null interval as window with length equal to test interval and ending at year 49.
+We then defined the null interval as a window with length equal to the test interval and ending at year 49.
 Figure \ref{elimin-sim} shows a typical example.
 
 ```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
