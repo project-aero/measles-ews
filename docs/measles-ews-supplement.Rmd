@@ -443,17 +443,23 @@ plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
 We calculated nine early warning signals using the ```spaero::get_stats()``` function.
 Formulas for the early warning signals are in Table S1.
 
-| EWS | Estimator | Theoretical Correlation with $R_E(t)$ |
+\comment{As far as I can tell, we did not use moving windows (just two
+disjoint windows), so isn't the introduction of equations with a
+bandwidth (windows size) parameter unnecessarily complex? I have
+subsituted what seems to me a clearer alternative version of the
+equations.}
+
+| EWS | Estimator | Theoretical Correlation with $R_E(t)$ in an emergence scenario |
 | -------------------- | ----------------------------------- | ------------------------ |
-| Mean | $\mu_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{X_s}{2b-1}$ | Positive |
-| Variance | $\sigma_t^2 = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^2}{2b-1}$ | Positive |
-| Coefficient of variation | $CV_t = \frac{\sigma_t}{\mu_t}$ | Null |
-| Index of dispersion | $ID_t = \frac{\sigma_t^2}{\mu_t}$ | Positive |
-| Skewness | $S_t = \frac{1}{\sigma^3_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^3}{2b-1}$ | Positive |
-| Kurtosis | $K_t = \frac{1}{\sigma^4_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^4}{2b-1}$ | Positive |
-| Autocovariance | $\text{ACov}_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)\left(X_{s-\delta} - \mu_{s-\delta}\right)}{2b-1}$ | Positive |
-| Autocorrelation | $\text{AC}_t = \frac{\text{ACov}_t}{\sigma_t \sigma_{t-\delta}}$ | Positive |
-| Decay time | $\overline{\tau}_t = -\delta / \text{ln}\left[\text{AC}_t(\delta)\right]$ | Positive |
+| Mean | \bar{y} = $\sum_{i=1}^n \frac{y_i}{n}$ | Positive |
+| Variance | $ s^2 = \sum_{i=1}^n \frac{(y_i - \bar{y})^2}{n}$ | Positive |
+| Coefficient of variation | $ \frac{ s }{ \bar{y} }$ | Null |
+| Index of dispersion | $ \frac{ s^2 }{ \bar{y} }$ | Positive |
+| Skewness | $ \frac{1}{s^3} \sum_{i=1}^n \frac{\left( y_i - \bar{y} \right)^3}{n}$ | Positive |
+| Kurtosis | $ \frac{1}{s^4} \sum_{i=1}^n \frac{\left( y_i - \bar{y} \right)^4}{n}$ | Positive |
+| Autocovariance | $s^2_1 =  \sum^{n}_{i=2} \frac{\left( y_i - \bar{y} \right)\left( y_{i - 1}  - \bar{y} \right)}{n}$ | Positive |
+| Autocorrelation | $r_1 = \frac{s^2_1 }{ s^2}$ | Positive |
+| Decay time | $ -1 / \text{ln}(r_1)$ | Positive |
 
 Table: List of candidate early warning signals and their estimating equations. Note that *b* denotes the bandwidth. See @Brett2018 for details.
 
