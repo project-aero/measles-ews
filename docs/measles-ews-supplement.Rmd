@@ -446,7 +446,7 @@ Formulas for the early warning signals are in Table S1.
 \comment{As far as I can tell, we did not use moving windows (just two
 disjoint windows), so isn't the introduction of equations with a
 bandwidth (windows size) parameter unnecessarily complex? I have
-subsituted what seems to me a clearer alternative version of the
+substituted what seems to me a clearer alternative version of the
 equations.}
 
 | EWS | Estimator | Theoretical Correlation with $R_E(t)$ in an emergence scenario |
@@ -465,9 +465,25 @@ Table: List of candidate early warning signals and their estimating equations. N
 
 # Trends of early warning signals
 
-Theory suggests that most EWS should increase as disease dynamics approach a critical transition from below (emergence).
-When approaching the critical transition from above (elimination), less is known about the behavior of EWS, but theory does tell us that the mean and variance should decrease while the autocorrelation should increase (at least for SIR and SEIR models).
+Theory suggests that most EWS should increase as disease dynamics
+approach a critical transition from below (emergence).  When
+approaching the critical transition from above (elimination), a
+simple linear noise approximation to the SEIR model dynamics leads to
+the prediction that the mean and variance should decrease while the
+autocorrelation should develop a lengthier period.
+
+\comment{If you would like a reference, I would suggest citing
+"Stochastic dynamics on slow manifolds" by Constable et al. They
+describe a technique for calculating the linear noise approximation
+for the SEIR model with seasonality and plot the power spectrum.}
+
+
+
 To confirm that the EWS are behaving as expected, and to document cases in which they do not, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
+
+\comment{The titles for Decay time and Index of dispersion facets are
+clipped off in some instances. I would be okay with eliminating decay
+time if that helps, since it a simple transform of autocorrelation.}
 
 ```{r ews-hists, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
@@ -577,7 +593,7 @@ print(ews_hists)
 
 We used a bootstrap approach to estimate approximate 95\% confidence intervals for all parameters.
 Below we show summary statistics for all parameters except the B-splines.
-For B-splines, and transmission rate more gerenally, we plot the seasonal transmission rate function for all bootstrap replicates (Figure \ref{season-trans}).
+For B-splines, and transmission rate more generally, we plot the seasonal transmission rate function for all bootstrap replicates (Figure \ref{season-trans}).
 
 ```{r param-summaries, message=FALSE, warning=FALSE, echo = FALSE, results = "asis"}
 
@@ -753,8 +769,8 @@ ggplot(seasonal_functions, aes(x = date, y = beta, group = boot)) +
 # Length of null and test intervals
 
 In the main text we show EWS performance across the range of susceptible discounting factors and vaccination campaign speeds we modeled.
-To put these values into context, here we show the corresponding bandwidths for each simulation.
-These bandwidths are the number of weeks that occur in the null and test intervals (Figure \ref{bws}).
+To put these values into context, here we show the corresponding window sizes for each simulation.
+These window sizes are the number of weeks that occur in the null and test intervals (Figure \ref{bws}).
 
 ```{r bw-weeks, fig.width=8.5, fig.height=4, fig.cap="Length of null and test intervals (in weeks) for emergence and elimination simulations at different parameter values.  \\label{bws}"}
 read_csv("../results/emergence-bandwidths.csv") %>%
@@ -793,7 +809,14 @@ We used the distributions of Kendall's $\tau$ over the 500 replicate simulations
 For the approach to elimination, the results are similar to those for the fixed window analysis (Figure \ref{mvw-ews}B).
 For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure \ref{mvw-ews}A).
 
-```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
+\comment{I see now that the original version of Table S3 with moving
+window statistics does have value for interpretation of this
+section. Perhaps it would make sense to include both versions? If
+there is only one verion, I would still say the simpler one is
+preferable to me. We can cite Brett et al. "Anticipating disease
+emergence" for the more complicated version. }
+
+```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values. AUC values farther from 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
 library(viridis)
 emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
 elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")
