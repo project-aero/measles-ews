@@ -86,7 +86,7 @@ demog_clean <- demog_clean %>%
 ggplot() +
   geom_line(data = filter(demog_clean, time <= 2005), aes(x = time, y = population_size/1000, color = region)) +
   geom_point(data = pop_data, aes(x = time, y = population/1000, color = region)) +
-  labs(x = "Time", y = expression(paste("Population size (", italic(N), " x 1000)"))) +
+  labs(x = "Time", y = expression(paste("Population size, ", italic(N), " (1000s)"))) +
   scale_color_colorblind(name = NULL) +
   theme_minimal() +
   theme(legend.position = c(0.2, 0.9),
@@ -235,13 +235,13 @@ Our *simulating model* (in contrast to the *fitting model* in the main text) is 
 As in the main text, the *SEIR* model is specified as a set of difference equations,
 
 \begin{align}
-S_{t+dt} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
-E_{t+dt} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
-I_{t+dt} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
-R_{t+dt} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
+S_{t+dt} - S_{t} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
+E_{t+dt} - E_{t} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
+I_{t+dt} - I_{t} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
+R_{t+dt} - R_{t} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
 \end{align}
 
-\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
+\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each update $t \rightarrow t+dt$.
 Transition definitions are in Table S2.
 
 | Random variable | Transition | $\left(\Delta S, \Delta E, \Delta I, \Delta R\right)$ |
@@ -263,11 +263,9 @@ The stochastic random variables are specified as follows:
 
 \begin{align}
 n_{0S,t} &\sim \text{Poisson}((1-p)\mu N_t \times dt) \\
-n_{SE,t} &\sim \text{Binomial}(\lambda_{SE,t}, S_{t}) \\
-n_{S0,t} &\sim \text{Binomial}(\lambda_{d}, S_t) \\
-n_{EI,t} &\sim \text{Binomial}(\lambda_{EI,t}, E_{t}) \\
-n_{E0,t} &\sim \text{Binomial}(\lambda_{d}, E_t) \\
-n_{IR,t} &\sim \text{Binomial}(\lambda_{IR,t}, I_{t}) \\
+(n_{SE,t}, n_{S0,t}) &\sim \text{Mult}(S_{t}, (\lambda_{SE,t}, \lambda_{d})) \\
+(n_{EI,t}, n_{E0,t}) &\sim \text{Mult}(E_{t}, (\lambda_{EI,t}, \lambda_{d})) \\
+(n_{IR,t}, n_{I0,t}) &\sim \text{Mult}(I_{t}, (\lambda_{IR,t}, \lambda_{d})) \\
 n_{I0,t} &\sim \text{Poisson}(\psi \times dt) \\
 n_{0R,t} &\sim \text{Poisson}(p\mu N_t \times dt) \\
 n_{R0,t} &\sim \text{Binomial}(\lambda_{d}, R_t),
