@@ -46,6 +46,7 @@ preamble: |
   \onehalfspacing
   \usepackage[nomarkers]{endfloat}
   \usepackage{xcolor}
+  \newcommand{\comment}[1]{\ignorespaces}
 extra: \usepackage[nomarkers]{endfloat}
 ---
 
@@ -173,6 +174,12 @@ In particular, we show that CSD before a critical transition is detectable by se
 However, our study highlights the limitations of EWS in situations where disease re-emergence and elimination occurs rapidly.
 Moreoever, and contrary to theoretical expectations [@ORegan2013], we find that EWS perform better at detecting CSD before re-emergence than before elimination.
 
+\comment{I don't believe @ORegan2013 created theoretical expectations
+in that regard, as John and I have agreed that the emergence
+simulations did not provide a fair comparison with the elimination
+simulations because the fraction of susceptibles changed very little
+in the emergence simulations.}
+
 # Materials and methods
 
 ## Data
@@ -214,9 +221,9 @@ plot_grid(the_map, the_series, ncol = 2, labels = c("(a)", "(b)"),
 The model is a discrete-time approximation of a continuous-time SEIR model with limited demography, specified as a set of difference equations,
 
 \begin{align}
-S_{t+dt} &= n_{S,t} - n_{E,t} \\
-E_{t+dt} &= n_{E,t} - n_{I,t} \\
-I_{t+dt} &= n_{I,t} + n_{O,t} - n_{R,t},
+S_{t+dt} - S_t &= n_{S,t} - n_{E,t} \\
+E_{t+dt} - E_t &= n_{E,t} - n_{I,t} \\
+I_{t+dt} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
 \noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
@@ -224,15 +231,15 @@ $n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individ
 The stochastic random variables are specified as follows:
 
 \begin{align}
-n_{S,t} &\sim \text{Poisson}(\mu_t N_t \times dt) \\
-n_{E,t} &\sim \text{Binomial}(\lambda_{E,t}, S_{t}) \\
-n_{I,t} &\sim \text{Binomial}(\lambda_{I,t}, E_{t}) \\
+n_{S,t} &\sim \text{Poisson}(\mu_t (1 - p) N_t \times dt) \\
+n_{E,t} &\sim \text{Binomial}( S_{t}, \lambda_{E,t}) \\
+n_{I,t} &\sim \text{Binomial}( E_{t}, \lambda_{I,t}) \\
 n_{O,t} &\sim \text{Poisson}(\psi \times dt) \\
-n_{R,t} &\sim \text{Binomial}(\lambda_{R,t}, I_{t}),
+n_{R,t} &\sim \text{Binomial}( I_{t}, \lambda_{R,t}),
 \end{align}
 
-\noindent{}where $\mu_t$ is the birth rate at time *t*, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
-These probabilities reflect the processes of tranmission, transition from the latent period to the infectious period, and recovery, which we model as:
+\noindent{}where $\mu_t$ is the birth rate at time *t*, $p$ is the vaccination rate, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
+These probabilities reflect the processes of transmission, transition from the latent period to the infectious period, and recovery, which we model as:
 
 \begin{align}
 \lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
@@ -240,14 +247,14 @@ These probabilities reflect the processes of tranmission, transition from the la
 \lambda_{R,t} &= 1 - e^{-\gamma I_{t} dt},
 \end{align}
 
-\noindent{}where $\beta_t$ is time-varying rate of transmission, $\eta$ is time-invariant rate from the exposed class to the infectious class, and $\gamma$ is time-invariant recovery rate.
-We model rate of transmission as,
+\noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate from the exposed class to the infectious class, and $\gamma$ is a time-invariant recovery rate.
+We model the rate of transmission as,
 
 \begin{equation}
 \beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t,
 \end{equation}
 
-\noindent{} where $\beta$ is the minimum transmission rate over the season, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+\noindent{} where $\beta$ is the minimum transmission rate over the season, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
 
@@ -268,8 +275,8 @@ y_t \sim \text{Negative Binomial} \left( \rho x_t, \tau \right),
 
 We fit the SEIR model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF).
 We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), mean transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the number of imported infections ($\psi$), reporting fraction ($\rho$), one parameter accounting for process noise ($\sigma$), and one parameter accounting for measurement noise ($\tau$).
-To ensure identifiability, and to make the model easier to fit, we assumed the infectious period was fixed at $1/\eta = 8$ days and the recovery period was fixed at $1/\gamma = 5$ days.
-The birth rate ($\mu_t$) was multiplied by 0.3 to account for the reported 70\% vaccination coverage [@Ferrari2008].
+To ensure identifiability, and to make the model easier to fit, we assumed the incubation period was fixed at $1/\eta = 8$ days and the infectious period was fixed at $1/\gamma = 5$ days.
+The vaccination rate ($p$) was set to 70\%, consistent with reported vaccination coverage [@Ferrari2008].
 
 MIF relies on particle filtering, which estimates the likelihood of fixed parameters by integrating state variables of a stochastic system.
 To narrow in on the maximum likelihood estimates, MIF lets parameters take a random walk during the filtering process and selectively propagates forward parameter sets (i.e., particles) with the highest likelihood.
@@ -278,10 +285,10 @@ This procedure converges toward the maximimum likelihood estimates (MLEs), in th
 
 We used the IF2 algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` version 1.18 [@King2016; @King2018] to conduct the MIF procedure.
 To initialize MIF, we generated 5000 parameter sets using Latin Hypercube Sampling over large ranges of the parameter values.
-We then performed two rounds of MIF, each for 100 iterations, with 10000 particles, and geometric cooling.
-For the first round of MIF we set `cooling.facter = 1`.
+We then performed two rounds of MIF, each for 100 iterations, with 10,000 particles, and geometric cooling.
+For the first round of MIF we set `cooling.factor = 1`.
 For the second round, which was initialized using the collection of parameter sets from the end of the first round, we set `cooling.factor = 0.9`.
-We computed the log likelihood of 5000 final MIF parameter sets (i.e., parameter sets collected after 200 MIF iterations) as the log of the mean likelihoods of 50 replicate particle filters with 10000 particles each.
+We computed the log likelihood of 5000 final MIF parameter sets (i.e., parameter sets collected after 200 MIF iterations) as the log of the mean likelihoods of 50 replicate particle filters with 10,000 particles each.
 At this stage, we assume the parameter set with highest log likelihood is the MLE.
 
 We used a bootstrapping approach to estimate approximate 95\% confidence intervals for all parameters.
@@ -294,9 +301,9 @@ Last, we calculated summary statistics (mean, median, quantiles) from the distri
 
 ## Model assessment
 We used the MLE parameter sets to make one-week-ahead predictions and compared observed and expected case counts.
-To make one-week-ahead predictions, we used particle filtering with 50000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
+To make one-week-ahead predictions, we used particle filtering with 50,000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
-In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarking models: a negative binomial sampling model that assumes independent and identically distributed observations and a seasonal moving average model (SI text).
+In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarking models: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model (SI text).
 We fit the benchmarking models to the observed data and then compared models using Akaike's Information Criterion (AIC) to account for differences in the number of model parameters [@Akaike1973].
 
 ## Simulating re-emergence
@@ -306,9 +313,9 @@ We reduced the initial fraction of susceptible individuals by multplying the MLE
 These discounting factors represent situations of susceptible depletion after outbreaks of various size.
 After defining $S_{(t=0)}$ based on the discounting factor, we then set the initial number of recovered individuals to $R_{(t=0)} = N - S_{(t=0)}$ and set the initial number of exposed and infected individuals to zero.
 Population size, *N*, was set to the mean population size for each city over the 1995-2005 time period.
-We then simulated the model forward for forty years using mean birth rate for the entire country ($\mu = 0.05$) and setting the death rate equal to the birth rate ($\mu = \nu = 0.05$) to achieve a constant eqiulibrium total population size over the course of the simulation (total population size does vary, though, because of stochasticity in the model).
+We then simulated the model forward for forty years using mean birth rate for the entire country ($\mu = 0.05$) and setting the death rate equal to the birth rate ($\mu = \nu = 0.05$) to achieve a constant equilibrium total population size over the course of the simulation (total population size does vary, though, because of stochasticity in the model).
 Forty years was long enough for $R_E(t)$ to reach or exceed 1 for each city.
-Because the model is stochastic, we repeated these simulations 500 times for each city-susceptible discount combination.
+Because the model is stochastic, we repeated these simulations 500 times for each city--susceptible-discount combination.
 
 Next, we split each simulated time series into null and test intervals.
 First, averaging across all simulations for a city-susceptible discount combination, we found the simulation year in which $R_E(t)$ reaches or exceeds 1 and excluded years past that year (SI text).
@@ -337,7 +344,7 @@ We considered nine candidate early warning signals (Table S1).
 We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table S1.
 All EWS except the coefficient of variation are expected to increase as $R_E(t)$ approaches 1 from below [@ORegan2013; @ORegan2016; @Brett2018].
 Less is known about the behavior of EWS as $R_E(t)$ approaches 1 from above.
-But, theory does tell us that, for SIR models, the mean should decrease, autocorrelation should increase, and the variance should decrease [@ORegan2013].
+But, theory does tell us that, for SIR models, the mean should decrease, autocorrelation at a fixed lag can either increase or decrease, and the variance should decrease [@ORegan2013].
 
 For each simulation of re-emergence and elimination, we calculated EWS for the time series of expected cases in the null and test intervals.
 This yielded a distribution of EWS over the 500 null and test intervals.
@@ -559,6 +566,7 @@ plot_grid(scatters, rnaughts, scale = 0.9, labels = c("(a)", "(b)"),
 The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}*b*), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (figure \ref{scatters}*a*).
 The fitted models also had lower AIC values than two benchmarking models (SI table Sx).
 Stochastic simulations of the models displayed dynamics typical of each city (figure S1), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
+\comment{Figuer S1 seems to be an incorrect reference. Is this figure still in the works?}
 Our model for Agadez performs poorly relative to the other cities, but still better than non-mechanistic models (SI table Sx).
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the SI text (tables Sx-Sz).
 
@@ -707,7 +715,7 @@ print(final)
 The EWS did not perform as well when anticipating elimination, relative to emergence (figure \ref{elim-aucs}).
 Only three metrics are reliable: mean, autocovariance, and variance.
 All three metrics decreased as $R_E(t)$ approached the critical transition (figure S5).
-As in the case of anticipating elimination, AUC values decreased as the speed of the vaccine campaign increased (figure \ref{elim-aucs}*c*).
+As in the case of anticipating elimination, AUC values moved closer to 0.5 as the speed of the vaccine campaign increased (figure \ref{elim-aucs}*c*).
 Again, this is because of shorter null and test intervals.
 
 ```{r elimination, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to elimination. (*a*) A typical example of an elimination simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each speed of approach to herd immunity. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See Fig. Sx for visualization of how vaccination speed maps to number of weeks in the null and test intervals.  \\label{elim-aucs}"}
@@ -812,7 +820,7 @@ print(final)
 In all, the suite of EWS suggest that critical slowing down does occur in measles dynamics as a critical transition is approached.
 We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, figure S7).
 But, all EWS performed worse when predicting the approach to emergence over the moving window (figure S7).
-
+\comment{I don't think these elimination results say much about critical slowing down. How does a decrease in variance and the mean relate to declining stability of the equilibrium? If we want to demonstrate that CSD is detectable, I think the analysis must demonstrate the expected changes in the autocorrelation function of increased periodicity }
 
 # Discussion
 
@@ -826,6 +834,7 @@ However, an increase in the autocorrelation, coupled with coincident increases i
 \textcolor{blue}{JOHN: I remember you making the points in the previous two sentences in a meeting once. Can you provide citations?}
 
 The autocorrelation was not a strong indicator of the transition to elimination (fig. \ref{elim-aucs}*c*), suggesting weaker evidence for CSD.
+\comment{I disagree completely. I don't think the autocorrelation has been analyzed properly.}
 Other EWS (variane, autocovariance, and mean) did show altered behavior as the transition to elimination was approached, but these EWS were less sensitive under elimination scenarios compared to re-emergence scenarios.
 These results suggest that CSD might not preempt disease elimination or that CSD is harder to detect when a disease is fading out rather than emerging.
 We have reasons to expect CSD at the elimination threshold based on theoretical modeling studies [@ORegan2013; @ORegan2016; @Drake2017], but most theory has been developed for SIR models rather than the SEIR model we employed here.
