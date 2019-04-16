@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+docker run -d --rm -p 8787:8787 -e PASSWORD=fizzli -v $(pwd):/home/rstudio/work eamon/2019measles:v20190416
