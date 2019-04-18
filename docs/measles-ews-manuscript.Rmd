@@ -251,11 +251,11 @@ These probabilities reflect the processes of transmission, transition from the l
 We model the rate of transmission as,
 
 \begin{equation}
-\beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t,
+\beta_t = \beta \left(1 + \exp( \sum^6_{i=1} q_i \xi_{i_{t}} ) \right) \Gamma_t,
 \end{equation}
 
-\comment{$\beta$ is not the minimum value of $\beta_t$ in the above equation unless all $q_i$ are positive, and I believe at least for Niamey some are estimated to be negative}
-\noindent{} where $\beta$ is the baseline transmission rate over the season, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+\comment{I have corrected the above equation to match code/make-pomp-filtering-functions.R and code/make-pomp-simulation-functions.R}
+\noindent{} where $\beta$ is the minimum transmission rate over the season, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
 
