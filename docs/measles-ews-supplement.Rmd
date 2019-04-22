@@ -450,6 +450,11 @@ bandwidth (windows size) parameter unnecessarily complex? I have
 substituted what seems to me a clearer alternative version of the
 equations.}
 
+\comment{April, 22, 2019: I now see that large moving windows were
+used even in the two-part analysis. It seems to me that this is more
+complicated than necessary and I would support using a simpler, true
+two-window methods which I would expect to give similar results.}
+
 | EWS | Estimator | Theoretical Correlation with $R_E(t)$ in an emergence scenario |
 | -------------------- | ----------------------------------- | ------------------------ |
 | Mean | \bar{y} = $\sum_{i=1}^n \frac{y_i}{n}$ | Positive |
