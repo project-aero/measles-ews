@@ -352,7 +352,7 @@ This yielded a distribution of EWS over the 500 null and test intervals.
 We assessed the performance of each EWS using the Area Under the Curve (AUC) statistic.
 Specifically, we use AUC to calculate the amount of overlap between the distributions of each EWS from the null and test intervals.
 Values of AUC far from 0.5 (i.e., close to 0 or 1) indicate a greater degree of separation and thus better performance of a particular EWS in terms of classifying whether $R_E(t)$ is close to a critical transition.
-We calculated AUC as: $\text{AUC} = \left[r_{\text{test}} - \left(n_{\text{test}}+1\right)/2\right] / \left(n_{\text{test}}n_{\text{null}}\right)$ where $r_{\text{test}}$ is the sum of the ranks of test set EWS statistics in a combined set of null and test statistics (lower numbers have lower ranks), $n_{\text{test}}$ is the number of test of statistics and $n_{\text{null}}$ is the number of null statistics.
+We calculated AUC as: $\text{AUC} = \left[r_{\text{test}} - n_\text{test} \left(n_{\text{test}}+1\right)/2\right] / \left(n_{\text{test}}n_{\text{null}}\right)$ where $r_{\text{test}}$ is the sum of the ranks of test set EWS statistics in a combined set of null and test statistics (lower numbers have lower ranks), $n_{\text{test}}$ is the number of test of statistics and $n_{\text{null}}$ is the number of null statistics.
 The AUC of an EWS is the probability that a randomly chosen EWS value from the test set is higher than an EWS value randomly chosen from the null set [@Fawcett2006].
 Therefore, AUC should be high (closer to 1) when an EWS is expected to increase as a critical transition is approached, whereas AUC should be low (closer to 0) when an EWS is expected to decrease.
 
