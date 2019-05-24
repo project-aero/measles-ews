@@ -41,7 +41,7 @@ if(parallel::detectCores() <= length(speed_grid)){
 
 source("make-pomp-simulator-function.R")
 
-for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
+for(do_city in c("Niamey")){
   
   # Load fitted parameters and pomp model -----------------------------------
   
@@ -82,7 +82,7 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   outsims <- foreach(i = speed_grid,
                      .packages = c("pomp", "tidyverse", "dplyr"), 
-                     .combine = "rbind") %dopar%
+                     .combine = "rbind") %do%
   {
     years <- 100
     weeks <- years*52
@@ -120,10 +120,43 @@ for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
 
     outfile <- paste0("../simulations/elimination-simulations-grid-",
                       do_city, "-", i, ".RDS")
-    saveRDS(object = tmp_re_sims, file = outfile)
+    #saveRDS(object = tmp_re_sims, file = outfile)
   }
   
 }
+
+
+# Make maps of skips to S
+
+prevacc <- model_sims %>% filter(time < 50)
+postvac <- model_sims %>% filter(time >= 50)
+
+presplit_sim <- split(prevacc, prevacc$sim)
+postsplit_sim <- split(postvac, postvac$sim)
+
+
+simsum <- function(sm){
+  sdrop <- diff(sm$S) < 0
+  is_epi <- c(FALSE, sdrop | sm$I[-1] > 200)
+  epirle <- rle(is_epi)
+  epirle$values[!epirle$value] <- seq(1, sum(!epirle$values))
+  iepids <- inverse.rle(epirle)
+  miep <- max(iepids)
+  splt <- split(sm$S, iepids)
+  iep_lens <- sapply(splt[-miep][-1], length)
+  iep_s0 <- sapply(splt[-miep][-1], "[", 1)
+  data.frame(s0 = iep_s0, iep_weeks = iep_lens)
+}
+
+
+presimsums <- lapply(presplit_sim, simsum)  
+postsimsums <- lapply(postsplit_sim, simsum)
+
+premapdata <- do.call(rbind, presimsums)
+postmapdata <- do.call(rbind, postsimsums)
+
+plot(premapdata)
+points(postmapdata, col = 2)
 
 
 # Extra code --------
