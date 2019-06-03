@@ -131,23 +131,33 @@ for(do_city in c("Niamey")){
 prevacc <- model_sims %>% filter(time < 50)
 postvac <- model_sims %>% filter(time >= 50 & time < 80)
 
-foo <- model_sims %>% filter(sim == 2)
+foo <- presplit_sim %>% filter(sim == 2)
 
 presplit_sim <- split(prevacc, prevacc$sim)
 postsplit_sim <- split(postvac, postvac$sim)
 
-
 simsum <- function(sm){
-  sdrop <- diff(sm$S) < 0
-  is_epi <- c(FALSE, sdrop | sm$I[-1] > 200)
+  Slo <- loess(S~time, data = sm, span = 0.025)
+  sm$Ssmooth <- predict(Slo)
+  sdrop <- diff(sm$Ssmooth) < 0
+  is_epi <- c(FALSE, sdrop)
   epirle <- rle(is_epi)
-  epirle$values[!epirle$value] <- seq(1, sum(!epirle$values))
+  epirle$values[!epirle$value] <- 1 + seq(1, sum(!epirle$values))
   iepids <- inverse.rle(epirle)
+  
   miep <- max(iepids)
   splt <- split(sm$S, iepids)
-  iep_lens <- sapply(splt[-miep][-1], length)
-  iep_s0 <- sapply(splt[-miep][-1], "[", 1)
-  data.frame(s0 = iep_s0, iep_weeks = iep_lens)
+  splt_time <- split(sm$time, iepids)
+  trimsplt <- splt[-miep][-1]
+  trimsplt_time <- splt_time[-miep][-1]
+  
+  iep_lens <- sapply(trimsplt, length)
+  iep_s0 <- sapply(trimsplt, "[", 1)
+  iep_sfin <- mapply(function(x, y) x[y], x = trimsplt, y = iep_lens)
+  iep_tfin <- mapply(function(x, y) x[y], x = trimsplt_time, y = iep_lens)
+  epi_sizes <- c(iep_s0[-1] - iep_sfin[-length(iep_lens)], NA)
+  data.frame(s0 = iep_s0, sfin = iep_sfin, tfin = iep_tfin, 
+             iep_weeks = iep_lens, epi_sizes = epi_sizes)
 }
 
 
@@ -162,6 +172,13 @@ points(postmapdata, col = 2)
 
 premapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% density %>% plot
 postmapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% density %>% plot
+
+# Make map of epi size to S and Time of start
+
+
+
+
+
 
 # Extra code --------
 
