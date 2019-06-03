@@ -155,7 +155,7 @@ simsum <- function(sm){
   iep_s0 <- sapply(trimsplt, "[", 1)
   iep_sfin <- mapply(function(x, y) x[y], x = trimsplt, y = iep_lens)
   iep_tfin <- mapply(function(x, y) x[y], x = trimsplt_time, y = iep_lens)
-  epi_sizes <- c(iep_s0[-1] - iep_sfin[-length(iep_lens)], NA)
+  epi_sizes <- c(iep_sfin[-length(iep_lens)] - iep_s0[-1], NA)
   data.frame(s0 = iep_s0, sfin = iep_sfin, tfin = iep_tfin, 
              iep_weeks = iep_lens, epi_sizes = epi_sizes)
 }
@@ -167,16 +167,16 @@ postsimsums <- lapply(postsplit_sim, simsum)
 premapdata <- do.call(rbind, presimsums)
 postmapdata <- do.call(rbind, postsimsums)
 
-plot(premapdata)
-points(postmapdata, col = 2)
+plot(iep_weeks ~ s0, data = premapdata)
+points(iep_weeks ~s0, data = postmapdata, col = 2)
 
 premapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% density %>% plot
 postmapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% density %>% plot
 
 # Make map of epi size to S and Time of start
 
-
-
+plot(epi_sizes ~ sfin, data = premapdata)
+plot(epi_sizes ~ sfin, data = postmapdata)
 
 
 
