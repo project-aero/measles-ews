@@ -178,25 +178,7 @@ postmapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% densit
 plot(epi_sizes ~ sfin, data = premapdata)
 plot(epi_sizes ~ sfin, data = postmapdata)
 
-premapdata$season <- premapdata$tfin - trunc(premapdata$tfin)
-postmapdata$season <- postmapdata$tfin - trunc(postmapdata$tfin)
 
-plot(epi_sizes ~ season, data = postmapdata)
-plot(epi_sizes ~ season, data = premapdata)
-
-# Compare relationship of epi size and time of year by vaccination program
-
-premapdata$vacc <- 0
-postmapdata$vacc <- 1
-
-mapdata <- rbind(premapdata, postmapdata)
-
-
-mapgam <- mgcv::gam(epi_sizes ~ s(sfin) + s(season) + vacc, data = mapdata)
-anova(mapgam)
-
-# The increasing vaccination rates reduce epidemic sizes but this effect is 
-# much smaller than S0 and seasonality.
 
 # Extra code --------
 
