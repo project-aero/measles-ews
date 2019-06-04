@@ -137,7 +137,7 @@ presplit_sim <- split(prevacc, prevacc$sim)
 postsplit_sim <- split(postvac, postvac$sim)
 
 simsum <- function(sm){
-  Slo <- loess(S~time, data = sm, span = 52 / (nrow(sm) * 2))
+  Slo <- loess(S~time, data = sm, span = 0.025)
   sm$Ssmooth <- predict(Slo)
   sdrop <- diff(sm$Ssmooth) < 0
   is_epi <- c(FALSE, sdrop)
