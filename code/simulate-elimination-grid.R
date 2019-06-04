@@ -129,9 +129,7 @@ for(do_city in c("Niamey")){
 # Make maps of skips to S
 
 prevacc <- model_sims %>% filter(time < 50)
-postvac <- model_sims %>% filter(time >= 50 & time < 80)
-
-foo <- model_sims %>% filter(sim == 2)
+postvac <- model_sims %>% filter(time >= 50)
 
 presplit_sim <- split(prevacc, prevacc$sim)
 postsplit_sim <- split(postvac, postvac$sim)
@@ -160,8 +158,6 @@ postmapdata <- do.call(rbind, postsimsums)
 plot(premapdata)
 points(postmapdata, col = 2)
 
-premapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% density %>% plot
-postmapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% density %>% plot
 
 # Extra code --------
 
