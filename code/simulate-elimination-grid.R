@@ -128,10 +128,8 @@ for(do_city in c("Niamey")){
 
 # Make maps of skips to S
 
-prevacc <- model_sims %>% filter(time < 50)
+prevacc <- model_sims %>% filter(time >= 20 & time < 50)
 postvac <- model_sims %>% filter(time >= 50 & time < 80)
-
-foo <- presplit_sim %>% filter(sim == 2)
 
 presplit_sim <- split(prevacc, prevacc$sim)
 postsplit_sim <- split(postvac, postvac$sim)
@@ -142,7 +140,9 @@ simsum <- function(sm){
   sdrop <- diff(sm$Ssmooth) < 0
   is_epi <- c(FALSE, sdrop)
   epirle <- rle(is_epi)
-  epirle$values[!epirle$value] <- 1 + seq(1, sum(!epirle$values))
+  is_scrap <- epirle$lengths[!epirle$values] < 5
+  epirle$values[!epirle$values][is_scrap] <- TRUE 
+  epirle$values[!epirle$values] <- 1 + seq(1, sum(!epirle$values))
   iepids <- inverse.rle(epirle)
   
   miep <- max(iepids)
@@ -175,11 +175,11 @@ postmapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% densit
 
 # Make map of epi size to S and Time of start
 
-plot(epi_sizes ~ sfin, data = premapdata)
-plot(epi_sizes ~ sfin, data = postmapdata)
+plot(epi_sizes ~ sfin, data = premapdata, xlim = c(2e4, 8e4), ylim = c(0, 7e4))
+plot(epi_sizes ~ sfin, data = postmapdata, xlim = c(2e4, 8e4), ylim = c(0, 7e4))
 
-premapdata$season <- premapdata$tfin - trunc(premapdata$tfin)
-postmapdata$season <- postmapdata$tfin - trunc(postmapdata$tfin)
+premapdata$season <- premapdata$tfin + 0.5 - trunc(premapdata$tfin + 0.5)
+postmapdata$season <- postmapdata$tfin + 0.5 - trunc(postmapdata$tfin + 0.5)
 
 plot(epi_sizes ~ season, data = postmapdata)
 plot(epi_sizes ~ season, data = premapdata)
@@ -195,7 +195,7 @@ mapgam <- mgcv::gam(epi_sizes ~ s(sfin) + s(season) + vacc, data = mapdata)
 anova(mapgam)
 
 ### The increasing vaccination rates reduce epidemic sizes but this effect is 
-### much smaller than S0 and seasonality.
+### much smaller than S0 and seasonality. Leaving it out reduces the deviance negligably (<1% change).
 
 library(ggplot2)
 
