@@ -205,14 +205,6 @@ plot(g)
 
 ## The distribution of Sfin is shifted up a few thousand in the initial vaccinatino program.
 
-g <- ggplot(data = mapdata, aes(x = iep_weeks)) + geom_histogram() + facet_grid(vacc~.)
-g
-
-mapdata %>% group_by(vacc) %>% summarise(meaniep = mean(iep_weeks))
-
-## There are more 1-year ieps in the initial vaccination regime and the mean iep is acctualy slightly larger.
-
-
 
 
 # Extra code --------
