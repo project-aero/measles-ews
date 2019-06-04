@@ -191,21 +191,12 @@ postmapdata$vacc <- 1
 
 mapdata <- rbind(premapdata, postmapdata)
 
+
 mapgam <- mgcv::gam(epi_sizes ~ s(sfin) + s(season) + vacc, data = mapdata)
 anova(mapgam)
 
-### The increasing vaccination rates reduce epidemic sizes but this effect is 
-### much smaller than S0 and seasonality.
-
-library(ggplot2)
-
-g <- ggplot(data = mapdata, aes(x = season, y = sfin)) + geom_point() + 
-  geom_density2d() + facet_wrap(~vacc)
-plot(g)
-
-## The distribution of Sfin is shifted up a few thousand in the initial vaccinatino program.
-
-
+# The increasing vaccination rates reduce epidemic sizes but this effect is 
+# much smaller than S0 and seasonality.
 
 # Extra code --------
 
