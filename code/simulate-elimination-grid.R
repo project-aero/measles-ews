@@ -214,14 +214,14 @@ mapdata %>% group_by(vacc) %>% summarise(meaniep = mean(iep_weeks))
 
 simsplt <- split(model_sims, model_sims$sim)
 
-filtcalc <- function(df, filter_len = 20){
+filtcalc <- function(df, filter_len = 10){
   df$year <- round(df$time)
   splt <- split(df, df$year)
   yrd <- sapply(splt, function(x) sum(x$cases))
   yf <- stats::filter(yrd, filter = filter_len:1, sides = 1,
                       method = "convolution")
   yr <- as.integer(names(splt))
-  data.frame(year = yr[-1], tot_cases = yrd[-1], 
+  data.frame(year = yr[-1], tot_cases = yrd[-1], max_cases = yrd[1],
              filt = as.numeric(yf[-length(yf)]))
 }
 
@@ -230,16 +230,18 @@ simyr <- bind_rows(simproc, .id = "sim")
 
 simyr$camp <- 1
 simyr$camp[simyr$year < 50] <- 0
+simyrwin <- simyr %>% filter(year > 20 & year < 80)
 
 filtstat <- function(df){
-  m <- lm(log(tot_cases + 1)~filt + filt:camp, data = df)
-  coef(m)["filt:camp"]
+  m <- lm(I(tot_cases - max_cases) ~ 0 + filt + filt:camp, data = df)
+  m2 <- lm(tot_cases ~ camp, data = df)
+  c(coef(m)["filt:camp"], coef(m2)["camp"])
 }
 
-splityr <- split(simyr, simyr$sim)
+splityr <- split(simyrwin, simyrwin$sim)
 inhibs <- sapply(splityr, filtstat)
 
-mean(inhibs < 0)
+rowMeans(inhibs < 0)
 
 # Extra code --------
 
