@@ -212,8 +212,34 @@ mapdata %>% group_by(vacc) %>% summarise(meaniep = mean(iep_weeks))
 
 ## There are more 1-year ieps in the initial vaccination regime and the mean iep is acctualy slightly larger.
 
+simsplt <- split(model_sims, model_sims$sim)
 
+filtcalc <- function(df, filter_len = 20){
+  df$year <- round(df$time)
+  splt <- split(df, df$year)
+  yrd <- sapply(splt, function(x) sum(x$cases))
+  yf <- stats::filter(yrd, filter = filter_len:1, sides = 1,
+                      method = "convolution")
+  yr <- as.integer(names(splt))
+  data.frame(year = yr[-1], tot_cases = yrd[-1], 
+             filt = as.numeric(yf[-length(yf)]))
+}
 
+simproc <- lapply(simsplt, filtcalc)
+simyr <- bind_rows(simproc, .id = "sim")
+
+simyr$camp <- 1
+simyr$camp[simyr$year < 50] <- 0
+
+filtstat <- function(df){
+  m <- lm(log(tot_cases + 1)~filt + filt:camp, data = df)
+  coef(m)["filt:camp"]
+}
+
+splityr <- split(simyr, simyr$sim)
+inhibs <- sapply(splityr, filtstat)
+
+mean(inhibs < 0)
 
 # Extra code --------
 
