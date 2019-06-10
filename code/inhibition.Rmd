@@ -1,0 +1,121 @@
+---
+title: "Inhibition estimate to characterize vaccination regime"
+output: html_notebook
+---
+
+This notebook reproduces the simulations that are done for calculation of early warning signals in `simulate-elimination-grid.R`. The several plots and calculations are added to provide insight into why some early warning signals perform poorly and some new, better performing, indicators are calculated.
+
+```{r}
+
+# Define function for vaccination campaign --------------------------------
+
+rho_curve_ramp <- function(t, start = 52*4, speed = 0.0015){
+  ifelse(
+    t <= start,
+    rho <- 0.7,
+    rho <- min(0.7 + (t - start)*speed, 1)  # linear
+  )
+  return(rho)
+}
+
+
+# Set up grid of vaccination roll out speeds ------------------------------
+
+
+speed_grid <- seq(0.000015, 0.0001, length.out = 6)  # linear
+
+
+# Load libraries ----------------------------------------------------------
+
+library(tidyverse)
+library(pomp)
+library(foreach)
+library(doParallel)  # functions for parallel computing
+
+if(parallel::detectCores() <= length(speed_grid)){
+  registerDoParallel(cores = detectCores() - 1)
+} else{
+  registerDoParallel(cores = length(speed_grid))
+}
+
+source("make-pomp-simulator-function.R")
+cities <- c("Agadez", "Maradi", "Niamey", "Zinder")
+sim_list <- list()
+for(do_city in cities){
+  
+  # Load fitted parameters and pomp model -----------------------------------
+  
+  mle_file <- paste0("../results/initial-mif-lls-", do_city, ".csv")
+  mles <- read.csv(mle_file) %>% 
+    slice(2:n()) %>%  # ignore first row of storage NAs
+    filter(loglik == max(loglik, na.rm = TRUE)) %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se)
+  
+  pomp_file <- paste0("./measles-pomp-object-", do_city, ".RDS")
+  fitted_pomp <- readRDS(pomp_file)
+  N1 <- round(mean(fitted_pomp@covar[, "N"]))
+  
+  # Simulate from the new pomp object ---------------------------------------
+  
+  temp_res <- list()
+  outsims <- foreach(i = speed_grid,
+                     .packages = c("pomp", "tidyverse", "dplyr"), 
+                     .combine = "rbind") %do%
+  {
+    years <- 100
+    weeks <- years*52
+    days <- years*365
+    vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, 
+                               start = 50*365, speed = i)
+    
+
+    simulator_pomp <- make_pomp_simulator(
+      do_city, 
+      mles, 
+      years_to_sim = years, 
+      initial_population_size = N1, 
+      susc_discount = 1,
+      exposed_discount = 1,
+      infected_discount = 1,
+      vacc_coverage_ts = vacc_coverage_ts
+    )
+    
+    temp_res[[as.character(i)]] <- simulate(
+      simulator_pomp,
+      nsim = 5,
+      as.data.frame = TRUE,
+      include.data = FALSE,
+      seed = 172856) %>%
+      as_tibble() %>% 
+      mutate(R0_seas = RE_seas / S * N1) %>% 
+      mutate(wstop = min(time[vacc_discount <= 1 / max(R0_seas)])) %>% 
+      mutate(wstart = 2 * 50 - wstop) %>% 
+      filter(time >= wstart & time <= wstop)
+  }
+  
+  sim_list[[do_city]] <- bind_rows(temp_res, .id = "speed") %>% 
+    mutate(vacc_coverage = 1 - vacc_discount) %>%
+    select(-vacc_discount, -starts_with("xi"))
+}
+model_sims <- bind_rows(sim_list, .id = "city")
+
+```
+
+
+```{r}
+
+model_sims %>% group_by(city, speed) %>% filter(time < vacc_coverage > 0.5)
+
+foo <- bind_rows(model_sims[[1]][[1]], .id = "speed")
+
+rapply(model_sims, function(x) sum(x$sim == 1 & 1 - x$vacc_discount > 0.7), classes = "data.frame" )
+
+
+    window_size <- tmpsims %>%
+      filter(vacc_coverage > 0.7 & sim == 1) %>%
+      nrow() 
+
+
+```
+
+
