@@ -101,7 +101,7 @@ sims <- bind_rows(sims, .id = "city")
 ```
 
 
-```{r}
+```{r fit_S_model}
 
 sim_model <- function(df){
   stats::loess(S ~ time, span = 52 / (nrow(df) * 2), data = df)
@@ -121,4 +121,53 @@ preds %>% filter(sim == 2 & time < 10) %>%
 
 ```
 
+```{r calc_ieps}
 
+iepsum <- function(df){
+  sdrop <- diff(df$pred) < 0
+  is_epi <- c(FALSE, sdrop)
+  epirle <- rle(is_epi)
+  is_scrap <- epirle$lengths[!epirle$values] < 5
+  epirle$values[!epirle$values][is_scrap] <- TRUE 
+  epirle$values[!epirle$values] <- 1 + seq(1, sum(!epirle$values))
+  iepids <- inverse.rle(epirle)
+  
+  miep <- max(iepids)
+  splt <- split(df$S, iepids)
+  splt_time <- split(df$time, iepids)
+  trimsplt <- splt[-miep][-1]
+  trimsplt_time <- splt_time[-miep][-1]
+  
+  iep_lens <- sapply(trimsplt, length)
+  iep_s0 <- sapply(trimsplt, "[", 1)
+  iep_sfin <- mapply(function(x, y) x[y], x = trimsplt, y = iep_lens)
+  iep_t0 <- sapply(trimsplt_time, "[[", 1)
+  iep_tfin <- mapply(function(x, y) x[y], x = trimsplt_time, y = iep_lens)
+  epi_sizes <- c(iep_sfin[-length(iep_lens)] - iep_s0[-1], NA)
+  ts <- df %>% select(time, S, I, R0_seas) %>% mutate(iepids = iepids)
+  iepsum <- tibble(iepid = names(trimsplt), s0 = iep_s0, sfin = iep_sfin, 
+                   t0 = iep_t0, tfin = iep_tfin, iep_weeks = iep_lens, 
+                   epi_sizes = epi_sizes)
+  list(augts = ts, iepsum = iepsum)
+}
+
+iepsumout <- purrr::map(simfit$pred, iepsum)
+simfit2 <- add_column(simfit, iepts = purrr::map(iepsumout, "augts")) %>%
+  add_column(iepsum = purrr::map(iepsumout, "iepsum"))
+
+
+simfitred <- simfit2 %>% filter(sim == 2 & as.numeric(speed) < 5e-5)
+preds <- unnest(simfitred, pred) %>% filter(time < 10)
+simsum <- unnest(simfitred, iepsum) %>% filter(tfin < 10)
+
+ggplot(preds, aes(x = time, y = S)) + 
+  geom_point() + 
+  geom_line(aes(y = pred), col = "red") + 
+  geom_rect(data = simsum, 
+            aes(xmin = t0, xmax = tfin, group = iepid), 
+            inherit.aes = FALSE, ymin = -Inf, ymax = Inf,
+            fill = "grey", alpha = .2) + 
+  facet_grid(city ~ as.numeric(speed), scales = "free_y") + 
+  theme_classic()
+
+```
