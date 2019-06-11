@@ -40,7 +40,7 @@ if(parallel::detectCores() <= length(speed_grid)){
 
 source("make-pomp-simulator-function.R")
 cities <- c("Agadez", "Maradi", "Niamey", "Zinder")
-sim_list <- list()
+sims <- list()
 for(do_city in cities){
   
   # Load fitted parameters and pomp model -----------------------------------
@@ -67,7 +67,6 @@ for(do_city in cities){
     days <- years*365
     vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, 
                                start = 50*365, speed = i)
-    
 
     simulator_pomp <- make_pomp_simulator(
       do_city, 
@@ -89,33 +88,31 @@ for(do_city in cities){
       as_tibble() %>% 
       mutate(R0_seas = RE_seas / S * N1) %>% 
       mutate(wstop = min(time[vacc_discount <= 1 / max(R0_seas)])) %>% 
-      mutate(wstart = 2 * 50 - wstop) 
-      #%>% filter(time >= wstart & time <= wstop)
+      mutate(wstart = 2 * 50 - wstop) %>%
+      mutate(vacc_coverage = 1 - vacc_discount) %>%
+      select(-vacc_discount, -starts_with("xi")) %>% 
+      group_by(sim) %>% nest()
+
   }
-  
-  sim_list[[do_city]] <- bind_rows(temp_res, .id = "speed") %>% 
-    mutate(vacc_coverage = 1 - vacc_discount) %>%
-    select(-vacc_discount, -starts_with("xi"))
+  sims[[do_city]] <- bind_rows(temp_res, .id = "speed")
 }
-model_sims <- bind_rows(sim_list, .id = "city")
+sims <- bind_rows(sims, .id = "city")
 
 ```
 
 
 ```{r}
 
-by_sim <- model_sims %>% group_by(city, speed, sim) %>% nest()
-
 sim_model <- function(df){
-  loess(S ~ time, span = 52 / (nrow(df) * 2), data = df)
+  stats::loess(S ~ time, span = 52 / (nrow(df) * 2), data = df)
 }
 
-by_sim <- by_sim %>% mutate(model = purrr::map(data, sim_model))
+simfit <- sims %>% mutate(model = purrr::map(data, sim_model))
 
-by_sims <- by_sim %>% 
+simfit <- simfit %>% 
   mutate(pred = purrr::map2(data, model, modelr::add_predictions))
 
-preds <- unnest(by_sims, pred)
+preds <- unnest(simfit, pred)
 
 preds %>% filter(sim == 2 & time < 10) %>% 
   ggplot(aes(x = time, y = S)) + geom_point(size = 1, alpha = 0.5) + 
