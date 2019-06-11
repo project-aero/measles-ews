@@ -89,8 +89,8 @@ for(do_city in cities){
       as_tibble() %>% 
       mutate(R0_seas = RE_seas / S * N1) %>% 
       mutate(wstop = min(time[vacc_discount <= 1 / max(R0_seas)])) %>% 
-      mutate(wstart = 2 * 50 - wstop) %>% 
-      filter(time >= wstart & time <= wstop)
+      mutate(wstart = 2 * 50 - wstop) 
+      #%>% filter(time >= wstart & time <= wstop)
   }
   
   sim_list[[do_city]] <- bind_rows(temp_res, .id = "speed") %>% 
@@ -104,17 +104,23 @@ model_sims <- bind_rows(sim_list, .id = "city")
 
 ```{r}
 
-model_sims %>% group_by(city, speed) %>% filter(time < vacc_coverage > 0.5)
+by_sim <- model_sims %>% group_by(city, speed, sim) %>% nest()
 
-foo <- bind_rows(model_sims[[1]][[1]], .id = "speed")
+sim_model <- function(df){
+  loess(S ~ time, span = 52 / (nrow(df) * 2), data = df)
+}
 
-rapply(model_sims, function(x) sum(x$sim == 1 & 1 - x$vacc_discount > 0.7), classes = "data.frame" )
+by_sim <- by_sim %>% mutate(model = purrr::map(data, sim_model))
 
+by_sims <- by_sim %>% 
+  mutate(pred = purrr::map2(data, model, modelr::add_predictions))
 
-    window_size <- tmpsims %>%
-      filter(vacc_coverage > 0.7 & sim == 1) %>%
-      nrow() 
+preds <- unnest(by_sims, pred)
 
+preds %>% filter(sim == 2 & time < 10) %>% 
+  ggplot(aes(x = time, y = S)) + geom_point(size = 1, alpha = 0.5) + 
+  geom_line(aes(y = pred)) + 
+  facet_grid(city ~ as.numeric(speed), scales = "free_y")
 
 ```
 
