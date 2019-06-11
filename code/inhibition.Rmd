@@ -155,7 +155,6 @@ iepsumout <- purrr::map(simfit$pred, iepsum)
 simfit2 <- add_column(simfit, iepts = purrr::map(iepsumout, "augts")) %>%
   add_column(iepsum = purrr::map(iepsumout, "iepsum"))
 
-
 simfitred <- simfit2 %>% filter(sim == 2 & as.numeric(speed) < 5e-5)
 preds <- unnest(simfitred, pred) %>% filter(time < 10)
 simsum <- unnest(simfitred, iepsum) %>% filter(tfin < 10)
@@ -166,8 +165,23 @@ ggplot(preds, aes(x = time, y = S)) +
   geom_rect(data = simsum, 
             aes(xmin = t0, xmax = tfin, group = iepid), 
             inherit.aes = FALSE, ymin = -Inf, ymax = Inf,
-            fill = "grey", alpha = .2) + 
+            fill = "grey", alpha = 0.2) + 
   facet_grid(city ~ as.numeric(speed), scales = "free_y") + 
   theme_classic()
 
+ggplot(preds, aes(x = time, y = I)) + 
+  geom_point() + 
+  geom_rect(data = simsum, 
+            aes(xmin = t0, xmax = tfin, group = iepid), 
+            inherit.aes = FALSE, ymin = -Inf, ymax = Inf,
+            fill = "grey", alpha = 0.2) + 
+  facet_grid(city ~ as.numeric(speed), scales = "free_y") + 
+  theme_classic()
+
+
+
 ```
+
+We show 3 ten-year slice of the simulated time series of S and I for each city. The number on the top indicates the speed at which the vaccination rate begins increasing at year 50, but the vaccination rates are all 70% throughout the period shown. Thus the columns essential are illustrating separate realizations of simulations with the same parameters.
+
+The dynamics may be separated into 2 distinct phases: One in which the number of suscpeptibles builds slowly, and another in which epidemics occur and the number susceptible drops rapidly. The periods containing conspicuous epidemic spikes can be readily located simply by fitting a smoother to the S variable and finding the regions where S does not increase for more than 5 weeks. We use this method to split the time series into epidemics and inter-epidemic periods. Clearly the length of these interepidemic periods is highly variable for all parameters.
