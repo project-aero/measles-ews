@@ -1,6 +1,8 @@
 ---
 title: "Inhibition estimate to characterize vaccination regime"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 This notebook reproduces the simulations that are done for calculation of early warning signals in `simulate-elimination-grid.R`. The several plots and calculations are added to provide insight into why some early warning signals perform poorly and some new, better performing, indicators are calculated.
@@ -121,6 +123,8 @@ preds %>% filter(sim == 2 & time < 10) %>%
 
 ```
 
+The random number streams for each vaccination speed are identical due to the parallelization. So before year 50, each simulation is identical. This duplication is not a problem regarding the validity of our results because the results are based on the difference in indicators at different windows within a simulation. But if we ever need to improve the running time of our code removing these duplicated calculations would be an easy way to do it.
+
 ```{r calc_ieps}
 
 iepsum <- function(df){
@@ -155,9 +159,11 @@ iepsumout <- purrr::map(simfit$pred, iepsum)
 simfit2 <- add_column(simfit, iepts = purrr::map(iepsumout, "augts")) %>%
   add_column(iepsum = purrr::map(iepsumout, "iepsum"))
 
-simfitred <- simfit2 %>% filter(sim == 2 & as.numeric(speed) < 5e-5)
-preds <- unnest(simfitred, pred) %>% filter(time < 10)
-simsum <- unnest(simfitred, iepsum) %>% filter(tfin < 10)
+simfitred <- simfit2 %>% filter(sim <= 3 & speed == "1.5e-05")
+plotwinstop <- 50
+plotwinstart <- 40
+preds <- unnest(simfitred, pred) %>% filter(time < plotwinstop & time > plotwinstart)
+simsum <- unnest(simfitred, iepsum) %>% filter(tfin < plotwinstop & t0 > plotwinstart)
 
 ggplot(preds, aes(x = time, y = S)) + 
   geom_point() + 
@@ -166,7 +172,7 @@ ggplot(preds, aes(x = time, y = S)) +
             aes(xmin = t0, xmax = tfin, group = iepid), 
             inherit.aes = FALSE, ymin = -Inf, ymax = Inf,
             fill = "grey", alpha = 0.2) + 
-  facet_grid(city ~ as.numeric(speed), scales = "free_y") + 
+  facet_grid(city ~ sim, scales = "free_y") + 
   theme_classic()
 
 ggplot(preds, aes(x = time, y = I)) + 
@@ -175,13 +181,16 @@ ggplot(preds, aes(x = time, y = I)) +
             aes(xmin = t0, xmax = tfin, group = iepid), 
             inherit.aes = FALSE, ymin = -Inf, ymax = Inf,
             fill = "grey", alpha = 0.2) + 
-  facet_grid(city ~ as.numeric(speed), scales = "free_y") + 
+  facet_grid(city ~ sim, scales = "free_y") + 
   theme_classic()
 
 
 
 ```
 
-We show 3 ten-year slice of the simulated time series of S and I for each city. The number on the top indicates the speed at which the vaccination rate begins increasing at year 50, but the vaccination rates are all 70% throughout the period shown. Thus the columns essential are illustrating separate realizations of simulations with the same parameters.
+We show 3 ten-year windows of the simulated time series of S and I for each city. The number on the top of each column of panels indicates the simulation replicate identifier. 
+The dynamics may be separated into 2 distinct phases: One in which the number of susceptibles builds slowly, and another in which epidemics occur and the number susceptibles drops rapidly. The periods containing conspicuous epidemic spikes can be readily located simply by fitting a smoother to the S variable and finding the regions where S does not increase for more than 5 weeks. We use this method to split the time series into epidemics and inter-epidemic periods. The inter-epidemic periods that are fully within the plotted window are indicated by a light grey plot background. Clearly the length of these inter-epidemic periods is highly variable for the parameters for each city. Also, the rates at which suseptibles grow in the interepidemic periods varies widely among cities.
 
-The dynamics may be separated into 2 distinct phases: One in which the number of suscpeptibles builds slowly, and another in which epidemics occur and the number susceptible drops rapidly. The periods containing conspicuous epidemic spikes can be readily located simply by fitting a smoother to the S variable and finding the regions where S does not increase for more than 5 weeks. We use this method to split the time series into epidemics and inter-epidemic periods. Clearly the length of these interepidemic periods is highly variable for all parameters.
+
+
+
