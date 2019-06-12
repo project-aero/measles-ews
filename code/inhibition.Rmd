@@ -5,9 +5,9 @@ output:
     df_print: paged
 ---
 
-This notebook reproduces the simulations that are done for calculation of early warning signals in `simulate-elimination-grid.R`. The several plots and calculations are added to provide insight into why some early warning signals perform poorly and some new, better performing, indicators are calculated.
+This notebook reproduces the simulations that are done for calculation of early warning signals in `simulate-elimination-grid.R`. Then several plots and calculations are added to provide insight into why some early warning signals perform poorly and some new, better performing, indicators are calculated.
 
-```{r}
+```{r simulation_reproduction}
 
 # Define function for vaccination campaign --------------------------------
 
@@ -83,7 +83,7 @@ for(do_city in cities){
     
     temp_res[[as.character(i)]] <- simulate(
       simulator_pomp,
-      nsim = 5,
+      nsim = 10,
       as.data.frame = TRUE,
       include.data = FALSE,
       seed = 172856) %>%
@@ -151,7 +151,8 @@ iepsum <- function(df){
   ts <- df %>% select(time, S, I, R0_seas) %>% mutate(iepids = iepids)
   iepsum <- tibble(iepid = names(trimsplt), s0 = iep_s0, sfin = iep_sfin, 
                    t0 = iep_t0, tfin = iep_tfin, iep_weeks = iep_lens, 
-                   epi_sizes = epi_sizes)
+                   epi_sizes = epi_sizes, wstart = unique(df$wstart),
+                   wstop = unique(df$wstop))
   list(augts = ts, iepsum = iepsum)
 }
 
@@ -189,7 +190,70 @@ ggplot(preds, aes(x = time, y = I)) +
 ```
 
 We show 3 ten-year windows of the simulated time series of S and I for each city. The number on the top of each column of panels indicates the simulation replicate identifier. 
-The dynamics may be separated into 2 distinct phases: One in which the number of susceptibles builds slowly, and another in which epidemics occur and the number susceptibles drops rapidly. The periods containing conspicuous epidemic spikes can be readily located simply by fitting a smoother to the S variable and finding the regions where S does not increase for more than 5 weeks. We use this method to split the time series into epidemics and inter-epidemic periods. The inter-epidemic periods that are fully within the plotted window are indicated by a light grey plot background. Clearly the length of these inter-epidemic periods is highly variable for the parameters for each city. Also, the rates at which suseptibles grow in the interepidemic periods varies widely among cities.
+The dynamics may be separated into 2 distinct phases: One in which the number of susceptibles builds slowly and another in which epidemics occur and the number susceptibles drops rapidly. The periods containing conspicuous epidemic spikes can be readily located simply by fitting a smoother to the S variable and finding the regions where S does not increase for more than 5 weeks. We use this method to split the time series into epidemics and inter-epidemic periods. The inter-epidemic periods that are fully within the plotted window are indicated by a light grey plot background. Clearly the length of these inter-epidemic periods is highly variable for the parameters for each city. Also, the rates at which suseptibles recover relative to the size of a large epidemic varies widely among cities.
+
+To better understand the behavior of the model in the epidemic phases, we develop a statistical model to the amount by which S drops in these phases. 
+
+```{r epi_size_map}
+
+prog_id <- function(t1, t2) {
+  if (t1 > 50) {
+    1
+  } else if (t2 < 50) {
+    0
+  } else {
+    0.5
+  }
+}
+
+sizesum <- unnest(simfitred, iepsum) %>% 
+  filter(tfin < wstop & t0 > wstart) %>% 
+  filter(!is.na(epi_sizes) & epi_sizes > 0) %>%
+  mutate(vacc_program = purrr::map2_dbl(t0, tfin, prog_id)) %>% 
+  mutate(start_season = tfin - round(tfin)) %>% 
+  mutate(cityf = as.factor(city))
+  
+sizegam <- mgcv::gam(
+  epi_sizes ~ s(sfin, by = cityf) + s(start_season) + vacc_program + cityf, 
+  data = sizesum)
+mgcv::gam.check(sizegam)
+
+e <- residuals(sizegam); fv <- fitted(sizegam)
+lm(log(e^2) ~ log(fv))
+
+sizegam2 <- mgcv::gam(
+  (epi_sizes)^.25 ~ s(sfin, by = cityf) + s(start_season) + vacc_program + cityf, 
+  data = sizesum)
+
+mgcv::gam.check(sizegam2)
+
+sizegam3 <- mgcv::gam(
+  (epi_sizes) ~ s(sfin, by = cityf) + s(start_season) + vacc_program + cityf, 
+  data = sizesum, family = Gamma(link = log))
+
+mgcv::gam.check(sizegam3)
+
+sizegam4 <- mgcv::gam(
+  log(epi_sizes) ~ s(sfin, by = cityf) + s(start_season) + vacc_program + cityf, 
+  data = sizesum)
+
+mgcv::gam.check(sizegam4)
+m <- sizegam3
+```
+
+The variance-mean relationship rules out a standard gaussin model with identiy link function, so we try log transform, 4th-root transform, gamma log-link models. The gamma model seems to have the best diagnostic plots.
+
+
+```{r model_viewing}
+
+summary(m)
+plot(m, ylim = c(-10, 10))
+mgcv::vis.gam(m, plot.type = "contour", view = c("vacc_program", "sfin"))
+mgcv::vis.gam(m, plot.type = "contour", view = c("vacc_program", "start_season"))
+anova(m)
+```
+
+The vaccination increase leads to a slight reduction in epidemic size. This makes sense because with higher vaccination rates, there is less fuel added to the epidemics as they transpire. Nevertheless, this effect is small relative to that of the initial number of suscptibles and the time of the year at which the epidemic begins. The implication is that epidemic size will not be a particularly good indicator of the success of vaccination increases in reducing susceptible recruitment.
 
 
 
