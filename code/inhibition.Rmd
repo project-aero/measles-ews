@@ -206,7 +206,7 @@ prog_id <- function(t1, t2) {
   }
 }
 
-sizesum <- unnest(simfitred, iepsum) %>% 
+sizesum2 <- unnest(simfit2, iepsum) %>% 
   filter(tfin < wstop & t0 > wstart) %>% 
   filter(!is.na(epi_sizes) & epi_sizes > 0) %>%
   mutate(vacc_program = purrr::map2_dbl(t0, tfin, prog_id)) %>% 
@@ -215,7 +215,7 @@ sizesum <- unnest(simfitred, iepsum) %>%
   
 sizegam <- mgcv::gam(
   epi_sizes ~ s(sfin, by = cityf) + s(start_season) + vacc_program + cityf, 
-  data = sizesum)
+  data = sizesum2)
 mgcv::gam.check(sizegam)
 
 e <- residuals(sizegam); fv <- fitted(sizegam)
@@ -223,25 +223,25 @@ lm(log(e^2) ~ log(fv))
 
 sizegam2 <- mgcv::gam(
   (epi_sizes)^.25 ~ s(sfin, by = cityf) + s(start_season) + vacc_program + cityf, 
-  data = sizesum)
+  data = sizesum2)
 
 mgcv::gam.check(sizegam2)
 
 sizegam3 <- mgcv::gam(
   (epi_sizes) ~ s(sfin, by = cityf) + s(start_season) + vacc_program + cityf, 
-  data = sizesum, family = Gamma(link = log))
+  data = sizesum2, family = Gamma(link = log))
 
 mgcv::gam.check(sizegam3)
 
 sizegam4 <- mgcv::gam(
   log(epi_sizes) ~ s(sfin, by = cityf) + s(start_season) + vacc_program + cityf, 
-  data = sizesum)
+  data = sizesum2)
 
 mgcv::gam.check(sizegam4)
-m <- sizegam3
+m <- sizegam2
 ```
 
-The variance-mean relationship rules out a standard gaussin model with identiy link function, so we try log transform, 4th-root transform, gamma log-link models. The gamma model seems to have the best diagnostic plots.
+The variance-mean relationship rules out a standard gaussin model with identiy link function, so we try log transform, 4th-root transform, gamma log-link models. The fourth root transform seems to have the best diagnostic plots.
 
 
 ```{r model_viewing}
@@ -253,7 +253,47 @@ mgcv::vis.gam(m, plot.type = "contour", view = c("vacc_program", "start_season")
 anova(m)
 ```
 
-The vaccination increase leads to a slight reduction in epidemic size. This makes sense because with higher vaccination rates, there is less fuel added to the epidemics as they transpire. Nevertheless, this effect is small relative to that of the initial number of suscptibles and the time of the year at which the epidemic begins. The implication is that epidemic size will not be a particularly good indicator of the success of vaccination increases in reducing susceptible recruitment.
+The vaccination increase leads to a slight reduction in epidemic size. This makes sense because with higher vaccination rates, there is less fuel added to the epidemics as they transpire. Nevertheless, this effect is small relative to that of the initial number of susceptibles and the time of the year at which the epidemic begins. The implication is that epidemic size will not be a particularly good indicator of the success of vaccination increases in reducing susceptible recruitment.
+
+On second thought, vaccination rates increasing will likely affect the distribution of the initial number of susceptibles and initial season. With higher vaccination rates, the number of susceptibles can change more between seasons. So by this mechanism the change in the vaccination program could have a larger effect on the distribution of epidemic sizes. So we next plot the distribution of initial conditions for each vaccination regime.
+
+```{r density_sf_season}
+
+sizesum3 <- mutate(sizesum2, 
+                   start_vacc = ifelse(vacc_program < 1, 
+                                       "initial vacc", "increasing vacc."))
+
+plot_ic_dist <- function(cit, df){
+  g <- ggplot(data = filter(df, city == cit), 
+         aes(x = start_season, y = sfin)) + 
+    geom_point(alpha = 0.2) + 
+    geom_density2d() + 
+    facet_grid(as.numeric(speed) ~ start_vacc, scales = "free_y") + 
+    ggtitle(cit)
+  plot(g)
+  return(0)
+}
+
+plot_icd_dist <- function(cit, df){
+  dat <- df %>% filter(city == cit)
+  ggplot(data = dat, aes(x = sfin)) + 
+    geom_histogram() +
+    facet_grid(as.numeric(speed) ~ start_vacc, scales = "free_y") + 
+    ggtitle(cit)
+}
+
+
+lapply(cities, plot_ic_dist, df = sizesum3)
+
+#plot_ic_dist("Niamey", df = sizesum3)
+#plot_ic_dist("Zinder", df = sizesum3)
+
+
+```
+
+
+
+
 
 
 
