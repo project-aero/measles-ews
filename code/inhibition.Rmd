@@ -307,15 +307,25 @@ calc_auc <- function(predictions, is_null){
 }
 
 sizesum3 %>% group_by(speed, city) %>% 
-  summarise(iepAUC = calc_auc(predictions = epi_sizes, 
+  summarise(iepAUC = calc_auc(predictions = iep_weeks, 
                               is_null = start_vacc == "initial vacc"))
 
 ```
 
-The abundance of AUC statistics below 0.5 confirm and summarise that the interepidemic periods are indeed typically shorter in the "null" period in which the vaccination rate stays at 0.7.
+The frequent AUC statistics below 0.5 confirm and summarise that the interepidemic periods are indeed typically shorter in the "null" period in which the vaccination rate stays at 0.7.
 
+To further summarize the dynamics for a cyclic point of view, we next calculate the AUC of the epidemic size distributions.
 
+```{r epi_size_AUC}
 
+sizesum3 %>% group_by(speed, city) %>% 
+  summarise(epi_sizeAUC = calc_auc(predictions = epi_sizes, 
+                              is_null = start_vacc == "initial vacc"))
 
+```
 
+The AUC statistics below 0.5 tell us that epidemic sizes are typically smaller following the increase in vaccination rate. This reduction is consistent with two prior observations. First, we have noted that the initial number of susceptibles is typically larger in the steady-vaccination rate period. Second, our GAM model told us that, even when the initial number of susceptibles is the same, epidemics tend to be smaller in the increasing-vaccination period. 
 
+The reduction in epidemic size must explain why the interepidemic periods become smaller as vaccination rates increase. In our model, the threshold value of $S$ above which an epidemic is possible never changes. With higher vaccination rates, it must take the susceptible population (typically) longer to grow to any given level starting from the same point. Evidently, the number of susceptibles is sufficiently higher at the beginning of the interepidemic periods to overcompensate for this lower growth rate. Thus the susceptible population typically reaches its critical value in a shorter time.
+
+Evidently, the interepidemic period is not a robust indicator of the slowing down in susceptible growth, which is the manifestation of critical slowing down for this model. However, the simple mean seems like a promising alternative.
