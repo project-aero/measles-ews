@@ -241,7 +241,7 @@ mgcv::gam.check(sizegam4)
 m <- sizegam2
 ```
 
-The variance-mean relationship rules out a standard gaussin model with identiy link function, so we try log transform, 4th-root transform, gamma log-link models. The fourth root transform seems to have the best diagnostic plots.
+The variance-mean relationship rules out a standard gaussian model with identiy link function, so we try log transform, 4th-root transform, gamma log-link models. The fourth root transform seems to have the best diagnostic plots.
 
 
 ```{r model_viewing}
@@ -261,7 +261,7 @@ On second thought, vaccination rates increasing will likely affect the distribut
 
 sizesum3 <- mutate(sizesum2, 
                    start_vacc = ifelse(vacc_program < 1, 
-                                       "initial vacc", "increasing vacc."))
+                                       "initial vacc", "increasing vacc"))
 
 plot_ic_dist <- function(cit, df){
   g <- ggplot(data = filter(df, city == cit), 
@@ -274,23 +274,27 @@ plot_ic_dist <- function(cit, df){
   return(0)
 }
 
-plot_icd_dist <- function(cit, df){
-  dat <- df %>% filter(city == cit)
-  ggplot(data = dat, aes(x = sfin)) + 
-    geom_histogram() +
-    facet_grid(as.numeric(speed) ~ start_vacc, scales = "free_y") + 
-    ggtitle(cit)
-}
-
-
 lapply(cities, plot_ic_dist, df = sizesum3)
-
-#plot_ic_dist("Niamey", df = sizesum3)
-#plot_ic_dist("Zinder", df = sizesum3)
-
 
 ```
 
+To a greater or lesser extent, the distribution of the number of suceptibles at the beginning of the epidemic is higher in the initial vaccination period. It seems likely that this is due to the larger amount by which the suscpetibles can grow in the off-season. Incidentally, it seems that there are very few complete interepidemic periods in the increasing-vaccination Agadez time series for faster vaccination rate ramp-ups.  Those parameters for that city may be outside of the region in which the epidemic classification scheme makes sense.
+
+```{r plot_inter-epi-dist}
+
+plot_iep_dist <- function(df){
+  g <- ggplot(data = df, aes(x = iep_weeks, color = start_vacc)) + 
+    geom_density() + 
+    facet_grid(as.numeric(speed) ~ city, scales = "free_y")
+  plot(g)
+  return(0)
+}
+
+plot_iep_dist(sizesum3)
+
+```
+
+The distribution of interepidemic periods is quite similar whether or not the interepidemic period includes the time when vaccination started to increase. When they are noticeably different, it seems that the probability mass is shifted downward in the case period in which the vaccination rate is increasing. Thus contrary to the expectation that we have in linear models, the interepidemic period is smaller closer to the elimination threshold, when the model equilibrium is more stable. This seems to be a consequence of epidemics starting with fewer susceptibles and thus undershooting the equilibrium value of S less. 
 
 
 
