@@ -294,8 +294,25 @@ plot_iep_dist(sizesum3)
 
 ```
 
-The distribution of interepidemic periods is quite similar whether or not the interepidemic period includes the time when vaccination started to increase. When they are noticeably different, it seems that the probability mass is shifted downward in the case period in which the vaccination rate is increasing. Thus contrary to the expectation that we have in linear models, the interepidemic period is smaller closer to the elimination threshold, when the model equilibrium is more stable. This seems to be a consequence of epidemics starting with fewer susceptibles and thus undershooting the equilibrium value of S less. 
+The distribution of interepidemic periods is quite similar whether or not the interepidemic period includes the time when vaccination started to increase. When they are noticeably different, it seems that the probability mass is shifted downward in the period in which the vaccination rate is increasing. Thus contrary to the expectation that we have in linear models, the interepidemic period is smaller closer to the elimination threshold (i.e., when the model equilibrium is more stable). This seems to be a consequence of epidemics starting with fewer susceptibles and thus undershooting the equilibrium value of S less. 
 
+```{r interepi_AUC}
+
+calc_auc <- function(predictions, is_null){
+    r <- rank(predictions)
+    r1 <- sum(r[!is_null])
+    n1 <- sum(!is_null)
+    n2 <- sum(is_null)
+    (r1 - n1 * (n1 + 1) / 2) / (n1 * n2)
+}
+
+sizesum3 %>% group_by(speed, city) %>% 
+  summarise(iepAUC = calc_auc(predictions = epi_sizes, 
+                              is_null = start_vacc == "initial vacc"))
+
+```
+
+The abundance of AUC statistics below 0.5 confirm and summarise that the interepidemic periods are indeed typically shorter in the "null" period in which the vaccination rate stays at 0.7.
 
 
 
