@@ -391,7 +391,7 @@ Now the inhibition effect of recent epidemic history is modeled as the extent to
 
 ```{r calc-inhibition-indicators}
 
-filtcalc <- function(df, filter_len = 1){
+filtcalc <- function(df, filter_len = 3){
   fltr <- rev(seq_len(filter_len))
   filtfun <- function(x) {
     stats::filter(x, filter = fltr, 
@@ -411,9 +411,12 @@ inhib_model <- function(int, df){
            error = function(e) browser())
 }
 
-tsf <- unnest(sims, data) %>% filter(time > wstart & time < wstop) %>%
-  group_by(city, speedf, sim) %>% nest() %>% 
-  mutate(filtdf = purrr::map(data, filtcalc))
+sims %>% select(city, speedf) %>% expand(city, speedf, flen = 1:3) -> desmat
+
+tsf <- sims %>% inner_join(desmat) %>% unnest(data) %>% 
+  filter(time > wstart & time < wstop) %>%
+  group_by(city, speedf, sim, flen) %>% nest() %>% 
+  mutate(filtdf = purrr::map2(data, flen, filtcalc))
 
 tsf2 <- intercepts %>% select(city, base_size) %>% 
   inner_join(tsf, by = "city") %>%
@@ -423,10 +426,10 @@ tsf2 <- intercepts %>% select(city, base_size) %>%
 
 tsf2 %>% unnest(inhibests) %>% 
   filter(term == "filt:vacc_progincreasing") %>%
-  group_by(city, speedf) %>% 
+  group_by(city, speedf, flen) %>% 
   summarise(inhib_AUC = mean(estimate > 0)) -> tsf3
 
-tsf3 %>% ggbar(inhib_AUC)
+tsf3 %>% ggbar(inhib_AUC) + geom_hline(yintercept = 0.8) + facet_grid(flen~.)
 
 ```
 
