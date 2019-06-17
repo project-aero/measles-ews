@@ -125,7 +125,7 @@ preds %>% filter(sim == 2 & time < 10) %>%
 
 ```
 
-The random number streams for each vaccination speed are identical due to the parallelization. So before year 50, each simulation is identical. This duplication is not a problem regarding the validity of our results because the results are based on the difference in indicators at different windows within a simulation. But if we ever need to improve the running time of our code removing these duplicated calculations would be an easy way to do it.
+The random number streams for each vaccination speed are identical due to the parallelization. So before year 50, each simulation for a city with the same replicate identifier is identical. This duplication is not a problem regarding the validity of our results because the results are based on the difference in indicators at different windows within a given city and speed combination. But if we ever need to improve the running time of our code removing these duplicated calculations would be an easy way to do it.
 
 ```{r calc_ieps}
 
@@ -186,8 +186,6 @@ ggplot(preds, aes(x = time, y = I)) +
             fill = "grey", alpha = 0.2) + 
   facet_grid(city ~ sim, scales = "free_y") + 
   theme_classic()
-
-
 
 ```
 
@@ -300,6 +298,11 @@ The distribution of interepidemic periods is quite similar whether or not the in
 
 ```{r interepi_AUC}
 
+ggbar <- function(df, depvar){
+  df %>% ggplot(aes(fill = speedf, y = !!enquo(depvar), x = city)) + 
+  geom_bar(stat = "identity", position = "dodge")
+}
+
 calc_auc <- function(predictions, is_null){
     r <- rank(predictions)
     r1 <- sum(r[!is_null])
@@ -311,9 +314,7 @@ calc_auc <- function(predictions, is_null){
 sizesum3 %>% group_by(speedf, city) %>% 
   summarise(iepAUC = calc_auc(predictions = iep_weeks, 
                               is_null = start_vacc == "initial vacc")) %>%
-  ggplot(aes(fill = speedf, y = iepAUC, x = city)) + 
-  geom_bar(stat = "identity", position = "dodge")
-
+  ggbar(iepAUC)
 
 ```
 
@@ -326,8 +327,8 @@ To further summarize the dynamics for a cyclic point of view, we next calculate 
 sizesum3 %>% group_by(speedf, city) %>% 
   summarise(epi_sizeAUC = calc_auc(predictions = epi_sizes, 
                               is_null = start_vacc == "initial vacc")) %>% 
-  ggplot(aes(fill = speedf, y = epi_sizeAUC, x = city)) + 
-  geom_bar(stat = "identity", position = "dodge")
+  ggbar(epi_sizeAUC)
+
 ```
 
 The AUC statistics below 0.5 tell us that epidemic sizes are typically smaller following the increase in vaccination rate. This reduction is consistent with two prior observations. First, we have noted that the initial number of susceptibles is typically larger in the steady-vaccination rate period. Second, our GAM model told us that, even when the initial number of susceptibles is the same, epidemics tend to be smaller in the increasing-vaccination period. 
@@ -355,9 +356,7 @@ tst %>% ggplot(aes(x = mean_cases, color = vacc_prog)) +
 tst %>% group_by(city, speedf) %>% 
   summarise(mean_casesAUC = calc_auc(predictions = mean_cases,
                                      is_null = vacc_prog == "steady")) %>% 
-  ggplot(aes(fill = speedf, y = mean_casesAUC, x = city)) + 
-  geom_bar(stat = "identity", position = "dodge")
-
+  ggbar(depvar = mean_casesAUC)
 
 ```
 
@@ -388,13 +387,51 @@ intercepts <- N %>% inner_join(R0, by = "city") %>%
 
 ```
 
-Now the inhibition effect of recent epidemic history is modeled as the extent to which epidemic size decreases with the filter of past epidemics. We assume a linear relationship for simplicity. We estimate this effect in both the steady and increasing vaccination time periods by a least squares model fit. If the epidemic size decreases more with the filter in the increasing vaccination period, then the conclusion is that the past epidemics are inhibiting current epidemics more in this period. Consqequently, the AUC of this indicator can be calculated as the fraction of times in our data in which we concluce that inhibition is stronger in the increasing-vaccination period.
+Now the inhibition effect of recent epidemic history is modeled as the extent to which epidemic size decreases with the filter of past epidemics. We assume a linear relationship for simplicity. We estimate this effect in both the steady and increasing vaccination time periods by a least-squares model fit. If the epidemic size decreases more with the filter in the increasing vaccination period, then the conclusion is that past epidemics are inhibiting current epidemics more in this period. Consequently, the AUC of this indicator can be calculated as the fraction of times in our data in which we conclude that inhibition is stronger in the increasing-vaccination period.
 
 ```{r calc-inhibition-indicators}
 
+filtcalc <- function(df, filter_len = 1){
+  fltr <- rev(seq_len(filter_len))
+  filtfun <- function(x) {
+    stats::filter(x, filter = fltr, 
+                  sides = 1, method = "convolution") %>%
+      as.numeric()
+  }
+  df %>% mutate(year = round(time)) %>%
+    group_by(year) %>% summarise(cases_yr = sum(cases)) %>% 
+    mutate(filt = filtfun(cases_yr),
+           cases_yrnxt = lead(cases_yr, 1),
+           vacc_prog = ifelse(year < 50, "steady", "increasing")) %>% 
+    select(year, cases_yrnxt, filt, vacc_prog)
+}
 
+inhib_model <- function(int, df){
+  tryCatch(lm(I(int - cases_yrnxt) ~ 0 + filt + filt:vacc_prog, data = df),
+           error = function(e) browser())
+}
+
+tsf <- unnest(sims, data) %>% filter(time > wstart & time < wstop) %>%
+  group_by(city, speedf, sim) %>% nest() %>% 
+  mutate(filtdf = purrr::map(data, filtcalc))
+
+tsf2 <- intercepts %>% select(city, base_size) %>% 
+  inner_join(tsf, by = "city") %>%
+  ungroup() %>%
+  mutate(inhibm = purrr::map2(base_size, filtdf, inhib_model),
+         inhibests = purrr::map(inhibm, broom::tidy))
+
+tsf2 %>% unnest(inhibests) %>% 
+  filter(term == "filt:vacc_progincreasing") %>%
+  group_by(city, speedf) %>% 
+  summarise(inhib_AUC = mean(estimate > 0)) -> tsf3
+
+tsf3 %>% ggbar(inhib_AUC)
 
 ```
+
+# Summary of explanations for relative performance of all indicators of disease elimination
+
 
 
 # References
