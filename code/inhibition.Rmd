@@ -367,7 +367,9 @@ One problem with the mean is that it does not account for the recent epidemic hi
 
 Our proposed indicator amounts to fitting a simple regression model. We first aggregate the data to yearly case counts and then calculate a convolutional filter of the yearly time series. Weights for the filter decrease linearly to zero in time since the current year so that more recent epidemics have the most weight. We additionally calculate a rough estimate of the expected epidemic size for the hypothetical scenario that no recent epidemics occurred.    
 
-If vaccination is reducing the susceptible recruitment rate, we expect recent epidemics to more strongly inhibit current epidemics. We can quantify this inhibitory effect as the mean number of cases conditional on the recent epidemic history. To obtain an estimate of the baseline epidemic size that could occur in the absence of any recent epidemics, we employ the following procedure. First, we average the top ten highest $R_0$ values for each city. We average 10 weekly values because we have observed that epidemics tend to occur on a timescale of about a month in the high-transmission season. Second, we convert these to numbers to effective reproduction numbers by multiplying by 0.3, the equilibrium fraction of susceptibles under the initial, steady vaccination program. Finally, we compute the expected epidemics sizes as $N (1 -\exp(- R_E) )$, where $N$ is the equilibrium population size for each city in our simulations. This formula uses the standard final size approximation for an epidemic in a closed population when the reproduction number is much greater than one [@diekmann2013, p. 15].
+If vaccination is reducing the susceptible recruitment rate, we expect recent epidemics to more strongly inhibit current epidemics. We can quantify this inhibitory effect as the mean number of cases conditional on the recent epidemic history. A first step towards quantification of this inhibitory effect is to determine the size of a complete uninhibited epidemic, which can serve as reference point.
+
+To obtain this reference point, we employ the following procedure. First, we average the top ten highest $R_0$ values for each city. We average 10 weekly values because we have observed that epidemics tend to occur on a timescale of about a month in the high-transmission season. Second, we convert these to numbers to effective reproduction numbers by multiplying by 0.3, the equilibrium fraction of susceptibles under the initial, steady vaccination program. Finally, we compute the expected epidemics sizes as $N (1 -\exp(- R_E) )$, where $N$ is the equilibrium population size for each city in our simulations. This formula uses the standard final size approximation for an epidemic in a closed population when the reproduction number is much greater than one [@diekmann2013, p. 15].
 
 ```{r calc-baseline-epi-size}
 
@@ -386,7 +388,7 @@ intercepts <- N %>% inner_join(R0, by = "city") %>%
 
 ```
 
-
+Now the inhibition effect of recent epidemic history is modeled as the extent to which epidemic size decreases with the filter of past epidemics. We assume a linear relationship for simplicity. We estimate this effect in both the steady and increasing vaccination time periods by a least squares model fit. If the epidemic size decreases more with the filter in the increasing vaccination period, then the conclusion is that the past epidemics are inhibiting current epidemics more in this period. Consqequently, the AUC of this indicator can be calculated as the fraction of times in our data in which we concluce that inhibition is stronger in the increasing-vaccination period.
 
 ```{r calc-inhibition-indicators}
 
@@ -395,6 +397,6 @@ intercepts <- N %>% inner_join(R0, by = "city") %>%
 ```
 
 
-#References
+# References
 
 
