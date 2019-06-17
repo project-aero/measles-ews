@@ -360,3 +360,38 @@ tst %>% group_by(city, speedf) %>%
 
 ```
 
+The AUCs for Maradi and Niamey are below 0.1 at all speeds, which tells us that the mean number of cases is a good indicator for these cities. However, performance is less than stellar for Agadez and Zinder. Thus there is reason to seek a better performing indicator. 
+
+One problem with the mean is that it does not account for the recent epidemic history of the cities. Each epidemic inhibits later epidemics by depleting the susceptible pool. We have already seen that epidemics tend to be larger in the steady vaccination period. This can work to counterbalance the apparent decrease in the mean number of cases in the increasing vaccination period. For example, if a large epidemic occurs just before the beginning of the first window but not the second window, then we might observe fewer cases on average in the first window even though susceptible recruitment rates are higher. An indicator that is more resistant to this problem is one that calculates the mean number of cases conditional on recent epidemic history. Next, we examine the performance of a simple version of such an indicator. 
+
+Our proposed indicator amounts to fitting a simple regression model. We first aggregate the data to yearly case counts and then calculate a convolutional filter of the yearly time series. Weights for the filter decrease linearly to zero in time since the current year so that more recent epidemics have the most weight. We additionally calculate a rough estimate of the expected epidemic size for the hypothetical scenario that no recent epidemics occurred.    
+
+If vaccination is reducing the susceptible recruitment rate, we expect recent epidemics to more strongly inhibit current epidemics. We can quantify this inhibitory effect as the mean number of cases conditional on the recent epidemic history. To do this, we average the top ten highest $R_0$ values for each city. We convert these to numbers to effective reproduction numbers by multiplying by 0.3, the equilibrium fraction of susceptibles under the initial, steady vaccination program. We then computer the expected epidemics sizes as $N (1 -\exp(- R_E) )$, making use of the standard final size approximation for an epidemic in a closed population when the reproduction number is much greater than one.
+
+```{r calc-baseline-epi-size}
+
+N <- unnest(sims, data) %>% group_by(city) %>% slice(30) %>% 
+  mutate(N1 = R0_seas * S / (RE_seas), N2 = S + E + I + R) %>% 
+  select(city, N1, N2) 
+
+R0 <- unnest(sims, data) %>% filter(speedf == spdl[1]) %>% 
+  filter(sim == 1) %>% filter(trunc(time) == 50) %>% 
+  group_by(city) %>% top_n(n = 10, wt = R0_seas) %>% 
+  select(city, time, R0_seas) %>% 
+  summarize(mean_high_R0 = mean(R0_seas))
+
+intercepts <- N %>% inner_join(R0, by = "city") %>% 
+  mutate(base_size = N1 * (1 - exp(-mean_high_R0 * 0.7)))
+
+```
+
+
+
+```{r calc-inhibition-indicators}
+
+
+
+```
+
+
+
