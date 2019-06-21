@@ -353,10 +353,11 @@ tst %>% ggplot(aes(x = mean_cases, color = vacc_prog)) +
 
 ```{r calc-mean-cases-auc}
 
-tst %>% group_by(city, speedf) %>% 
+mean_AUC_df <- tst %>% group_by(city, speedf) %>% 
   summarise(mean_casesAUC = calc_auc(predictions = mean_cases,
-                                     is_null = vacc_prog == "steady")) %>% 
-  ggbar(depvar = mean_casesAUC)
+                                     is_null = vacc_prog == "steady"))
+
+mean_AUC_df %>% ggbar(depvar = mean_casesAUC)
 
 ```
 
@@ -433,6 +434,34 @@ tsf2 %>% unnest(inhibests) %>%
 tsf3 %>% ggbar(inhib_AUC) + geom_hline(yintercept = 0.8) + facet_grid(flen~.)
 
 ```
+
+It seems that the filter length has a relatively minor effect. Also, the AUCs are very similar to those of the mean.
+
+```{r compare-mean-inhib}
+
+tsf3 %>% filter(flen == 4) %>% 
+  inner_join(mean_AUC_df, by = c("city", "speedf")) %>%
+  mutate(meanAUCcomp = 1 - mean_casesAUC) %>% 
+  select(city, speedf, inhib_AUC, meanAUCcomp) %>% 
+  gather("inhib_AUC", "meanAUCcomp", key = "indicator", value = "AUC") %>%
+  ggplot(aes(x = speedf, y = AUC, color = indicator)) + 
+  geom_point() + facet_grid(city ~ .) + ggtitle("Filter length == 4")
+
+tsf3 %>% filter(flen == 20) %>% 
+  inner_join(mean_AUC_df, by = c("city", "speedf")) %>%
+  mutate(meanAUCcomp = 1 - mean_casesAUC) %>% 
+  select(city, speedf, inhib_AUC, meanAUCcomp) %>% 
+  gather("inhib_AUC", "meanAUCcomp", key = "indicator", value = "AUC") %>%
+  ggplot(aes(x = speedf, y = AUC, color = indicator)) + 
+  geom_point() + facet_grid(city ~ .) + ggtitle("Filter length == 20")
+
+
+
+```
+
+The inhibition indicator achieves slightly better performance than the mean for Zinder and Agadez at high speeds. 
+
+
 
 # Summary of explanations for relative performance of all indicators of disease elimination
 
