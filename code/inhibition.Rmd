@@ -342,7 +342,7 @@ The interepidemic period is not a robust indicator of the slowing down in suscep
 tst <- unnest(sims, data) %>% filter(time > wstart & time < wstop) %>%
   mutate(vacc_prog = ifelse(time < 50, "steady", "increasing")) %>%
   group_by(city, speedf, sim, vacc_prog) %>%
-  summarize(mean_cases = mean(cases))
+  summarize(mean_cases = mean(cases), mean_reports = mean(reports))
 
 tst %>% ggplot(aes(x = mean_cases, color = vacc_prog)) + 
     geom_density() + 
@@ -355,7 +355,9 @@ tst %>% ggplot(aes(x = mean_cases, color = vacc_prog)) +
 
 mean_AUC_df <- tst %>% group_by(city, speedf) %>% 
   summarise(mean_casesAUC = calc_auc(predictions = mean_cases,
-                                     is_null = vacc_prog == "steady"))
+                                     is_null = vacc_prog == "steady"),
+            mean_reportsAUC = calc_auc(predictions = mean_reports,
+                                       is_null = vacc_prog == "steady"))
 
 mean_AUC_df %>% ggbar(depvar = mean_casesAUC)
 
@@ -400,17 +402,24 @@ filtcalc <- function(df, filter_len = 3){
       as.numeric()
   }
   df %>% mutate(year = round(time)) %>%
-    group_by(year) %>% summarise(cases_yr = sum(cases)) %>% 
-    mutate(filt = filtfun(cases_yr),
+    group_by(year) %>% 
+    summarise(cases_yr = sum(cases), reports_yr = sum(reports)) %>% 
+    mutate(cases_filt = filtfun(cases_yr),
            cases_yrnxt = lead(cases_yr, 1),
+           reports_filt = filtfun(reports_yr),
+           reports_yrnxt = lead(reports_yr, 1), 
            vacc_prog = ifelse(year < 50, "steady", "increasing")) %>% 
-    select(year, cases_yrnxt, filt, vacc_prog) %>%
+    select(year, cases_yrnxt, cases_filt, reports_yrnxt, 
+           reports_filt, vacc_prog) %>%
     filter(year > df$wstart[1] & year < df$wstop[1])
 }
 
-inhib_model <- function(int, df){
-  tryCatch(lm(I(int - cases_yrnxt) ~ 0 + filt + filt:vacc_prog, data = df),
-           error = function(e) browser())
+inhib_model_cases <- function(int, df){
+  lm(I(int - cases_yrnxt) ~ 0 + cases_filt + cases_filt:vacc_prog, data = df)
+}
+
+inhib_model_reports <- function(int, df){
+  lm(I(int - reports_yrnxt) ~ 0 + reports_filt + reports_filt:vacc_prog, data = df)
 }
 
 desmat <- sims %>% select(city, speedf) %>% 
@@ -423,15 +432,17 @@ tsf <- sims %>% inner_join(desmat) %>% unnest(data) %>%
 tsf2 <- intercepts %>% select(city, base_size) %>% 
   inner_join(tsf, by = "city") %>%
   ungroup() %>%
-  mutate(inhibm = purrr::map2(base_size, filtdf, inhib_model),
-         inhibests = purrr::map(inhibm, broom::tidy))
+  mutate(inhibm_cases = purrr::map2(base_size, filtdf, inhib_model_cases),
+         inhibm_reports = purrr::map2(base_size, filtdf, inhib_model_reports),
+         inhibests_cases = purrr::map(inhibm_cases, broom::tidy),
+         inhibests_reports = purrr::map(inhibm_reports, broom::tidy))
 
-tsf2 %>% unnest(inhibests) %>% 
-  filter(term == "filt:vacc_progincreasing") %>%
+tsf2 %>% unnest(inhibests_cases) %>% 
+  filter(term == "cases_filt:vacc_progincreasing") %>%
   group_by(city, speedf, flen) %>% 
-  summarise(inhib_AUC = mean(estimate > 0)) -> tsf3
+  summarise(inhib_cases_AUC = mean(estimate > 0)) -> tsf3
 
-tsf3 %>% ggbar(inhib_AUC) + geom_hline(yintercept = 0.8) + facet_grid(flen~.)
+tsf3 %>% ggbar(inhib_cases_AUC) + geom_hline(yintercept = 0.8) + facet_grid(flen~.)
 
 ```
 
@@ -442,16 +453,16 @@ It seems that the filter length has a relatively minor effect. Also, the AUCs ar
 tsf3 %>% filter(flen == 4) %>% 
   inner_join(mean_AUC_df, by = c("city", "speedf")) %>%
   mutate(meanAUCcomp = 1 - mean_casesAUC) %>% 
-  select(city, speedf, inhib_AUC, meanAUCcomp) %>% 
-  gather("inhib_AUC", "meanAUCcomp", key = "indicator", value = "AUC") %>%
+  select(city, speedf, inhib_cases_AUC, meanAUCcomp) %>% 
+  gather("inhib_cases_AUC", "meanAUCcomp", key = "indicator", value = "AUC") %>%
   ggplot(aes(x = speedf, y = AUC, color = indicator)) + 
   geom_point() + facet_grid(city ~ .) + ggtitle("Filter length == 4")
 
 tsf3 %>% filter(flen == 20) %>% 
   inner_join(mean_AUC_df, by = c("city", "speedf")) %>%
   mutate(meanAUCcomp = 1 - mean_casesAUC) %>% 
-  select(city, speedf, inhib_AUC, meanAUCcomp) %>% 
-  gather("inhib_AUC", "meanAUCcomp", key = "indicator", value = "AUC") %>%
+  select(city, speedf, inhib_cases_AUC, meanAUCcomp) %>% 
+  gather("inhib_cases_AUC", "meanAUCcomp", key = "indicator", value = "AUC") %>%
   ggplot(aes(x = speedf, y = AUC, color = indicator)) + 
   geom_point() + facet_grid(city ~ .) + ggtitle("Filter length == 20")
 
@@ -461,7 +472,49 @@ tsf3 %>% filter(flen == 20) %>%
 
 The inhibition indicator achieves slightly better performance than the mean for Zinder and Agadez at high speeds. 
 
+# Effect of reporting probability
 
+```{r}
+
+tsf2 %>% unnest(inhibests_reports) %>% 
+  filter(term == "reports_filt:vacc_progincreasing") %>%
+  group_by(city, speedf, flen) %>% 
+  summarise(inhib_reports_AUC = mean(estimate > 0)) -> tsf3r
+
+tsf3r %>% ggbar(inhib_reports_AUC) + geom_hline(yintercept = 0.8) + 
+  facet_grid(flen~.)
+
+```
+
+```{r}
+
+mean_AUC_df %>% ggbar(depvar = mean_reportsAUC)
+
+```
+
+```{r}
+
+tsf3r %>% filter(flen == 20) %>% 
+  inner_join(mean_AUC_df, by = c("city", "speedf")) %>%
+  mutate(meanreportsAUCcomp = 1 - mean_reportsAUC) %>% 
+  select(city, speedf, inhib_reports_AUC, meanreportsAUCcomp) %>% 
+  gather("inhib_reports_AUC", "meanreportsAUCcomp", 
+         key = "indicator", value = "AUC") %>%
+  ggplot(aes(x = speedf, y = AUC, color = indicator)) + 
+  geom_point() + facet_grid(city ~ .) + ggtitle("Filter length == 20")
+
+tsf3r %>% filter(flen == 4) %>% 
+  inner_join(mean_AUC_df, by = c("city", "speedf")) %>%
+  mutate(meanreportsAUCcomp = 1 - mean_reportsAUC) %>% 
+  select(city, speedf, inhib_reports_AUC, meanreportsAUCcomp) %>% 
+  gather("inhib_reports_AUC", "meanreportsAUCcomp", 
+         key = "indicator", value = "AUC") %>%
+  ggplot(aes(x = speedf, y = AUC, color = indicator)) + 
+  geom_point() + facet_grid(city ~ .) + ggtitle("Filter length == 4")
+
+```
+
+The results with reporting error are similar to the case of zero error. AUCs are slightly lower for both indicators.
 
 # Summary of explanations for relative performance of all indicators of disease elimination
 
