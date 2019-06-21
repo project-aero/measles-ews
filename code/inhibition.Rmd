@@ -84,7 +84,7 @@ for(do_city in cities){
     
     temp_res[[as.character(i)]] <- simulate(
       simulator_pomp,
-      nsim = 10,
+      nsim = 100,
       as.data.frame = TRUE,
       include.data = FALSE,
       seed = 172856) %>%
@@ -255,7 +255,7 @@ anova(m)
 
 The vaccination increase leads to a slight reduction in epidemic size. This makes sense because with higher vaccination rates, there is less fuel added to the epidemics as they transpire. Nevertheless, this effect is small relative to that of the initial number of susceptibles and the time of the year at which the epidemic begins. The implication is that epidemic size will not be a particularly good indicator of the success of vaccination increases in reducing susceptible recruitment.
 
-On second thought, vaccination rates increasing will likely affect the distribution of the initial number of susceptibles and initial season. With higher vaccination rates, the number of susceptibles can change more between seasons. So by this mechanism the change in the vaccination program could have a larger effect on the distribution of epidemic sizes. So we next plot the distribution of initial conditions for each vaccination regime.
+On second thought, vaccination rates increasing will likely affect the distribution of the initial number of susceptibles and initial season. With higher suscptible recruitment rates, the number of susceptibles can change more between seasons. So by this mechanism the change in the vaccination program could have a larger effect on the distribution of epidemic sizes. So we next plot the distribution of initial conditions for each vaccination regime.
 
 ```{r density_sf_season}
 
@@ -294,7 +294,7 @@ plot_iep_dist(sizesum3)
 
 ```
 
-The distribution of interepidemic periods is quite similar whether or not the interepidemic period includes the time when vaccination started to increase. When they are noticeably different, it seems that the probability mass is shifted downward in the period in which the vaccination rate is increasing. Thus contrary to the expectation that we have in linear models, the interepidemic period is smaller closer to the elimination threshold (i.e., when the model equilibrium is more stable). This seems to be a consequence of epidemics starting with fewer susceptibles and thus undershooting the equilibrium value of S less. 
+The distribution of interepidemic periods is quite similar whether or not the interepidemic period includes the time when vaccination started to increase. When they are noticeably different, it seems that the probability mass is shifted downward in the period in which the vaccination rate is increasing. Thus contrary to the expectation that we have in linear models, the interepidemic period is smaller closer to the elimination threshold (i.e., when the model equilibrium is less stable). This seems to be a consequence of epidemics starting with fewer susceptibles and thus undershooting the equilibrium value of S less. 
 
 ```{r interepi_AUC}
 
@@ -335,7 +335,7 @@ The AUC statistics below 0.5 tell us that epidemic sizes are typically smaller f
 
 The reduction in epidemic size must explain why the interepidemic periods become smaller as vaccination rates increase. In our model, the threshold value of $S$ above which an epidemic is possible never changes. With higher vaccination rates, it must take the susceptible population (typically) longer to grow to any given level starting from the same point. Evidently, the number of susceptibles is sufficiently higher at the beginning of the interepidemic periods to overcompensate for this lower growth rate. Thus the susceptible population typically reaches its critical value in a shorter time.
 
-Evidently, the interepidemic period is not a robust indicator of the slowing down in susceptible growth, which is how critical slowing down occurs in this model. However, the simple mean number of cases seems like a suitable alternative indicator that is observable. In the long run, lower rates of susceptible birth should lead to lower average rates of infection.
+The interepidemic period is not a robust indicator of the slowing down in susceptible growth, which is how critical slowing down occurs in this model. However, the simple mean number of cases seems like a suitable alternative indicator that is observable. In the long run, lower rates of susceptible birth should lead to lower average rates of infection.
 
 ```{r calc-mean-cases-indicator}
 
@@ -403,7 +403,8 @@ filtcalc <- function(df, filter_len = 3){
     mutate(filt = filtfun(cases_yr),
            cases_yrnxt = lead(cases_yr, 1),
            vacc_prog = ifelse(year < 50, "steady", "increasing")) %>% 
-    select(year, cases_yrnxt, filt, vacc_prog)
+    select(year, cases_yrnxt, filt, vacc_prog) %>%
+    filter(year > df$wstart[1] & year < df$wstop[1])
 }
 
 inhib_model <- function(int, df){
@@ -411,10 +412,10 @@ inhib_model <- function(int, df){
            error = function(e) browser())
 }
 
-sims %>% select(city, speedf) %>% expand(city, speedf, flen = 1:3) -> desmat
+desmat <- sims %>% select(city, speedf) %>% 
+  expand(city, speedf, flen = c(4, 8, 12, 16, 20))
 
 tsf <- sims %>% inner_join(desmat) %>% unnest(data) %>% 
-  filter(time > wstart & time < wstop) %>%
   group_by(city, speedf, sim, flen) %>% nest() %>% 
   mutate(filtdf = purrr::map2(data, flen, filtcalc))
 
