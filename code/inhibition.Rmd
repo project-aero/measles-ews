@@ -380,24 +380,28 @@ tst <- unnest(sims, data) %>% filter(speedf == "1.5e-05" & city == "Niamey") %>%
   mutate(vacc_prog = ifelse(time < 50, "steady", "increasing")) %>%
  mutate(Ihat = cases / (7 / 5)) %>% 
   mutate(beta = R0_seas / denom) %>% 
-  mutate(Shat_raw = (lead(cases, 2) - eta * dt) * Nequil / (Ihat * dt * beta),
+  mutate(betabar = mean(beta)) %>%
+  mutate(Shat_raw = (lead(cases, 2) - eta * dt) * Nequil / (Ihat * dt * betabar),
          Shat_filt = ifelse(I > 500, Shat_raw, NA))
 
-foo <- filter(tst, sim == 1)
-
+foo <- filter(tst, sim == 5)
+foo <- tst %>% group_by(sim) %>% nest()
 
 #dygraph(foo[, c("time", "S", "I", "beta", "Shat_filt")]) %>% dyRangeSelector()
+assign_epiid <- function(df){
+  naenc <- rle(is.finite(df$Shat_filt))
+  naenc$values[naenc$values] <- seq_len(sum(naenc$value))
+  naenc$values[naenc$values == 0] <- -1 * seq_len(sum(naenc$value == 0))
+  df$epiid <- inverse.rle(naenc)
+  df
+}
 
-naenc <- rle(is.finite(foo$Shat_filt))
+foo2 <- foo %>% mutate(data = purrr::map(data, assign_epiid)) %>% unnest()
 
-naenc$values[naenc$values] <- seq_len(sum(naenc$value))
-naenc$values[naenc$values == 0] <- -1 * seq_len(sum(naenc$value == 0))
-foo$epiid <- inverse.rle(naenc)
-
-foo3 <- foo %>% filter(epiid < 0) %>% group_by(epiid, vacc_prog) %>% filter(is.finite(Shat_raw)) %>% summarise(covst = cov(time, Shat_raw),
+foo3 <- foo2 %>% filter(epiid < 0) %>% group_by(sim, epiid, vacc_prog) %>% filter(is.finite(Shat_raw)) %>% summarise(covst = cov(time, Shat_raw),
                                                                                                     vart = var(time))
 
-foo4 <- foo3 %>% group_by(vacc_prog) %>% 
+foo4 <- foo3 %>% group_by(vacc_prog, sim) %>% 
   summarise(tot_cov = sum(covst, na.rm = TRUE),
             tot_var = sum(vart, na.rm = TRUE),
             slope = tot_cov / tot_var)
