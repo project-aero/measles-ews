@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-docker build -t eamon/2019measles:v20190416 .
+docker build -t eamon/2019measles:v20190716 .
