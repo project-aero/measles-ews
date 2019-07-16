@@ -385,7 +385,8 @@ tst <- unnest(sims, data) %>% filter(speedf == "1.5e-05" & city == "Niamey") %>%
 
 foo <- filter(tst, sim == 1)
 
-dygraph(foo[, c("time", "S", "I", "beta", "Shat_filt")]) %>% dyRangeSelector()
+
+#dygraph(foo[, c("time", "S", "I", "beta", "Shat_filt")]) %>% dyRangeSelector()
 
 naenc <- rle(is.finite(foo$Shat_filt))
 
@@ -393,7 +394,21 @@ naenc$values[naenc$values] <- seq_len(sum(naenc$value))
 naenc$values[naenc$values == 0] <- -1 * seq_len(sum(naenc$value == 0))
 foo$epiid <- inverse.rle(naenc)
 
-spl <- split(foo, foo$epiid)
+foo3 <- foo %>% filter(epiid < 0) %>% group_by(epiid, vacc_prog) %>% filter(is.finite(Shat_raw)) %>% summarise(covst = cov(time, Shat_raw),
+                                                                                                    vart = var(time))
+
+foo4 <- foo3 %>% group_by(vacc_prog) %>% 
+  summarise(tot_cov = sum(covst, na.rm = TRUE),
+            tot_var = sum(vart, na.rm = TRUE),
+            slope = tot_cov / tot_var)
+
+foob <- foo %>% left_join(foo4, by = "vacc_prog")
+
+
+foo5 <- foob %>% filter(epiid < 0) %>% group_by(epiid, vacc_prog) %>% 
+  mutate(lm = (time - mean(time)) * slope + median(Shat_raw))
+
+foo5 %>% ggplot(aes(x = time, y = S)) + geom_point() + geom_line(aes(y = lm))
 
 tmpf <- function(x){
   if(nrow(x) == 1 ){
@@ -414,13 +429,6 @@ spll <- lapply(spl, tmpf)
 foo2 <- bind_rows(spll) %>% arrange(time)
 
 dygraph(foo2[, c("time", "S", "I", "beta", "Shat_filt", "Shat_mod")]) %>% dyRangeSelector()
-
-
-
-#%>%
-#  group_by(city, speedf, sim, vacc_prog) %>%
-#  summarize(mean_cases = mean(cases), mean_reports = mean(reports))
-
 
 ```
 
