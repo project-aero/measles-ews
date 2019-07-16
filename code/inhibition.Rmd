@@ -84,7 +84,7 @@ for(do_city in cities){
     
     temp_res[[as.character(i)]] <- simulate(
       simulator_pomp,
-      nsim = 100,
+      nsim = 5,
       as.data.frame = TRUE,
       include.data = FALSE,
       seed = 172856) %>%
@@ -192,7 +192,7 @@ ggplot(preds, aes(x = time, y = I)) +
 We show 3 ten-year windows of the simulated time series of S and I for each city. The number on the top of each column of panels indicates the simulation replicate identifier. 
 The dynamics may be separated into 2 distinct phases: One in which the number of susceptibles builds slowly and another in which epidemics occur and the number susceptibles drops rapidly. The periods containing conspicuous epidemic spikes can be readily located simply by fitting a smoother to the S variable and finding the regions where S does not increase for more than 5 weeks. We use this method to split the time series into epidemics and inter-epidemic periods. The inter-epidemic periods that are fully within the plotted window are indicated by a light grey plot background. Clearly the length of these inter-epidemic periods is highly variable for the parameters for each city. Also, the rates at which suseptibles recover relative to the size of a large epidemic varies widely among cities.
 
-To better understand the behavior of the model in the epidemic phases, we develop a statistical model to the amount by which S drops in these phases. 
+To better understand the behavior of the model in the epidemic phases, we develop a statistical model of the amount by which S drops in these phases. 
 
 ```{r epi_size_map}
 
@@ -365,6 +365,37 @@ mean_AUC_df %>% ggbar(depvar = mean_casesAUC)
 
 The AUCs for Maradi and Niamey are below 0.1 at all speeds, which tells us that the mean number of cases is a good indicator for these cities. However, performance is less than stellar for Agadez and Zinder. Thus there is reason to seek a better performing indicator. 
 
+Reactivity?
+
+```{r}
+
+dt <- 1 / 52
+eta <- 365 / 8
+Nequil <- 764202
+nu <- 0.05
+gamma <- 365 / 5
+denom <- eta / ((eta + nu) * (gamma + nu))
+
+tst <- unnest(sims, data) %>% filter(speedf == "1.5e-05" & city == "Maradi") %>% 
+  mutate(vacc_prog = ifelse(time < 50, "steady", "increasing")) %>%
+ mutate(Ihat = cases / (7 / 5)) %>% 
+  mutate(beta = R0_seas / denom) %>% 
+  mutate(Shat_raw = (lead(cases, 2) - eta * dt) * Nequil / (Ihat * dt * beta),
+         Shat_filt = ifelse(I > 50, Shat_raw, NA))
+
+foo <- filter(tst, sim == 1)
+
+
+#%>%
+#  group_by(city, speedf, sim, vacc_prog) %>%
+#  summarize(mean_cases = mean(cases), mean_reports = mean(reports))
+
+
+```
+
+
+
+
 One problem with the mean is that it does not account for the recent epidemic history of the cities. Each epidemic inhibits later epidemics by depleting the susceptible pool. We have already seen that epidemics tend to be larger in the steady vaccination period. This can work to counterbalance the apparent decrease in the mean number of cases in the increasing vaccination period. For example, if a large epidemic occurs just before the beginning of the first window but not the second window, then we might observe fewer cases on average in the first window even though susceptible recruitment rates are higher. An indicator that is more resistant to this problem is one that calculates the mean number of cases conditional on recent epidemic history. Next, we examine the performance of a simple version of such an indicator. 
 
 Our proposed indicator amounts to fitting a simple regression model. We first aggregate the data to yearly case counts and then calculate a convolutional filter of the yearly time series. Weights for the filter decrease linearly to zero in time since the current year so that more recent epidemics have the most weight. We additionally calculate a rough estimate of the expected epidemic size for the hypothetical scenario that no recent epidemics occurred.    
@@ -415,7 +446,7 @@ filtcalc <- function(df, filter_len = 3){
 }
 
 inhib_model_cases <- function(int, df){
-  lm(I(int - cases_yrnxt) ~ 0 + cases_filt + cases_filt:vacc_prog, data = df)
+  lm(log(int - cases_yrnxt) ~ 0 + cases_filt + cases_filt:vacc_prog, data = df)
 }
 
 inhib_model_reports <- function(int, df){
