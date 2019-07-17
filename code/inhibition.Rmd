@@ -84,7 +84,7 @@ for(do_city in cities){
     
     temp_res[[as.character(i)]] <- simulate(
       simulator_pomp,
-      nsim = 5,
+      nsim = 20,
       as.data.frame = TRUE,
       include.data = FALSE,
       seed = 172856) %>%
@@ -354,18 +354,19 @@ tst %>% ggplot(aes(x = mean_cases, color = vacc_prog)) +
 ```{r calc-mean-cases-auc}
 
 mean_AUC_df <- tst %>% group_by(city, speedf) %>% 
-  summarise(mean_casesAUC = calc_auc(predictions = mean_cases,
+  summarise(mean_casesAUC = calc_auc(predictions = -mean_cases,
                                      is_null = vacc_prog == "steady"),
-            mean_reportsAUC = calc_auc(predictions = mean_reports,
+            mean_reportsAUC = calc_auc(predictions = -mean_reports,
                                        is_null = vacc_prog == "steady"))
 
 mean_AUC_df %>% ggbar(depvar = mean_casesAUC)
+mean_AUC_df %>% ggbar(depvar = mean_reportsAUC)
 
 ```
 
 The AUCs for Maradi and Niamey are below 0.1 at all speeds, which tells us that the mean number of cases is a good indicator for these cities. However, performance is less than stellar for Agadez and Zinder. Thus there is reason to seek a better performing indicator. 
 
-Reactivity?
+Can we estimate the relative rate of susceptible increase directly?
 
 ```{r}
 
@@ -376,16 +377,18 @@ nu <- 0.05
 gamma <- 365 / 5
 denom <- eta / ((eta + nu) * (gamma + nu))
 
-tst <- unnest(sims, data) %>% filter(speedf == "1.5e-05" & city == "Niamey") %>% 
+tst <- unnest(sims, data)  %>%
+  filter(time > wstart & time < wstop) %>%
+  group_by(speedf, city) %>%
   mutate(vacc_prog = ifelse(time < 50, "steady", "increasing")) %>%
- mutate(Ihat = cases / (7 / 5)) %>% 
+  mutate(Ihat = cases / (7 / 5)) %>% 
   mutate(beta = R0_seas / denom) %>% 
   mutate(betabar = mean(beta)) %>%
   mutate(Shat_raw = (lead(cases, 2) - eta * dt) * Nequil / (Ihat * dt * betabar),
          Shat_filt = ifelse(I > 500, Shat_raw, NA))
 
 foo <- filter(tst, sim == 5)
-foo <- tst %>% group_by(sim) %>% nest()
+foo <- tst %>% group_by(sim, speedf, city) %>% nest()
 
 #dygraph(foo[, c("time", "S", "I", "beta", "Shat_filt")]) %>% dyRangeSelector()
 assign_epiid <- function(df){
@@ -398,15 +401,57 @@ assign_epiid <- function(df){
 
 foo2 <- foo %>% mutate(data = purrr::map(data, assign_epiid)) %>% unnest()
 
-foo3 <- foo2 %>% filter(epiid < 0) %>% group_by(sim, epiid, vacc_prog) %>% filter(is.finite(Shat_raw)) %>% summarise(covst = cov(time, Shat_raw),
-                                                                                                    vart = var(time))
+foo3 <- foo2 %>% filter(epiid < 0) %>% group_by(sim, epiid, vacc_prog, speedf, city) %>% 
+  filter(is.finite(Shat_raw)) %>% summarise(covst = cov(time, Shat_raw),                                                                                                                       vart = var(time))
 
-foo4 <- foo3 %>% group_by(vacc_prog, sim) %>% 
+foo4 <- foo3 %>% group_by(city, vacc_prog, sim, speedf) %>% 
   summarise(tot_cov = sum(covst, na.rm = TRUE),
             tot_var = sum(vart, na.rm = TRUE),
             slope = tot_cov / tot_var)
 
-foob <- foo %>% left_join(foo4, by = "vacc_prog")
+slope_AUC_df <- foo4 %>% group_by(city, speedf) %>% 
+  summarise(slope_AUC = calc_auc(predictions = -slope,
+                                is_null = vacc_prog == "steady"))
+
+slope_AUC_df %>% ggbar(depvar = slope_AUC)
+
+```
+
+```{r plot-est-slopes}
+
+foob <- foo2 %>% left_join(foo4, by = c("vacc_prog", "sim", "speedf", "city"))
+
+foo5 <- foob %>% filter(epiid < 0) %>% group_by(epiid, vacc_prog, sim, speedf, city) %>% 
+  mutate(lm = (time - mean(time)) * slope + median(Shat_raw))
+
+foo5 %>% filter(city == "Niamey" & speedf == "4.9e-05" & sim == 5) %>% 
+  ggplot(aes(x = time, y = S)) + geom_point() + geom_line(aes(y = lm))
+
+
+ggsfit <- function(df = foo5, the_city = "Niamey", the_speedf = "4.9e-05", 
+                   the_sim = 5){
+  lab <- paste0(the_city, ", ramp up: ", the_speedf, " rep:", the_sim)
+  df %>% filter(city == the_city & speedf == the_speedf & sim == the_sim) %>% 
+    ggplot(aes(x = time, y = S)) + geom_point() + geom_line(aes(y = lm)) +
+    ggtitle(label = lab)
+  }
+
+ggsfit(the_speedf = "1.5e-05")
+ggsfit(the_speedf = "3.2e-05")
+ggsfit(the_speedf = "4.9e-05")
+ggsfit(the_speedf = "6.6e-05")
+ggsfit(the_speedf = "8.3e-05")
+ggsfit(the_speedf = "1e-04")
+
+```
+
+
+```{r eval = FALSE}
+
+
+
+
+ foob <- foo2 %>% left_join(foo4, by = "vacc_prog")
 
 
 foo5 <- foob %>% filter(epiid < 0) %>% group_by(epiid, vacc_prog) %>% 
@@ -434,8 +479,8 @@ foo2 <- bind_rows(spll) %>% arrange(time)
 
 dygraph(foo2[, c("time", "S", "I", "beta", "Shat_filt", "Shat_mod")]) %>% dyRangeSelector()
 
-```
 
+```
 
 
 
