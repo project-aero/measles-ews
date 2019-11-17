@@ -7,6 +7,8 @@ author:
     email: atredenn@gmail.com
   - name: "Eamon B. O'Dea"
     affiliation: UGA,CEID
+  - name: "Andrew Park"
+    affiliation: UGA,CEID
   - name: "TBD"
     affiliation: other
   - name: "Pejman Rohani"
@@ -903,7 +905,7 @@ But there will always be a role for expert judgement.
 Early warning signals, though powerful and now accompanied with empirical support, will likely be just one part of a decision-support toolkit.
 
 # Acknowledgements
-We thank Tobias Brett and Andrew Park for comments on the modeling approach, and Paige Miller and Éric Marty for helpful comments on early versions of this work.
+We thank Tobias Brett comments on the modeling approach and Paige Miller and Éric Marty for helpful comments on early versions of this work.
 
 # Funding
 This research was funded by the National Institute of General Medical Sciences of the National Institutes of Health (Award Number U01GM110744).
@@ -911,7 +913,7 @@ The funders had no role in study design, data collection and analysis, decision 
 This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
 
 # Authors' contributions
-ATT concieved of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
+ATT concieved of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; AP participated in the design of the study, guided the model analysis, and critically revised the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
 All authors gave final approval for publication and agree to be held accountable for the work performed therein.
 
 # References
