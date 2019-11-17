@@ -19,6 +19,7 @@ header-includes:
   - \floatplacement{figure}{H}
   - \usepackage{amsmath,amssymb}
   - \usepackage{mathptmx}
+  - \newcommand{\comment}[1]{\ignorespaces}
 ---
 
 ```{r libraries, include=FALSE, message=FALSE, warning=FALSE}
@@ -86,7 +87,7 @@ demog_clean <- demog_clean %>%
 ggplot() +
   geom_line(data = filter(demog_clean, time <= 2005), aes(x = time, y = population_size/1000, color = region)) +
   geom_point(data = pop_data, aes(x = time, y = population/1000, color = region)) +
-  labs(x = "Time", y = expression(paste("Population size (", italic(N), " x 1000)"))) +
+  labs(x = "Time", y = expression(paste("Population size, ", italic(N), " (1000s)"))) +
   scale_color_colorblind(name = NULL) +
   theme_minimal() +
   theme(legend.position = c(0.2, 0.9),
@@ -158,6 +159,7 @@ We fitted both models to the weekly case count observations for each city using 
 After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where *k* is the number of estimated parameters in the model and *L* is the model's likelihood.
 The NBM model has 2 parameters, the SARIMA model has 7 parameters, and the SEIR model has 14 parameters.
 The results in table S1 show the AIC values for each model.
+\comment{I think the SARIMA model should be described briefly for the sake of reproducibility.}
 The AIC values for the *SEIR* models are lowest for all cities, suggesting that the addition of mechanism via explicit disease transmission dynamics substantially improves model fit.
 
 ```{r aic-comp}
@@ -235,13 +237,13 @@ Our *simulating model* (in contrast to the *fitting model* in the main text) is 
 As in the main text, the *SEIR* model is specified as a set of difference equations,
 
 \begin{align}
-S_{t+dt} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
-E_{t+dt} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
-I_{t+dt} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
-R_{t+dt} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
+S_{t+dt} - S_{t} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
+E_{t+dt} - E_{t} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
+I_{t+dt} - I_{t} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
+R_{t+dt} - R_{t} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
 \end{align}
 
-\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
+\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each update $t \rightarrow t+dt$.
 Transition definitions are in Table S2.
 
 | Random variable | Transition | $\left(\Delta S, \Delta E, \Delta I, \Delta R\right)$ |
@@ -263,11 +265,9 @@ The stochastic random variables are specified as follows:
 
 \begin{align}
 n_{0S,t} &\sim \text{Poisson}((1-p)\mu N_t \times dt) \\
-n_{SE,t} &\sim \text{Binomial}(\lambda_{SE,t}, S_{t}) \\
-n_{S0,t} &\sim \text{Binomial}(\lambda_{d}, S_t) \\
-n_{EI,t} &\sim \text{Binomial}(\lambda_{EI,t}, E_{t}) \\
-n_{E0,t} &\sim \text{Binomial}(\lambda_{d}, E_t) \\
-n_{IR,t} &\sim \text{Binomial}(\lambda_{IR,t}, I_{t}) \\
+(n_{SE,t}, n_{S0,t}) &\sim \text{Mult}(S_{t}, (\lambda_{SE,t}, \lambda_{d})) \\
+(n_{EI,t}, n_{E0,t}) &\sim \text{Mult}(E_{t}, (\lambda_{EI,t}, \lambda_{d})) \\
+(n_{IR,t}, n_{I0,t}) &\sim \text{Mult}(I_{t}, (\lambda_{IR,t}, \lambda_{d})) \\
 n_{I0,t} &\sim \text{Poisson}(\psi \times dt) \\
 n_{0R,t} &\sim \text{Poisson}(p\mu N_t \times dt) \\
 n_{R0,t} &\sim \text{Binomial}(\lambda_{d}, R_t),
@@ -295,6 +295,8 @@ We modeled rate of transmission as:
 $\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
+
+\comment{I think the size of the process time step needs to be stated somewhere. Was it 1 day?}
 
 Finally, observations were simulated from the model on a weekly time step by drawing cases from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days (*x*), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $\text{cases} \sim \text{Negative binomial}(\rho x, \tau)$.
 
@@ -370,13 +372,13 @@ plot_grid(re_series, cases_series, nrow = 2, align = "v",
 
 For simulations of disease elimination by increasing the vaccination coverage of the population, we define the critical time as the time at which vaccination coverage reaches the threshold needed for herd immunity.
 This vaccination threshold is defined as $p = 1 - 1/R_0$.
-Because our transmission function is seasonal, we first calculated time-specific $R_0$ as: $R_{0(t)} = \frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the infectious period, $1/\gamma$ is the recovery period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\mu = \nu$ = 0.05.
+Because our transmission function is seasonal, we first calculated time-specific $R_0$ as: $R_0(t) = \frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\mu = \nu$ = 0.05.
 Figure 2 in the main text shows these values.
-We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$, such that: $p = 1 - 1/\text{max}(R_{0(t)})$.
+We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$, such that: $p = 1 - 1/\text{max}(R_0(t))$.
 We set the time at which vaccination coverage is equal to *p* as the endpoint for the EWS analysis.
 All elimination simulations had vaccination campaigns that started at year 50.
 So, we define the test interval as the times between year 50 and the year at which vaccination coverage is equal to *p*.
-We then defined the null interval as window with length equal to test interval and ending at year 49.
+We then defined the null interval as a window with length equal to the test interval and ending at year 49.
 Figure \ref{elimin-sim} shows a typical example.
 
 ```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
@@ -442,25 +444,52 @@ plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
 We calculated nine early warning signals using the ```spaero::get_stats()``` function.
 Formulas for the early warning signals are in Table S1.
 
-| EWS | Estimator | Theoretical Correlation with $R_E(t)$ |
+\comment{As far as I can tell, we did not use moving windows (just two
+disjoint windows), so isn't the introduction of equations with a
+bandwidth (windows size) parameter unnecessarily complex? I have
+substituted what seems to me a clearer alternative version of the
+equations.}
+
+\comment{April, 22, 2019: I now see that large moving windows were
+used even in the two-part analysis. It seems to me that this is more
+complicated than necessary and I would support using a simpler, true
+two-window methods which I would expect to give similar results.}
+
+| EWS | Estimator | Theoretical Correlation with $R_E(t)$ in an emergence scenario |
 | -------------------- | ----------------------------------- | ------------------------ |
-| Mean | $\mu_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{X_s}{2b-1}$ | Positive |
-| Variance | $\sigma_t^2 = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^2}{2b-1}$ | Positive |
-| Coefficient of variation | $CV_t = \frac{\sigma_t}{\mu_t}$ | Null |
-| Index of dispersion | $ID_t = \frac{\sigma_t^2}{\mu_t}$ | Positive |
-| Skewness | $S_t = \frac{1}{\sigma^3_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^3}{2b-1}$ | Positive |
-| Kurtosis | $K_t = \frac{1}{\sigma^4_t} \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)^4}{2b-1}$ | Positive |
-| Autocovariance | $\text{ACov}_t = \sum^{t+(b-1)\delta}_{s=t-(b-1)\delta} \frac{\left(X_s - \mu_s\right)\left(X_{s-\delta} - \mu_{s-\delta}\right)}{2b-1}$ | Positive |
-| Autocorrelation | $\text{AC}_t = \frac{\text{ACov}_t}{\sigma_t \sigma_{t-\delta}}$ | Positive |
-| Decay time | $\overline{\tau}_t = -\delta / \text{ln}\left[\text{AC}_t(\delta)\right]$ | Positive |
+| Mean | \bar{y} = $\sum_{i=1}^n \frac{y_i}{n}$ | Positive |
+| Variance | $ s^2 = \sum_{i=1}^n \frac{(y_i - \bar{y})^2}{n}$ | Positive |
+| Coefficient of variation | $ \frac{ s }{ \bar{y} }$ | Null |
+| Index of dispersion | $ \frac{ s^2 }{ \bar{y} }$ | Positive |
+| Skewness | $ \frac{1}{s^3} \sum_{i=1}^n \frac{\left( y_i - \bar{y} \right)^3}{n}$ | Positive |
+| Kurtosis | $ \frac{1}{s^4} \sum_{i=1}^n \frac{\left( y_i - \bar{y} \right)^4}{n}$ | Positive |
+| Autocovariance | $s^2_1 =  \sum^{n}_{i=2} \frac{\left( y_i - \bar{y} \right)\left( y_{i - 1}  - \bar{y} \right)}{n}$ | Positive |
+| Autocorrelation | $r_1 = \frac{s^2_1 }{ s^2}$ | Positive |
+| Decay time | $ -1 / \text{ln}(r_1)$ | Positive |
 
 Table: List of candidate early warning signals and their estimating equations. Note that *b* denotes the bandwidth. See @Brett2018 for details.
 
 # Trends of early warning signals
 
-Theory suggests that most EWS should increase as disease dynamics approach a critical transition from below (emergence).
-When approaching the critical transition from above (elimination), less is known about the behavior of EWS, but theory does tell us that the mean and variance should decrease while the autocorrelation should increase (at least for SIR and SEIR models).
+Theory suggests that most EWS should increase as disease dynamics
+approach a critical transition from below (emergence).  When
+approaching the critical transition from above (elimination), a
+simple linear noise approximation to the SEIR model dynamics leads to
+the prediction that the mean and variance should decrease while the
+autocorrelation should develop a longer period.
+
+\comment{If you would like a reference, I would suggest citing
+"Stochastic dynamics on slow manifolds" by Constable et al. They
+describe a technique for calculating the linear noise approximation
+for the SEIR model with seasonality and plot the power spectrum.}
+
+
+
 To confirm that the EWS are behaving as expected, and to document cases in which they do not, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
+
+\comment{The titles for Decay time and Index of dispersion facets are
+clipped off in some instances. I would be okay with eliminating decay
+time if that helps, since it a simple transform of autocorrelation.}
 
 ```{r ews-hists, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
@@ -570,7 +599,7 @@ print(ews_hists)
 
 We used a bootstrap approach to estimate approximate 95\% confidence intervals for all parameters.
 Below we show summary statistics for all parameters except the B-splines.
-For B-splines, and transmission rate more gerenally, we plot the seasonal transmission rate function for all bootstrap replicates (Figure \ref{season-trans}).
+For B-splines, and transmission rate more generally, we plot the seasonal transmission rate function for all bootstrap replicates (Figure \ref{season-trans}).
 
 ```{r param-summaries, message=FALSE, warning=FALSE, echo = FALSE, results = "asis"}
 
@@ -746,8 +775,8 @@ ggplot(seasonal_functions, aes(x = date, y = beta, group = boot)) +
 # Length of null and test intervals
 
 In the main text we show EWS performance across the range of susceptible discounting factors and vaccination campaign speeds we modeled.
-To put these values into context, here we show the corresponding bandwidths for each simulation.
-These bandwidths are the number of weeks that occur in the null and test intervals (Figure \ref{bws}).
+To put these values into context, here we show the corresponding window sizes for each simulation.
+These window sizes are the number of weeks that occur in the null and test intervals (Figure \ref{bws}).
 
 ```{r bw-weeks, fig.width=8.5, fig.height=4, fig.cap="Length of null and test intervals (in weeks) for emergence and elimination simulations at different parameter values.  \\label{bws}"}
 read_csv("../results/emergence-bandwidths.csv") %>%
@@ -786,7 +815,14 @@ We used the distributions of Kendall's $\tau$ over the 500 replicate simulations
 For the approach to elimination, the results are similar to those for the fixed window analysis (Figure \ref{mvw-ews}B).
 For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure \ref{mvw-ews}A).
 
-```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values minus 0.5. AUC values closer to 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
+\comment{I see now that the original version of Table S3 with moving
+window statistics does have value for interpretation of this
+section. Perhaps it would make sense to include both versions? If
+there is only one verion, I would still say the simpler one is
+preferable to me. We can cite Brett et al. "Anticipating disease
+emergence" for the more complicated version. }
+
+```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values. AUC values farther from 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
 library(viridis)
 emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
 elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")
