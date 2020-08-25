@@ -31,7 +31,7 @@ keywords:
   - epidemiology,
   - measles,
   - infectious disease
-bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
+bibliography: ./measles-ews.bib
 date: "`r Sys.Date()`"
 csl: proceedings-of-the-royal-society-b.csl
 output: rticles::elsevier_article
@@ -103,7 +103,6 @@ for(do_file in pred_files){
     filter(region == do_city)
   
   tmp <- readRDS(paste0("../results/", do_file)) %>%
-    unnest() %>%
     slice(2:n()) %>%  # drop first row of unobserved data
     mutate(
       upper_est = mean_cases + sdev_cases*2,
@@ -858,7 +857,7 @@ sim_data <- tibble()
 for(do_city in cities){
   tmp_file <- paste0("../simulations/bootstrap-sims-", do_city, ".RDS")
   tmp_data <- readRDS(tmp_file) %>%
-    unnest() %>%
+    unnest(cols = data) %>%
     mutate(city = do_city)
   sim_data <- bind_rows(sim_data, tmp_data)
 }
