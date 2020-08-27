@@ -22,8 +22,8 @@ header-includes:
   - \newcommand{\comment}[1]{\ignorespaces}
 ---
 
-```{r libraries, include=FALSE, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE)
+```{r libraries, include=FALSE, message=FALSE, warning=TRUE}
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=TRUE, cache=FALSE)
 library(tidyverse)
 library(lubridate)
 library(stringr)
@@ -242,7 +242,7 @@ num_params <- tibble(
 
 all_logliks %>%
   gather(model, loglik, -City) %>%
-  left_join(num_params) %>%
+  left_join(num_params, by = "model") %>%
   mutate(
     AIC = round(2*k - 2*loglik)
   ) %>%
@@ -368,7 +368,7 @@ re_path <- emerge_sim %>%
 
 one_sim <- emerge_sim %>% 
   filter(sim == 1) %>%
-  left_join(re_path) %>%
+  left_join(re_path, by = "time") %>%
   mutate(used = ifelse(time <= re_one_year$year, "yes", "no"))
 
 re_series <- ggplot(one_sim, aes(x = time, y = mean_re)) +
@@ -519,7 +519,7 @@ To confirm that the EWS are behaving as expected, and to document cases in which
 clipped off in some instances. I would be okay with eliminating decay
 time if that helps, since it a simple transform of autocorrelation.}
 
-```{r ews-hists, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
+```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
   filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
   mutate(metric = as.character(metric)) %>%
@@ -571,7 +571,7 @@ ews_hists <- cowplot::plot_grid(
 print(ews_hists)
 ```
 
-```{r ews-hists2, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where rate of vaccination coverage reaching 1 is 1.5e-05.", fig.height=5}
+```{r ews-hists2, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where rate of vaccination coverage reaching 1 is 1.5e-05.", fig.height=5}
 elimination_ews <- read.csv("../results/ews-elimination.csv") %>%
   filter(metric != "variance_first_diff" & vacc_speed == 1.5e-05) %>%
   mutate(metric = as.character(metric)) %>%
@@ -629,7 +629,7 @@ We used a bootstrap approach to estimate approximate 95\% confidence intervals f
 Below we show summary statistics for all parameters except the B-splines.
 For B-splines, and transmission rate more generally, we plot the seasonal transmission rate function for all bootstrap replicates (Figure \ref{season-trans}).
 
-```{r param-summaries, message=FALSE, warning=FALSE, echo = FALSE, results = "asis"}
+```{r param-summaries, message=FALSE, warning=TRUE, echo = FALSE, results = "asis"}
 
 # Define computation grid -------------------------------------------------
 
@@ -682,7 +682,7 @@ for(do_file in loglik_files){
     mutate(city = do_city)
   
   param_summaries <- bind_rows(param_summaries, tmp_file)
-}
+  }
 
 mle_and_boots <- left_join(mles, param_summaries)
 
@@ -754,9 +754,9 @@ param_summaries <- mle_and_boots %>%
     parameter = ifelse(parameter == "beta_sd", "$\\sigma$", parameter),
     parameter = ifelse(parameter == "rho", "$\\rho$", parameter),
     parameter = ifelse(parameter == "iota", "$\\psi$", parameter),
-    parameter = ifelse(parameter == "S_0", "$\\textsl{S}_{t=0}$", parameter),
-    parameter = ifelse(parameter == "E_0", "$\\textsl{E}_{t=0}$", parameter),
-    parameter = ifelse(parameter == "I_0", "$\\textsl{I}_{t=0}$", parameter),
+    parameter = ifelse(parameter == "S_0", "$S_{t=0}$", parameter),
+    parameter = ifelse(parameter == "E_0", "$E_{t=0}$", parameter),
+    parameter = ifelse(parameter == "I_0", "$I_{t=0}$", parameter),
     parameter = ifelse(parameter == "tau", "$\\tau$", parameter)
   ) %>%
   select(parameter, mle, mean_value, median_value, std_dev, lower_95_ci, upper_95_ci, city) %>%
@@ -771,7 +771,7 @@ param_summaries <- mle_and_boots %>%
   )
 ```
 
-```{r param-tables, message=FALSE, warning=FALSE, echo = FALSE, results = "asis"}
+```{r param-tables, message=FALSE, warning=TRUE, echo = FALSE, results = "asis"}
 
 for(do_city in unique(param_summaries$city)){
   tmp_table <- param_summaries %>%
