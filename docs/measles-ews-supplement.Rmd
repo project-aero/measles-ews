@@ -41,8 +41,26 @@ Note that the daily interpolated birth rate is still in units of "per year," whi
 
 ```{r demo-data, fig.width=8.5, fig.height=3, fig.cap="Plots of the demographic data used for model fitting. The points are the actual data and the lines are the interpolated spline fits. Population data is at the disrict level, meaning we have different data for each focal city. Birth rate data is national, meaning each city shares the same birth rates. \\label{demog-plot}"}
 
-annual_pop <- read_csv("../data/raw-data/district_pops.csv")
-annual_births <- read_csv("../data/raw-data/niger_crude_birth_rates.csv")
+annual_pop <- read_csv("../data/raw-data/district_pops_colnames.csv",
+                       col_types = cols(
+  region = col_character(),
+  `1995` = col_double(),
+  `1996` = col_double(),
+  `1997` = col_double(),
+  `1998` = col_double(),
+  `1999` = col_double(),
+  `2000` = col_double(),
+  `2001` = col_double(),
+  `2002` = col_double(),
+  `2003` = col_double(),
+  `2004` = col_double(),
+  `2005` = col_double()
+))
+annual_births <- read_csv("../data/raw-data/niger_crude_birth_rates.csv",
+                          col_types = cols(
+  date = col_character(),
+  births_per_thousand = col_double()
+))
 demog_clean <- readRDS("../data/clean-data/annual-demographic-data-niger-cities-clean.RDS")
 
 # Births
@@ -67,8 +85,7 @@ ggplot() +
 
 # Population
 pop_data <- annual_pop %>%
-  gather(key = year, value = population, -X1) %>%
-  rename(region = X1) %>%
+  gather(key = year, value = population, -region) %>%
   mutate(
     region = ifelse(region == "Niamey I", "Niamey", region),
     year = as.numeric(year),
