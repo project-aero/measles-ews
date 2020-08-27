@@ -807,7 +807,13 @@ To put these values into context, here we show the corresponding window sizes fo
 These window sizes are the number of weeks that occur in the null and test intervals (Figure \ref{bws}).
 
 ```{r bw-weeks, fig.width=8.5, fig.height=4, fig.cap="Length of null and test intervals (in weeks) for emergence and elimination simulations at different parameter values.  \\label{bws}"}
-read_csv("../results/emergence-bandwidths.csv") %>%
+read_csv("../results/emergence-bandwidths-colnames.csv",
+         col_types = cols(
+           row_number = col_integer(),
+  city = col_character(),
+  susc_discount = col_double(),
+  bandwidth = col_integer()
+)) %>%
   ggplot(aes(x = susc_discount, y = bandwidth, color = city)) +
   geom_line() +
   geom_point(size = 3) +
@@ -818,7 +824,13 @@ read_csv("../results/emergence-bandwidths.csv") %>%
   guides(color = FALSE) +
   theme_minimal() -> emerge_ints
 
-read_csv("../results/elimination-bandwidths.csv") %>%
+read_csv("../results/elimination-bandwidths-colnames.csv",
+         col_types = cols(
+  row_number = col_integer(),
+  city = col_character(),
+  vacc_speed = col_double(),
+  bandwidth = col_integer()
+)) %>%
   ggplot(aes(x = vacc_speed, y = bandwidth, color = city)) +
   geom_line() +
   geom_point(size = 3) +
