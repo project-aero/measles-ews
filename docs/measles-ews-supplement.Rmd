@@ -8,7 +8,7 @@ output:
     toc_depth: 2
 date: "`r Sys.Date()`"
 csl: proceedings-of-the-royal-society-b.csl
-bibliography: /Users/atredenn/Dropbox/Bibliography/measles-ews.bib
+bibliography: ./measles-ews.bib
 header-includes:
   - \renewcommand{\thefootnote}{\fnsymbol{footnote}}
   - \renewcommand{\theequation}{S.\arabic{equation}}
@@ -113,19 +113,30 @@ mle_files <- results_files[mle_ids]
 boot_ids <- grep("boot", mle_files)
 mle_files <- mle_files[-boot_ids]
 
+source("../code/make-legacy-pomp-filtering-function.R")
+
 all_sims <- tibble()
 for(do_file in pomp_files){
   tmp_city <- str_sub(do_file, start = 21, end = nchar(do_file)-4)
   tmp_pomp <- readRDS(paste0("../code/", do_file))
+  
+
   
   city_mle_ids <- grep(tmp_city, mle_files)
   tmp_mles <- read.csv(paste0("../results/", mle_files[city_mle_ids])) %>%
     drop_na() %>%
     filter(loglik == max(loglik)) %>%
     dplyr::select(-loglik, -loglik_se, -do_grid)
+
+  obs_data <- data.frame(time = tmp_pomp@times, reports = as.numeric(tmp_pomp@data))
+  covar_data <- cbind(time = tmp_pomp@tcovar, as.data.frame(tmp_pomp@covar))
+  
+  sim <- make_pomp_filter(obs_data = obs_data, 
+                          covar_data = covar_data, 
+                          mles = unlist(tmp_mles))
   
   tmp_sim <- pomp::simulate(
-    tmp_pomp,
+    sim,
     params = unlist(tmp_mles),
     nsim = 10,
     as.data.frame = TRUE,
