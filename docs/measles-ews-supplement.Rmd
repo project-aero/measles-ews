@@ -6,6 +6,8 @@ output:
   pdf_document:
     number_sections: true
     toc_depth: 2
+    keep_tex: true
+    keep_md: true
 date: "`r Sys.Date()`"
 csl: proceedings-of-the-royal-society-b.csl
 bibliography: ./measles-ews.bib
@@ -684,7 +686,7 @@ for(do_file in loglik_files){
   param_summaries <- bind_rows(param_summaries, tmp_file)
   }
 
-mle_and_boots <- left_join(mles, param_summaries)
+mle_and_boots <- left_join(mles, param_summaries, by = c("parameter", "city"))
 
 # Load example pomp file for basis function
 pomp_file <- "../code/measles-pomp-object-Agadez.RDS"
@@ -925,7 +927,7 @@ sim_data <- tibble()
 for(do_city in cities){
   tmp_file <- paste0("../simulations/bootstrap-sims-", do_city, ".RDS")
   tmp_data <- readRDS(tmp_file) %>%
-    unnest() %>%
+    unnest(cols = data) %>%
     mutate(city = do_city)
   sim_data <- bind_rows(sim_data, tmp_data)
 }
