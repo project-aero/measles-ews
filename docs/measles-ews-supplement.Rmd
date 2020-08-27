@@ -779,7 +779,7 @@ for(do_city in unique(param_summaries$city)){
   tmp_table <- param_summaries %>%
   filter(city == do_city) %>%
   select(-city) %>%
-  mutate_if(is.numeric, funs(as.character(signif(., 3))))
+  mutate_if(is.numeric, ~as.character(signif(., 3)))
 
   docap <- paste0("Maximum likelihood estimates and summary statistics of parameters from bootstrapped estimates for ", do_city, ".")
   print(knitr::kable(tmp_table, format = "pandoc", caption = docap))
