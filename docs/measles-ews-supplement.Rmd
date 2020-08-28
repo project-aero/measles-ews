@@ -295,9 +295,9 @@ The stochastic random variables are specified as follows:
 
 \begin{align}
 n_{0S,t} &\sim \text{Poisson}((1-p)\mu N_t \times dt) \\
-(n_{SE,t}, n_{S0,t}) &\sim \text{Mult}(S_{t}, (\lambda_{SE,t}, \lambda_{d})) \\
-(n_{EI,t}, n_{E0,t}) &\sim \text{Mult}(E_{t}, (\lambda_{EI,t}, \lambda_{d})) \\
-(n_{IR,t}, n_{I0,t}) &\sim \text{Mult}(I_{t}, (\lambda_{IR,t}, \lambda_{d})) \\
+(n_{SE,t}, n_{S0,t}) &\sim \text{Mult}(S_{t}, (\lambda_{SE,t}, \lambda_{d,t})) \\
+(n_{EI,t}, n_{E0,t}) &\sim \text{Mult}(E_{t}, (\lambda_{EI,t}, \lambda_{d,t})) \\
+(n_{IR,t}, n_{I0,t}) &\sim \text{Mult}(I_{t}, (\lambda_{IR,t}, \lambda_{d,t})) \\
 n_{I0,t} &\sim \text{Poisson}(\psi \times dt) \\
 n_{0R,t} &\sim \text{Poisson}(p\mu N_t \times dt) \\
 n_{R0,t} &\sim \text{Binomial}(R_t, \lambda_{d,t}),
@@ -326,25 +326,24 @@ $\beta$ is the mean transmission rate and the term $\sum^6_{i=1} q_i \xi_{i_{t}}
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
 
-\comment{I think the size of the process time step needs to be stated somewhere. Was it 1 day?}
-
 Finally, observations were simulated from the model on a weekly time step by drawing counts of cases ($y_t$) from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days ($x_t$), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $y_t \sim \text{Negative binomial}(\rho x_t, \tau)$.
 
-In this model, the time-average of the basic reproduction number can be calculated as:
+In this model, the effective reproduction number can be approximated as:
 
 $$
-R_0 = \frac{\eta \beta \mu}{\nu (\eta + \nu)(\gamma + \nu)}.
+R_E(t) \approx \frac{S_t}{N_t} \frac{\eta \beta_t}{(\eta + \nu)(\gamma + \nu)}.
 $$
 
 The model described above was implemented in the `R` package `pomp` [@King2016; @King2018] to simulate the re-emergence and elimination scenarios.
 
 # Computing the time of critical transitions
 To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.
-For re-emergence, we defined the year of the critical transition as the year just after the effective reproduction number ($R_E$) reaches or exceeds the critical value of 1. 
+For re-emergence, we defined the year of the critical transition as the year just after the effective reproduction number ($R_E$) reaches or exceeds the critical value of 1.  
 For example, if $R_E$ reaches or exceeds 1 at some point during the fifth year of the simulation, then the critical transition year is defined as the sixth year of the simulation. 
 Thus, the simulated data for calculating early warning signals ends at the end of the fifth year.
 We call this year the ``critical year.''
-From this full window, from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $R_E = 1$) and the test interval as the second half of the full window (near $R_E = 1$).
+When determining the criical year, we eliminate the variation in $R_E$ that arises from the gamma white noise factor by setting $\Gamma_t = 1$.
+From the full window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $R_E = 1$) and the test interval as the second half of the full window (near $R_E = 1$).
 Figure \ref{emerge-sim} shows a typical example.
 
 ```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was discounted by 1e-04. (**A**) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (**B**) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
