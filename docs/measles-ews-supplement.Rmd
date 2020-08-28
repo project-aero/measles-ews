@@ -300,7 +300,7 @@ n_{0S,t} &\sim \text{Poisson}((1-p)\mu N_t \times dt) \\
 (n_{IR,t}, n_{I0,t}) &\sim \text{Mult}(I_{t}, (\lambda_{IR,t}, \lambda_{d})) \\
 n_{I0,t} &\sim \text{Poisson}(\psi \times dt) \\
 n_{0R,t} &\sim \text{Poisson}(p\mu N_t \times dt) \\
-n_{R0,t} &\sim \text{Binomial}(\lambda_{d}, R_t),
+n_{R0,t} &\sim \text{Binomial}(R_t, \lambda_{d,t}),
 \end{align}
 
 \noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $\psi$ is the rate of imported infections (estimated by the model), and $\lambda_d$, $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of death, exposure, becoming infectious, and recovery, respectively.
@@ -310,27 +310,27 @@ These probabilities are modeled as:
 \lambda_{SE,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
 \lambda_{EI,t} &= 1 - e^{-\eta E_{t} dt} \\
 \lambda_{IR,t} &= 1 - e^{-\gamma I_{t} dt} \\
-\lambda_d &= 1 - e^{-\nu N_t dt}
+\lambda_{d,t} &= 1 - e^{-\nu N_t dt}
 \end{align}
 
-\noindent{}where $\beta_t$ is time-varying rate of transmission, $\eta$ is time-invariant rate from the exposed class to the infectious class, $\gamma$ is time-invariant recovery rate, and $\nu$ is the constant death rate.
-We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = \mu = 0.05$.
+\noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, and $\nu$ is the constant death rate.
+We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = \mu = 0.05$. We used a daily time step of $dt = \text{year} / 365$.
 Recall that we set birth rate equal to death rate ($\nu = \mu = 0.05$) to achieve a relatively constant equilibrium population size.
-We modeled rate of transmission as:
+We modeled the rate of transmission as:
 
 \begin{equation}
-\beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t.
+\beta_t = \beta \left(1 + \exp \left(\sum^6_{i=1} q_i \xi_{i_{t}}\right) \right) \Gamma_t.
 \end{equation}
 
-$\beta$ is the mean transmission rate, $\psi$ accounts for measles infections from external sources that are not part of the local dynamics, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+$\beta$ is the mean transmission rate and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
-The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
+The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
 
 \comment{I think the size of the process time step needs to be stated somewhere. Was it 1 day?}
 
-Finally, observations were simulated from the model on a weekly time step by drawing cases from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days (*x*), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $\text{cases} \sim \text{Negative binomial}(\rho x, \tau)$.
+Finally, observations were simulated from the model on a weekly time step by drawing counts of cases ($y_t$) from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days ($x_t$), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $y_t \sim \text{Negative binomial}(\rho x_t, \tau)$.
 
-In this model, the basic reproduction number can be calculated as:
+In this model, the time-average of the basic reproduction number can be calculated as:
 
 $$
 R_0 = \frac{\eta \beta \mu}{\nu (\eta + \nu)(\gamma + \nu)}.

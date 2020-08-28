@@ -225,7 +225,7 @@ E_{t+dt} - E_t &= n_{E,t} - n_{I,t} \\
 I_{t+dt} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
-\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
+\noindent{}where $dt$ is a time step of $\text{year} / 365$, and $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
 $n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious indiviuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
 The stochastic random variables are specified as follows:
 
@@ -246,24 +246,24 @@ These probabilities reflect the processes of transmission, transition from the l
 \lambda_{R,t} &= 1 - e^{-\gamma I_{t} dt},
 \end{align}
 
-\noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate from the exposed class to the infectious class, and $\gamma$ is a time-invariant recovery rate.
+\noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of progression from the exposed class to the infectious class, and $\gamma$ is a time-invariant recovery rate.
 We model the rate of transmission as,
 
 \begin{equation}
-\beta_t = \beta \left(1 + \exp( \sum^6_{i=1} q_i \xi_{i_{t}} ) \right) \Gamma_t,
+\beta_t = \beta \left(1 + \exp \left( \sum^6_{i=1} q_i \xi_{i_{t}} \right) \right) \Gamma_t,
 \end{equation}
 
 \comment{I have corrected the above equation to match code/make-pomp-filtering-functions.R and code/make-pomp-simulation-functions.R}
 \noindent{} where $\beta$ is the minimum transmission rate over the season, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
-The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and variance $\sigma^2$ [@Breto2011].
+The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
 
-We do not include a death process in the model because the rate of infection is much faster than the rate of death.
+We do not include death events in the model because the rate of infection is much faster than the rate of death.
 Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
 We model demographic stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
-In this model, the effective reproduction number at time *t* is: $R_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
+In this model, the effective reproduction number at time $t$ may be approximated as: $R_E(t) \approx \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
 
-We assume observed case reports ($\textbf{y}$) are drawn from a Negative Binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
+We assume observed case reports ($y_t$) are drawn from a negative binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
 
 \begin{align}
 y_t \sim \text{Negative Binomial} \left( \rho x_t, \tau \right),
