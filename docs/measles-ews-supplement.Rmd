@@ -33,6 +33,7 @@ library(dplyr)
 library(pomp)
 library(ggthemes)
 library(cowplot)
+
 ```
 
 # Demographic data used in model fitting
@@ -303,18 +304,18 @@ n_{0R,t} &\sim \text{Poisson}(p\mu N_t \times dt) \\
 n_{R0,t} &\sim \text{Binomial}(R_t, \lambda_{d,t}),
 \end{align}
 
-\noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $\psi$ is the rate of imported infections (estimated by the model), and $\lambda_d$, $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of death, exposure, becoming infectious, and recovery, respectively.
+\noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $\psi$ is the rate of imported infections (estimated by the model), and $\lambda_d$, $\lambda_{SE}$, $\lambda_{EI}$, and $\lambda_{IR}$ are the probabilities of death, exposure, becoming infectious, and recovery, respectively.
 These probabilities are modeled as:
 
 \begin{align}
+\lambda_{d,t} &= 1 - e^{-\nu N_t dt} \\
 \lambda_{SE,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
 \lambda_{EI,t} &= 1 - e^{-\eta E_{t} dt} \\
-\lambda_{IR,t} &= 1 - e^{-\gamma I_{t} dt} \\
-\lambda_{d,t} &= 1 - e^{-\nu N_t dt}
+\lambda_{IR,t} &= 1 - e^{-\gamma I_{t} dt}
 \end{align}
 
 \noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, and $\nu$ is the constant death rate.
-We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = \mu = 0.05$. We used a daily time step of $dt = \text{year} / 365$.
+We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = 0.05$. We used a daily time step of $dt = \text{year} / 365$.
 Recall that we set birth rate equal to death rate ($\nu = \mu = 0.05$) to achieve a relatively constant equilibrium population size.
 We modeled the rate of transmission as:
 
@@ -342,11 +343,11 @@ For re-emergence, we defined the year of the critical transition as the year jus
 For example, if $R_E$ reaches or exceeds 1 at some point during the fifth year of the simulation, then the critical transition year is defined as the sixth year of the simulation. 
 Thus, the simulated data for calculating early warning signals ends at the end of the fifth year.
 We call this year the ``critical year.''
-When determining the criical year, we eliminate the variation in $R_E$ that arises from the gamma white noise factor by setting $\Gamma_t = 1$.
+When determining the critical year, we eliminate the variation in $R_E$ that arises from the gamma white noise factor and thus calculate the expected value of $R_E(t)$ over the set of all simulation replicates at time $t$.
 From the full window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $R_E = 1$) and the test interval as the second half of the full window (near $R_E = 1$).
 Figure \ref{emerge-sim} shows a typical example.
 
-```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was discounted by 1e-04. (**A**) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (**B**) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
+```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was scaled by 1e-04. (**A**) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (**B**) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
 
@@ -401,16 +402,16 @@ plot_grid(re_series, cases_series, nrow = 2, align = "v",
 
 For simulations of disease elimination by increasing the vaccination coverage of the population, we define the critical time as the time at which vaccination coverage reaches the threshold needed for herd immunity.
 This vaccination threshold is defined as $p = 1 - 1/R_0$.
-Because our transmission function is seasonal, we first calculated time-specific $R_0$ as: $R_0(t) = \frac{\eta \beta_t \mu}{\nu(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, $\mu$ is the birth rate, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\mu = \nu$ = 0.05.
-Figure 2 in the main text shows these values.
-We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$, such that: $p = 1 - 1/\text{max}(R_0(t))$.
+Because our transmission function is seasonal, we first aproximated time-specific $R_0$ as: $R_0(t) = \frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\nu$ = 0.05 per year.
+Figure 2 in the main text shows our estimates of $R_0$ over the course of a year using this approximation.
+We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$ out of the range of values in its seasonal variation. That is, we set $p = 1 - 1/\text{max}(R_0(t))$.
 We set the time at which vaccination coverage is equal to *p* as the endpoint for the EWS analysis.
 All elimination simulations had vaccination campaigns that started at year 50.
-So, we define the test interval as the times between year 50 and the year at which vaccination coverage is equal to *p*.
-We then defined the null interval as a window with length equal to the test interval and ending at year 49.
+So, we define the test interval as the times between the beginning of year 50 and the year at which vaccination coverage is equal to *p*.
+We then defined the null interval as a window with length equal to the test interval and ending at end of year 49.
 Figure \ref{elimin-sim} shows a typical example.
 
-```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
+```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05 per day. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
 
 example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
 ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
