@@ -327,7 +327,7 @@ $\beta$ is the mean transmission rate and the term $\sum^6_{i=1} q_i \xi_{i_{t}}
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
 
-Finally, observations were simulated from the model on a weekly time step by drawing counts of cases ($y_t$) from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days ($x_t$), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $y_t \sim \text{Negative binomial}(\rho x_t, \tau)$.
+Finally, observations were simulated from the model on a weekly time step by drawing counts of cases ($y_t$) from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days ($x_t$), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $y_t \sim \text{Negative Binomial}(\rho x_t, \tau)$.
 
 In this model, the effective reproduction number can be approximated as:
 
@@ -347,7 +347,7 @@ When determining the critical year, we eliminate the variation in $R_E$ that ari
 From the full window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $R_E = 1$) and the test interval as the second half of the full window (near $R_E = 1$).
 Figure \ref{emerge-sim} shows a typical example.
 
-```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was scaled by 1e-04. (**A**) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (**B**) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
+```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was scaled by 1e-04. (*a*) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
 
@@ -397,7 +397,8 @@ cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports))
   theme_classic(base_size = 12)
 
 plot_grid(re_series, cases_series, nrow = 2, align = "v", 
-          scale = 0.9, labels = "AUTO", label_size = 12)
+          scale = 0.9, labels = c("(a)", "(b)"), label_size = 12,
+          label_fontfamily = "Times", label_fontface = 3)
 ```
 
 For simulations of disease elimination by increasing the vaccination coverage of the population, we define the critical time as the time at which vaccination coverage reaches the threshold needed for herd immunity.
@@ -568,7 +569,10 @@ for(do_city in sort(unique(emerge_ews$city))){
 ews_hists <- cowplot::plot_grid(
   plotlist = gout,
   nrow = 4,
-  labels = "AUTO"
+  labels = c("(a)", "(b)", "(c)", "(d)"),
+  label_size = 12,
+  label_fontfamily = "Times", 
+  label_fontface = 3
 )
 print(ews_hists)
 ```
@@ -620,7 +624,10 @@ for(do_city in sort(unique(emerge_ews$city))){
 ews_hists <- cowplot::plot_grid(
   plotlist = gout,
   nrow = 4,
-  labels = "AUTO"
+  labels = c("(a)", "(b)", "(c)", "(d)"),
+  label_size = 12,
+  label_fontfamily = "Times", 
+  label_fontface = 3
 )
 print(ews_hists)
 ```
@@ -864,7 +871,7 @@ there is only one verion, I would still say the simpler one is
 preferable to me. We can cite Brett et al. "Anticipating disease
 emergence" for the more complicated version. }
 
-```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (A) and elimination (B). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values. AUC values farther from 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
+```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (*a*) and elimination (*b*). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values. AUC values farther from 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
 library(viridis)
 emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
 elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")
@@ -891,7 +898,8 @@ eliminate_plot <- ggplot() +
         plot.title = element_text(size = 11, face = "bold")) +
   ggtitle("Anticipating elimination over a moving window")
 
-cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = "AUTO", label_size = 12)
+cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = c("(a)", "(b)"), label_size = 12,
+                   label_fontfamily = "Times", label_fontface = 3)
 ```
 
 
