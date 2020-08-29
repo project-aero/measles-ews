@@ -16,7 +16,7 @@ header-includes:
   - \renewcommand{\theequation}{S.\arabic{equation}}
   - \renewcommand{\thetable}{S\arabic{table}}
   - \renewcommand{\thefigure}{S\arabic{figure}}
-  - \renewcommand{\thesection}{Section S\arabic{section}}
+  - \renewcommand{\thesection}{S\arabic{section}.}
   - \usepackage{float}
   - \floatplacement{figure}{H}
   - \usepackage{amsmath,amssymb}
@@ -39,7 +39,7 @@ library(cowplot)
 # Demographic data used in model fitting
 We used two sources of demographic data to help constrain model fitting: total population size (*N*) and birth rate ($\mu$).
 Both sets of data are reported on an annual basis.
-To incorporate the data in our model, we fit splines through the annual observations to interpolate daily values (Fig. \ref{demog-plot}).
+To incorporate the data in our model, we fit splines through the annual observations to interpolate daily values (figure \ref{demog-plot}).
 Note that the daily interpolated birth rate is still in units of "per year," which is why births are modeled as $\mu N \times dt$ to include the effect of the daily time step *dt*.
 
 ```{r demo-data, fig.width=8.5, fig.height=3, fig.cap="Plots of the demographic data used for model fitting. The points are the actual data and the lines are the interpolated spline fits. Population data is at the disrict level, meaning we have different data for each focal city. Birth rate data is national, meaning each city shares the same birth rates. \\label{demog-plot}"}
@@ -118,7 +118,7 @@ plot_grid(birth_plot, pop_plot, nrow = 1, align = "h")
 
 # Stochastic simulations from the fitted models
 
-Here we show stochastic simulations from the fitted models (Fig. \ref{stoch-sims}).
+Here we show stochastic simulations from the fitted models (figure \ref{stoch-sims}).
 Simulations are all initialized from the same initial conditions, which were estimated as part of model fitting.
 
 ```{r stoch-sims, fig.cap="Stochastic simulations from the fitted models. Each colored line is a single realization of the model from the same initial conditions. Ten simulations are shown. The black lines are the observed data. We do not expect model simulations to perfectly align with the data because of the multiple sources of stochasticity present. Thus, these simulations should be judged by their ability to reproduce dynamical features of the data. \\label{stoch-sims}", fig.width=8.5, fig.height=4}
@@ -473,7 +473,7 @@ plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
 # Early warning signals
 
 We calculated nine early warning signals using the ```spaero::get_stats()``` function.
-Formulas for the early warning signals are in Table S1.
+Formulas for the early warning signals are in table S1.
 
 \comment{As far as I can tell, we did not use moving windows (just two
 disjoint windows), so isn't the introduction of equations with a
