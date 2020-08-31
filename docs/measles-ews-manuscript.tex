@@ -8,8 +8,6 @@
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
-\bibliographystyle{elsarticle-harv}
-\biboptions{sort&compress} % For natbib
 \usepackage{graphicx}
 \usepackage{booktabs} % book-quality tables
 %%%%%%%%%%%%%%%% end my additions to header
@@ -33,6 +31,7 @@
 \fi
 % use microtype if available
 \IfFileExists{microtype.sty}{\usepackage{microtype}}{}
+\bibliographystyle{elsarticle-harv}
 \usepackage{graphicx}
 % We will generate all images so they have a width \maxwidth. This means
 % that they will get their normal width if they fit onto the page, but
@@ -63,38 +62,44 @@
 \setcounter{secnumdepth}{0}
 % Pandoc toggle for numbering sections (defaults to be off)
 \setcounter{secnumdepth}{0}
+
+
 % Pandoc header
 
-\journal{Proceedings of the Royal Society B}\usepackage{lineno}\linenumbers\usepackage{mathptmx}\renewcommand{\theaffn}{\arabic{affn}}\usepackage{setspace}\onehalfspacing\usepackage[nomarkers]{endfloat}\usepackage{xcolor}
+\journal{Proceedings of the Royal Society B}
+\usepackage{lineno}
+\linenumbers
+\usepackage{mathptmx}
+\renewcommand{\theaffn}{\arabic{affn}}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage[nomarkers]{endfloat}
+\usepackage{xcolor}
+\newcommand{\comment}[1]{\ignorespaces}
 
 \begin{document}
 \begin{frontmatter}
 
   \title{Anticipating disease emergence and elimination: a test of early warning
 signals using empirically based models}
-    \author[UGA,CEID]{Andrew T. Tredennick\corref{c1}}
+    \author[UGA,CEID]{Andrew T. Tredennick\corref{Current address: Western EcoSystems Technology, Inc., 200 S. Second
+Street, Laramie, WY 82070, USA}}
    \ead{atredenn@gmail.com} 
-   \cortext[c1]{Current address: Western EcoSystems Technology, Inc., 200 S. Second
-Street, Laramie, WY 82070, USA}
     \author[UGA,CEID]{Eamon B. O'Dea}
-  
   
     \author[other]{TBD}
   
-  
     \author[UGA,CEID,ID]{Pejman Rohani}
-  
   
     \author[UGA,CEID]{John M. Drake}
    \ead{jdrake@uga.edu} 
-  
       \address[UGA]{Odum School of Ecology, University of Georgia, Athens, GA 30602, USA}
     \address[CEID]{Center for the Ecology of Infectious Diseases, University of Georgia,
 Athens, GA 30602, USA}
     \address[other]{A University of Somewhere}
     \address[ID]{Department of Infectious Diseases, University of Georgia, Athens, GA
 30602, USA}
-  
+    
   \begin{abstract}
   Forecasts of the emergence, re-emergence, and elimination of human
   infectious diseases would allow for proactive, rather than reactive,
@@ -230,6 +235,8 @@ re-emergence and elimination occurs rapidly. Moreoever, and contrary to
 theoretical expectations {[}4{]}, we find that EWS perform better at
 detecting CSD before re-emergence than before elimination.
 
+\ignorespaces
+
 \hypertarget{materials-and-methods}{%
 \section{Materials and methods}\label{materials-and-methods}}
 
@@ -268,35 +275,36 @@ model with limited demography, specified as a set of difference
 equations,
 
 \begin{align}
-S_{t+dt} &= n_{S,t} - n_{E,t} \\
-E_{t+dt} &= n_{E,t} - n_{I,t} \\
-I_{t+dt} &= n_{I,t} + n_{O,t} - n_{R,t},
+S_{t+dt} - S_t &= n_{S,t} - n_{E,t} \\
+E_{t+dt} - E_t &= n_{E,t} - n_{I,t} \\
+I_{t+dt} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
-\noindent{}where \(\textbf{n}_t\) are random variables representing the
-number of individuals transitioning into or out of each class at each
-timestep \(t \rightarrow t+dt\). \(n_{S}\) is the number of births,
-\(n_{E}\) is the number of newly infected individuals that have the
-disease but are not infectious, \(n_{I}\) is the number of newly
-infectious indiviuals, \(n_{O}\) is the number of imported infections,
-and \(n_{R}\) is the number of newly recovered individuals who are no
-longer infectious and have life-long immunity. The stochastic random
-variables are specified as follows:
+\noindent{}where \(dt\) is a time step of \(\text{year} / 365\), and
+\(\textbf{n}_t\) are random variables representing the number of
+individuals transitioning into or out of each class at each timestep
+\(t \rightarrow t+dt\). \(n_{S}\) is the number of births, \(n_{E}\) is
+the number of newly infected individuals that have the disease but are
+not infectious, \(n_{I}\) is the number of newly infectious indiviuals,
+\(n_{O}\) is the number of imported infections, and \(n_{R}\) is the
+number of newly recovered individuals who are no longer infectious and
+have life-long immunity. The stochastic random variables are specified
+as follows:
 
 \begin{align}
-n_{S,t} &\sim \text{Poisson}(\mu_t N_t \times dt) \\
-n_{E,t} &\sim \text{Binomial}(\lambda_{E,t}, S_{t}) \\
-n_{I,t} &\sim \text{Binomial}(\lambda_{I,t}, E_{t}) \\
+n_{S,t} &\sim \text{Poisson}(\mu_t (1 - p) N_t \times dt) \\
+n_{E,t} &\sim \text{Binomial}( S_{t}, \lambda_{E,t}) \\
+n_{I,t} &\sim \text{Binomial}( E_{t}, \lambda_{I,t}) \\
 n_{O,t} &\sim \text{Poisson}(\psi \times dt) \\
-n_{R,t} &\sim \text{Binomial}(\lambda_{R,t}, I_{t}),
+n_{R,t} &\sim \text{Binomial}( I_{t}, \lambda_{R,t}),
 \end{align}
 
-\noindent{}where \(\mu_t\) is the birth rate at time \emph{t}, \(\psi\)
-is the rate of imported infections, and \(\lambda_E\), \(\lambda_I\),
-and \(\lambda_R\) are the probabilities of exposure, becoming
-infectious, and recovery, respectively. These probabilities reflect the
-processes of tranmission, transition from the latent period to the
-infectious period, and recovery, which we model as:
+\noindent{}where \(\mu_t\) is the birth rate at time \emph{t}, \(p\) is
+the vaccination rate, \(\psi\) is the rate of imported infections, and
+\(\lambda_E\), \(\lambda_I\), and \(\lambda_R\) are the probabilities of
+exposure, becoming infectious, and recovery, respectively. These
+probabilities reflect the processes of transmission, transition from the
+latent period to the infectious period, and recovery, which we model as:
 
 \begin{align}
 \lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
@@ -304,37 +312,37 @@ infectious period, and recovery, which we model as:
 \lambda_{R,t} &= 1 - e^{-\gamma I_{t} dt},
 \end{align}
 
-\noindent{}where \(\beta_t\) is time-varying rate of transmission,
-\(\eta\) is time-invariant rate from the exposed class to the infectious
-class, and \(\gamma\) is time-invariant recovery rate. We model rate of
-transmission as,
+\noindent{}where \(\beta_t\) is a time-varying rate of transmission,
+\(\eta\) is a time-invariant rate of progression from the exposed class
+to the infectious class, and \(\gamma\) is a time-invariant recovery
+rate. We model the rate of transmission as,
 
 \begin{equation}
-\beta_t = \beta \left(1 + \sum^6_{i=1} q_i \xi_{i_{t}} \right) \Gamma_t,
+\beta_t = \beta \left(1 + \exp \left( \sum^6_{i=1} q_i \xi_{i_{t}} \right) \right) \Gamma_t,
 \end{equation}
 
-\noindent{} where \(\beta\) is the minimum transmission rate over the
-season, \(\psi\) accounts for measles infections from external sources
-that are not part of the local dynamics, and the term
-\(\sum^6_{i=1} q_i \xi_{i_{t}}\) is a B-spline to model seasonality in
-transmission. The B-spline bases (\(\xi_{i_{t}}\)) are periodic with a 1
-year period. The transmission rate (\(\beta_t\)) is also subject to
-stochastic process noise at each time step, \(\Gamma_t\), which we model
-as gamma-distributed white (temporally uncorrelated) noise with mean 1
-and variance \(\sigma^2\) {[}26{]}.
+\ignorespaces
 
-We do not include a death process in the model because the rate of
+\noindent{} where \(\beta\) is the minimum transmission rate over the
+season, and the term \(\sum^6_{i=1} q_i \xi_{i_{t}}\) is a B-spline to
+model seasonality in transmission. The B-spline bases (\(\xi_{i_{t}}\))
+are periodic with a 1 year period. The transmission rate (\(\beta_t\))
+is also subject to stochastic process noise at each time step,
+\(\Gamma_t\), which we model as gamma-distributed white (temporally
+uncorrelated) noise with mean 1 and intensity \(\sigma^2\) {[}26{]}.
+
+We do not include death events in the model because the rate of
 infection is much faster than the rate of death. Excluding deaths means
 we can avoid making further assumptions about demographic rates -- we
 are already making assumptions about birth rates (e.g., the rate is the
 same across cities, but with city-specific population size). We model
 demographic stochasticity in births and imported infections by drawing
 time-specific values from Poisson distributions. In this model, the
-effective reproduction number at time \emph{t} is:
-\(R_E(t) = \frac{\beta_t}{\gamma} \frac{S_t}{N_t}\).
+effective reproduction number at time \(t\) may be approximated as:
+\(R_E(t) \approx \frac{\beta_t}{\gamma} \frac{S_t}{N_t}\).
 
-We assume observed case reports (\(\textbf{y}\)) are drawn from a
-Negative Binomial distribution subject to a constant reporting fraction
+We assume observed case reports (\(y_t\)) are drawn from a negative
+binomial distribution subject to a constant reporting fraction
 (\(\rho\)) and dispersion parameter \(\tau\),
 
 \begin{align}
@@ -356,10 +364,10 @@ conditions \(\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)\), the number of
 imported infections (\(\psi\)), reporting fraction (\(\rho\)), one
 parameter accounting for process noise (\(\sigma\)), and one parameter
 accounting for measurement noise (\(\tau\)). To ensure identifiability,
-and to make the model easier to fit, we assumed the infectious period
-was fixed at \(1/\eta = 8\) days and the recovery period was fixed at
-\(1/\gamma = 5\) days. The birth rate (\(\mu_t\)) was multiplied by 0.3
-to account for the reported 70\% vaccination coverage {[}19{]}.
+and to make the model easier to fit, we assumed the incubation period
+was fixed at \(1/\eta = 8\) days and the infectious period was fixed at
+\(1/\gamma = 5\) days. The vaccination rate (\(p\)) was set to 70\%,
+consistent with reported vaccination coverage {[}19{]}.
 
 MIF relies on particle filtering, which estimates the likelihood of
 fixed parameters by integrating state variables of a stochastic system.
@@ -375,14 +383,14 @@ We used the IF2 algorithm {[}27{]} implemented in the R {[}28{]} package
 \texttt{pomp} version 1.18 {[}29,30{]} to conduct the MIF procedure. To
 initialize MIF, we generated 5000 parameter sets using Latin Hypercube
 Sampling over large ranges of the parameter values. We then performed
-two rounds of MIF, each for 100 iterations, with 10000 particles, and
+two rounds of MIF, each for 100 iterations, with 10,000 particles, and
 geometric cooling. For the first round of MIF we set
-\texttt{cooling.facter\ =\ 1}. For the second round, which was
+\texttt{cooling.factor\ =\ 1}. For the second round, which was
 initialized using the collection of parameter sets from the end of the
 first round, we set \texttt{cooling.factor\ =\ 0.9}. We computed the log
 likelihood of 5000 final MIF parameter sets (i.e., parameter sets
 collected after 200 MIF iterations) as the log of the mean likelihoods
-of 50 replicate particle filters with 10000 particles each. At this
+of 50 replicate particle filters with 10,000 particles each. At this
 stage, we assume the parameter set with highest log likelihood is the
 MLE.
 
@@ -405,7 +413,7 @@ among the 50 MIF paramete sets. Last, we calculated summary statistics
 
 We used the MLE parameter sets to make one-week-ahead predictions and
 compared observed and expected case counts. To make one-week-ahead
-predictions, we used particle filtering with 50000 particles and
+predictions, we used particle filtering with 50,000 particles and
 retained the mean and standard deviation of all latent states across all
 particles before they were filtered at each time step. We used the mean
 predictions (\(\mathbb{E}(\text{cases}_t)\)) to assess model fit using a
@@ -414,11 +422,10 @@ generalized coefficient of determination, calculated as:
 {[}31{]}. In addition to comparing model expectations to in-sample
 observed data, we also compared our fitted SEIR models to two
 benchmarking models: a negative binomial sampling model that assumes
-independent and identically distributed observations and a seasonal
-moving average model (SI text). We fit the benchmarking models to the
-observed data and then compared models using Akaike's Information
-Criterion (AIC) to account for differences in the number of model
-parameters {[}32{]}.
+independent and identically distributed observations and a SARIMA model
+(SI text). We fit the benchmarking models to the observed data and then
+compared models using Akaike's Information Criterion (AIC) to account
+for differences in the number of model parameters {[}32{]}.
 
 \hypertarget{simulating-re-emergence}{%
 \subsection{Simulating re-emergence}\label{simulating-re-emergence}}
@@ -439,11 +446,11 @@ size, \emph{N}, was set to the mean population size for each city over
 the 1995-2005 time period. We then simulated the model forward for forty
 years using mean birth rate for the entire country (\(\mu = 0.05\)) and
 setting the death rate equal to the birth rate (\(\mu = \nu = 0.05\)) to
-achieve a constant eqiulibrium total population size over the course of
+achieve a constant equilibrium total population size over the course of
 the simulation (total population size does vary, though, because of
 stochasticity in the model). Forty years was long enough for \(R_E(t)\)
 to reach or exceed 1 for each city. Because the model is stochastic, we
-repeated these simulations 500 times for each city-susceptible discount
+repeated these simulations 500 times for each city--susceptible-discount
 combination.
 
 Next, we split each simulated time series into null and test intervals.
@@ -497,8 +504,9 @@ calculate EWS according to the formulas in Table S1. All EWS except the
 coefficient of variation are expected to increase as \(R_E(t)\)
 approaches 1 from below {[}4,12,14{]}. Less is known about the behavior
 of EWS as \(R_E(t)\) approaches 1 from above. But, theory does tell us
-that, for SIR models, the mean should decrease, autocorrelation should
-increase, and the variance should decrease {[}4{]}.
+that, for SIR models, the mean should decrease, autocorrelation at a
+fixed lag can either increase or decrease, and the variance should
+decrease {[}4{]}.
 
 For each simulation of re-emergence and elimination, we calculated EWS
 for the time series of expected cases in the null and test intervals.
@@ -510,7 +518,7 @@ intervals. Values of AUC far from 0.5 (i.e., close to 0 or 1) indicate a
 greater degree of separation and thus better performance of a particular
 EWS in terms of classifying whether \(R_E(t)\) is close to a critical
 transition. We calculated AUC as:
-\(\text{AUC} = \left[r_{\text{test}} - \left(n_{\text{test}}+1\right)/2\right] / \left(n_{\text{test}}n_{\text{null}}\right)\)
+\(\text{AUC} = \left[r_{\text{test}} - n_\text{test} \left(n_{\text{test}}+1\right)/2\right] / \left(n_{\text{test}}n_{\text{null}}\right)\)
 where \(r_{\text{test}}\) is the sum of the ranks of test set EWS
 statistics in a combined set of null and test statistics (lower numbers
 have lower ranks), \(n_{\text{test}}\) is the number of test of
@@ -530,11 +538,11 @@ observations for each city. Expected cases are one-week-ahead
 predictions from the fitted models. The dashed line shows 1:1.
 Coefficients of determination (\(R^2\)) were calculated as the reduction
 in the sum-of-squared errors from model predictions relative to a null
-model of the mean number of cases (SI text). (\emph{b}) The estimated
+model of the mean number of cases (Methods). (\emph{b}) The estimated
 seasonality of the basic reproductive ratio (\(R_0\)) for each city.
 \(R_0\) was calculated as:
 \(\frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}\), where \(1/\eta\) is the
-infectious period, \(1/\gamma\) is the recovery period, \(\beta_t\) is
+incubation period, \(1/\gamma\) is the infectious period, \(\beta_t\) is
 the time-specific rate of transmission, and \(\nu\) is the death rate.
 Only \(\beta_t\) is estimated by our model. We set \(1/\eta\) = 8 days,
 \(1/\gamma\) = 5 days, and \(\mu = \nu\) = 0.05 for calculating \(R_0\)
@@ -553,11 +561,11 @@ predictions ranging from 0.54 for Agadez to 0.89 for Maradi (figure
 than two benchmarking models (SI table Sx). Stochastic simulations of
 the models displayed dynamics typical of each city (figure S1),
 including the decline in seasonality amplitude as population size
-decreases (figure \ref{scatters}\emph{b}) {[}19{]}. Our model for Agadez
-performs poorly relative to the other cities, but still better than
-non-mechanistic models (SI table Sx). Maximum likelihood estimates and
-bootstrapped 95\% confidence intervals for all parameters are in the SI
-text (tables Sx-Sz).
+decreases (figure \ref{scatters}\emph{b}) {[}19{]}. \ignorespaces Our
+model for Agadez performs poorly relative to the other cities, but still
+better than non-mechanistic models (SI table Sx). Maximum likelihood
+estimates and bootstrapped 95\% confidence intervals for all parameters
+are in the SI text (tables Sx-Sz).
 
 The EWS generally perform as expected by theory on the approach to
 re-emergence. Most EWS increased as the critical transition is
@@ -602,9 +610,10 @@ The EWS did not perform as well when anticipating elimination, relative
 to emergence (figure \ref{elim-aucs}). Only three metrics are reliable:
 mean, autocovariance, and variance. All three metrics decreased as
 \(R_E(t)\) approached the critical transition (figure S5). As in the
-case of anticipating elimination, AUC values decreased as the speed of
-the vaccine campaign increased (figure \ref{elim-aucs}\emph{c}). Again,
-this is because of shorter null and test intervals.
+case of anticipating elimination, AUC values moved closer to 0.5 as the
+speed of the vaccine campaign increased (figure
+\ref{elim-aucs}\emph{c}). Again, this is because of shorter null and
+test intervals.
 
 \begin{figure}
 \centering
@@ -630,7 +639,7 @@ in measles dynamics as a critical transition is approached. We found
 similar results for the approach to elimination when calculating EWS
 over a moving window of 35 weeks in the null and test intervals (SI
 text, figure S7). But, all EWS performed worse when predicting the
-approach to emergence over the moving window (figure S7).
+approach to emergence over the moving window (figure S7). \ignorespaces
 
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
@@ -652,17 +661,19 @@ other EWS, provides stronger evidence of CSD (\textbf{CITATION?}).
 
 The autocorrelation was not a strong indicator of the transition to
 elimination (fig. \ref{elim-aucs}\emph{c}), suggesting weaker evidence
-for CSD. Other EWS (variane, autocovariance, and mean) did show altered
-behavior as the transition to elimination was approached, but these EWS
-were less sensitive under elimination scenarios compared to re-emergence
-scenarios. These results suggest that CSD might not preempt disease
-elimination or that CSD is harder to detect when a disease is fading out
-rather than emerging. We have reasons to expect CSD at the elimination
-threshold based on theoretical modeling studies {[}2,4,12{]}, but most
-theory has been developed for SIR models rather than the SEIR model we
-employed here. Still, we think it is more likely that CSD is simply
-harder to detect in noisy systems approaching elimination.
+for CSD. \ignorespaces Other EWS (variane, autocovariance, and mean) did
+show altered behavior as the transition to elimination was approached,
+but these EWS were less sensitive under elimination scenarios compared
+to re-emergence scenarios. These results suggest that CSD might not
+preempt disease elimination or that CSD is harder to detect when a
+disease is fading out rather than emerging. We have reasons to expect
+CSD at the elimination threshold based on theoretical modeling studies
+{[}2,4,12{]}, but most theory has been developed for SIR models rather
+than the SEIR model we employed here. Still, we think it is more likely
+that CSD is simply harder to detect in noisy systems approaching
+elimination.
 \textcolor{blue}{EAMON: Can you add text on why this might be the case?}
+\ignorespaces
 
 A potential limitation of our findings is that the levels of susceptible
 depletion we modeled (figure \ref{emerge-aucs}\emph{c}) might be lower
@@ -923,6 +934,7 @@ Recognition Letters} \textbf{27}, 861--874.
 outbreak detection in biosurveillance. \emph{Technometrics} \textbf{52},
 39--51.
 (doi:\href{https://doi.org/10.1198/TECH.2010.06134}{10.1198/TECH.2010.06134})
+
 
 \end{document}
 
