@@ -564,10 +564,10 @@ plot_grid(scatters, rnaughts, scale = 0.9, labels = c("(a)", "(b)"),
 # Results
 
 The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}*b*), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (figure \ref{scatters}*a*).
-The fitted models also had lower AIC values than two benchmarking models (SI table Sx).
-Stochastic simulations of the models displayed dynamics typical of each city (figure S1), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
-\comment{Figuer S1 seems to be an incorrect reference. Is this figure still in the works?}
-Our model for Agadez performs poorly relative to the other cities, but still better than non-mechanistic models (SI table Sx).
+The fitted models also had lower AIC values than two benchmarking models (table S1).
+Stochastic simulations of the models displayed dynamics typical of each city (figure S2), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
+
+Our model for Agadez performs poorly relative to the other cities, but still better than non-mechanistic models (table S1).
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the SI text (tables Sx-Sz).
 
 The EWS generally perform as expected by theory on the approach to re-emergence.
@@ -581,7 +581,7 @@ This is expected because more rapid returns to $R_E(t)=1$ result in shorter null
 Moreover, as the time to reach $R_E(t)=1$ decreases, the chance of a bifurcation delay increases because of the changing equilibrium of $R_0$ combined with demographic stochasticity [@Dibble2016; @Brett2017].
 Thus, re-emergence may prove difficult to anticipate in "fast" transmission systems, as demonstrated theoretically by @Brett2017 and seen here when susceptible depletion was relatively small (figure \ref{emerge-aucs}*c*).
 
-```{r emergence-results, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to emergence. (*a*) A typical example of an emergence simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each level of susceptible discount factor. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See Fig. Sx for visualization of how susceptible discounting factor maps to number of weeks in the null and test intervals.  \\label{emerge-aucs}"}
+```{r emergence-results, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to emergence. (*a*) A typical example of an emergence simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each level of susceptible discount factor. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See figure S3 for a visualization of how susceptible discounting factor maps to number of weeks in the null and test intervals.  \\label{emerge-aucs}"}
 # mycols <- c("#91CDF0", "#EF6677")
 mycols <- c("#008FD5", "#FF2700")  # fivethirtyeight blue/red
 
@@ -718,7 +718,7 @@ All three metrics decreased as $R_E(t)$ approached the critical transition (figu
 As in the case of anticipating elimination, AUC values moved closer to 0.5 as the speed of the vaccine campaign increased (figure \ref{elim-aucs}*c*).
 Again, this is because of shorter null and test intervals.
 
-```{r elimination, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to elimination. (*a*) A typical example of an elimination simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each speed of approach to herd immunity. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See Fig. Sx for visualization of how vaccination speed maps to number of weeks in the null and test intervals.  \\label{elim-aucs}"}
+```{r elimination, fig.width=8.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to elimination. (*a*) A typical example of an elimination simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each speed of approach to herd immunity. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See figure S4 for a visualization of how vaccination speed maps to number of weeks in the null and test intervals.  \\label{elim-aucs}"}
 example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
 ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
 
@@ -828,12 +828,12 @@ Using empirically-based disease transmission models, we found evidence of critic
 This evidence comes from the fact that several EWS accurately anticipate the critical transition.
 
 Evidence of CSD is strongest for scenarios of re-emergence.
-This is because the autocorrelation and other EWS increased on the approach to $R_E = 1$ (fig. \ref{emerge-aucs}*c*).
+This is because the autocorrelation and other EWS increased on the approach to $R_E = 1$ (figure \ref{emerge-aucs}*c*).
 Increases in EWS besides the autocorrelation, such as the variance, are necessary but insufficient evidence of CSD because such EWS can also increase when a critical transition does not exist (**CITATION?**).
 However, an increase in the autocorrelation, coupled with coincident increases in other EWS, provides stronger evidence of CSD (**CITATION?**).
 \textcolor{blue}{JOHN: I remember you making the points in the previous two sentences in a meeting once. Can you provide citations?}
 
-The autocorrelation was not a strong indicator of the transition to elimination (fig. \ref{elim-aucs}*c*), suggesting weaker evidence for CSD.
+The autocorrelation was not a strong indicator of the transition to elimination (figure \ref{elim-aucs}*c*), suggesting weaker evidence for CSD.
 \comment{I disagree completely. I don't think the autocorrelation has been analyzed properly.}
 Other EWS (variane, autocovariance, and mean) did show altered behavior as the transition to elimination was approached, but these EWS were less sensitive under elimination scenarios compared to re-emergence scenarios.
 These results suggest that CSD might not preempt disease elimination or that CSD is harder to detect when a disease is fading out rather than emerging.
