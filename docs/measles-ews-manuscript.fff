@@ -19,16 +19,16 @@ observations for each city. Expected cases are one-week-ahead
 predictions from the fitted models. The dashed line shows 1:1.
 Coefficients of determination (\(R^2\)) were calculated as the reduction
 in the sum-of-squared errors from model predictions relative to a null
-model of the mean number of cases (SI text). (\emph{b}) The estimated
+model of the mean number of cases (Methods). (\emph{b}) The estimated
 seasonality of the basic reproductive ratio (\(R_0\)) for each city.
-\(R_0\) was calculated as:
+\(R_0\) was approximated as:
 \(\frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}\), where \(1/\eta\) is the
-infectious period, \(1/\gamma\) is the recovery period, \(\beta_t\) is
+incubation period, \(1/\gamma\) is the infectious period, \(\beta_t\) is
 the time-specific rate of transmission, and \(\nu\) is the death rate.
 Only \(\beta_t\) is estimated by our model. We set \(1/\eta\) = 8 days,
-\(1/\gamma\) = 5 days, and \(\mu = \nu\) = 0.05 for calculating \(R_0\)
-as shown in this figure. The white line is \(R_0\) calculated using the
-MLE parameters; shaded regions are the bootstrapped 95\% confidence
+\(1/\gamma\) = 5 days, and \(\nu\) = 0.05 for calculating \(R_0\) as
+shown in this figure. The white line is \(R_0\) calculated using the MLE
+parameters; shaded regions are the bootstrapped 95\% confidence
 intervals. \label{scatters}}
 \end{figure}
 \efloatseparator
@@ -47,7 +47,7 @@ intervals across 500 simulations and the associated area under the curve
 (AUC) statistic. (\emph{c}) Heatmap of AUC statistics for each EWS at
 each level of susceptible discount factor. AUC values closer to 0 or 1
 indicate higher ability to distinguish among time series near and far
-from a critical transition. See Fig. Sx for visualization of how
+from a critical transition. See figure S3 for a visualization of how
 susceptible discounting factor maps to number of weeks in the null and
 test intervals. \label{emerge-aucs}}
 \end{figure}
@@ -67,7 +67,7 @@ intervals across 500 simulations and the associated area under the curve
 (AUC) statistic. (\emph{c}) Heatmap of AUC statistics for each EWS at
 each speed of approach to herd immunity. AUC values closer to 0 or 1
 indicate higher ability to distinguish among time series near and far
-from a critical transition. See Fig. Sx for visualization of how
+from a critical transition. See figure S4 for a visualization of how
 vaccination speed maps to number of weeks in the null and test
 intervals. \label{elim-aucs}}
 \end{figure}

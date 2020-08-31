@@ -313,12 +313,12 @@ We reduced the initial fraction of susceptible individuals by multplying the MLE
 These discounting factors represent situations of susceptible depletion after outbreaks of various size.
 After defining $S_{(t=0)}$ based on the discounting factor, we then set the initial number of recovered individuals to $R_{(t=0)} = N - S_{(t=0)}$ and set the initial number of exposed and infected individuals to zero.
 Population size, *N*, was set to the mean population size for each city over the 1995-2005 time period.
-We then simulated the model forward for forty years using mean birth rate for the entire country ($\mu = 0.05$) and setting the death rate equal to the birth rate ($\mu = \nu = 0.05$) to achieve a constant equilibrium total population size over the course of the simulation (total population size does vary, though, because of stochasticity in the model).
+We then simulated the model forward for forty years using the mean birth rate for the entire country ($\mu = 0.05$) and setting the death rate equal to the birth rate ($\mu = \nu = 0.05$) to achieve a constant equilibrium total population size over the course of the simulation (total population size does vary, though, because of stochasticity in the model).
 Forty years was long enough for $R_E(t)$ to reach or exceed 1 for each city.
 Because the model is stochastic, we repeated these simulations 500 times for each city--susceptible-discount combination.
 
 Next, we split each simulated time series into null and test intervals.
-First, averaging across all simulations for a city-susceptible discount combination, we found the simulation year in which $R_E(t)$ reaches or exceeds 1 and excluded years past that year (electronic supplement)
+First, averaging across all simulations for a city-susceptible discount combination, we found the simulation year in which $R_E(t)$ reaches or exceeds 1 and excluded years past that year (electronic supplement).
 We split the remaining time series into two windows of equal length (figure \ref{emerge-aucs}*a*).
 The null interval is the first window, where $R_E(t)$ is increasing but far from 1.
 The test interval is the second window, where $R_E(t)$ is increasing and approaching 1.
@@ -328,23 +328,23 @@ We calculated EWS over null and test intervals separately.
 ## Simulating elimination
 To simulate elimination, we simulated a vaccine campaign in which vaccination coverage linearly increased over time to eventually reach 100\%, i.e. eradication (figure S3).
 We ran simulations for 100 years, starting with 50 years of dynamics at the baseline vaccine coverage reported for Niger of 70\%, $p = 0.7$ [@Ferrari2008].
-Note that vaccination coverage is included in our model by discounting the birth rate of susceptibles by $1-p$.
+Note that vaccination coverage is included in our model by multiplying the birth rate of susceptibles by $1-p$.
 At year 50, we initiated the vaccination campaign and let the model run for another 50 years.
 We ran simulations across six vaccination ``speeds'' (the rate at which $p \rightarrow 1$; electronic supplement), simulating situations of slow and fast approaches to elimination.
 As in the re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant equilibrium population size. 
 
 We then split each time series into null and test intervals for calculating EWS.
-We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which vaccination coverage reached the vaccination threshold of $1 - 1/R_0$ (figure \ref{elim-aucs}*a*).
-$R_0$ was calculated for each city using the MLE parameters as: $R_0 = \left[\eta \beta \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\beta$ is the maximum seasonal transmission rate.
-We define the null interval as the window of time that ends at the start of the vaccination campaign (year 49) and starts at a time that results in an interval equal in length the test interval (figure \ref{elim-aucs}*a*).
+We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which vaccination coverage reached the vaccination threshold of $1 - 1/\max(R_0 (t))$ (figure \ref{elim-aucs}*a*).
+$\max(R_0(t))$ was approximated for each city using the MLE parameters as: $\max(R_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
+We define the null interval as the window of time that ends at the start of the vaccination campaign (year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
 EWS were then calculated for each interval.
 
 ## Calculating early warning signals
-We considered nine candidate early warning signals (Table S1).
-We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in Table S1.
+We considered nine candidate early warning signals (table S3).
+We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in table S3.
 All EWS except the coefficient of variation are expected to increase as $R_E(t)$ approaches 1 from below [@ORegan2013; @ORegan2016; @Brett2018].
-Less is known about the behavior of EWS as $R_E(t)$ approaches 1 from above.
-But, theory does tell us that, for SIR models, the mean should decrease, autocorrelation at a fixed lag can either increase or decrease, and the variance should decrease [@ORegan2013].
+We are not aware of theoretical results for the behavior of these EWS as $R_E(t)$ approaches 1 from above that are applicable to our fitted model's dynamics, which are highly non-linear (figure S2).
+But a natural expectation is that the mean should decrease and the variance should decrease.
 
 For each simulation of re-emergence and elimination, we calculated EWS for the time series of expected cases in the null and test intervals.
 This yielded a distribution of EWS over the 500 null and test intervals.
