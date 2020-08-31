@@ -336,7 +336,7 @@ As in the re-emergence simulations, we set the birth rate equal to the death rat
 We then split each time series into null and test intervals for calculating EWS.
 We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which vaccination coverage reached the vaccination threshold of $1 - 1/\max(R_0 (t))$ (figure \ref{elim-aucs}*a*).
 $\max(R_0(t))$ was approximated for each city using the MLE parameters as: $\max(R_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
-We define the null interval as the window of time that ends at the start of the vaccination campaign (year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
+We define the null interval as the window of time that ends at the start of the vaccination campaign (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
 EWS were then calculated for each interval.
 
 ## Calculating early warning signals
@@ -344,7 +344,7 @@ We considered nine candidate early warning signals (table S3).
 We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in table S3.
 All EWS except the coefficient of variation are expected to increase as $R_E(t)$ approaches 1 from below [@ORegan2013; @ORegan2016; @Brett2018].
 We are not aware of theoretical results for the behavior of these EWS as $R_E(t)$ approaches 1 from above that are applicable to our fitted model's dynamics, which are highly non-linear (figure S2).
-But a natural expectation is that the mean should decrease and the variance should decrease.
+But a natural expectation is that the mean should decrease as the endemic equilibrium of our model's deterministic skeleton moves toward zero.
 
 For each simulation of re-emergence and elimination, we calculated EWS for the time series of expected cases in the null and test intervals.
 This yielded a distribution of EWS over the 500 null and test intervals.

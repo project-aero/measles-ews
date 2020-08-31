@@ -456,7 +456,7 @@ for each city--susceptible-discount combination.
 Next, we split each simulated time series into null and test intervals.
 First, averaging across all simulations for a city-susceptible discount
 combination, we found the simulation year in which \(R_E(t)\) reaches or
-exceeds 1 and excluded years past that year (electronic supplement) We
+exceeds 1 and excluded years past that year (electronic supplement). We
 split the remaining time series into two windows of equal length (figure
 \ref{emerge-aucs}\emph{a}). The null interval is the first window, where
 \(R_E(t)\) is increasing but far from 1. The test interval is the second
@@ -472,7 +472,7 @@ vaccination coverage linearly increased over time to eventually reach
 100\%, i.e.~eradication (figure S3). We ran simulations for 100 years,
 starting with 50 years of dynamics at the baseline vaccine coverage
 reported for Niger of 70\%, \(p = 0.7\) {[}19{]}. Note that vaccination
-coverage is included in our model by discounting the birth rate of
+coverage is included in our model by multiplying the birth rate of
 susceptibles by \(1-p\). At year 50, we initiated the vaccination
 campaign and let the model run for another 50 years. We ran simulations
 across six vaccination ``speeds'' (the rate at which
@@ -485,28 +485,30 @@ We then split each time series into null and test intervals for
 calculating EWS. We define the test interval as the window of time
 between the start of the vaccination campaign (year 50) and the time at
 which vaccination coverage reached the vaccination threshold of
-\(1 - 1/R_0\) (figure \ref{elim-aucs}\emph{a}). \(R_0\) was calculated
-for each city using the MLE parameters as:
-\(R_0 = \left[\eta \beta \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]\),
-where \(\beta\) is the maximum seasonal transmission rate. We define the
-null interval as the window of time that ends at the start of the
-vaccination campaign (year 49) and starts at a time that results in an
-interval equal in length the test interval (figure
-\ref{elim-aucs}\emph{a}). EWS were then calculated for each interval.
+\(1 - 1/\max(R_0 (t))\) (figure \ref{elim-aucs}\emph{a}).
+\(\max(R_0(t))\) was approximated for each city using the MLE parameters
+as:
+\(\max(R_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]\),
+where \(\max(\beta)\) is the maximum value of \(\beta_t\) over its
+seasonal variation. We define the null interval as the window of time
+that ends at the start of the vaccination campaign (year 49) and starts
+at a time that results in an interval equal in length to the test
+interval (figure \ref{elim-aucs}\emph{a}). EWS were then calculated for
+each interval.
 
 \hypertarget{calculating-early-warning-signals}{%
 \subsection{Calculating early warning
 signals}\label{calculating-early-warning-signals}}
 
-We considered nine candidate early warning signals (Table S1). We used
+We considered nine candidate early warning signals (table S3). We used
 the \texttt{spaero::get\_stats()} function {[}33{]} in R {[}28{]} to
-calculate EWS according to the formulas in Table S1. All EWS except the
+calculate EWS according to the formulas in table S3. All EWS except the
 coefficient of variation are expected to increase as \(R_E(t)\)
-approaches 1 from below {[}4,12,14{]}. Less is known about the behavior
-of EWS as \(R_E(t)\) approaches 1 from above. But, theory does tell us
-that, for SIR models, the mean should decrease, autocorrelation at a
-fixed lag can either increase or decrease, and the variance should
-decrease {[}4{]}.
+approaches 1 from below {[}4,12,14{]}. We are not aware of theoretical
+results for the behavior of these EWS as \(R_E(t)\) approaches 1 from
+above that are applicable to our fitted model's dynamics, which are
+highly non-linear (figure S2). But a natural expectation is that the
+mean should decrease and the variance should decrease.
 
 For each simulation of re-emergence and elimination, we calculated EWS
 for the time series of expected cases in the null and test intervals.
