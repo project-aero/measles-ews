@@ -297,13 +297,13 @@ First, we simulated 100 realizations from the fitted model using the MLE paramet
 Second, we fitted the SEIR model to each of the 100 bootstrap simulations using the same MIF procedure described above, except we initiated the parameter search from 50 parameter sets rather then 5000.
 We reduced the number of parameter sets due to the computational constraints of fitting 100 simulated data sets for each of the four cities.
 Third, we identified the MLE parameter set for each of the 100 bootstrap simulations from among the 50 MIF parameter sets.
-Last, we calculated summary statistics (mean, median, quantiles) from the distribution of 100 MLE parameters (SI text).
+Last, we calculated summary statistics (mean, median, quantiles) from the distribution of 100 MLE parameters (electronic supplement).
 
 ## Model assessment
 We used the MLE parameter sets to make one-week-ahead predictions and compared observed and expected case counts.
 To make one-week-ahead predictions, we used particle filtering with 50,000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
-In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarking models: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model (SI text).
+In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarking models: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model (electronic supplement).
 We fit the benchmarking models to the observed data and then compared models using Akaike's Information Criterion (AIC) to account for differences in the number of model parameters [@Akaike1973].
 
 ## Simulating re-emergence
@@ -318,7 +318,7 @@ Forty years was long enough for $R_E(t)$ to reach or exceed 1 for each city.
 Because the model is stochastic, we repeated these simulations 500 times for each city--susceptible-discount combination.
 
 Next, we split each simulated time series into null and test intervals.
-First, averaging across all simulations for a city-susceptible discount combination, we found the simulation year in which $R_E(t)$ reaches or exceeds 1 and excluded years past that year (SI text).
+First, averaging across all simulations for a city-susceptible discount combination, we found the simulation year in which $R_E(t)$ reaches or exceeds 1 and excluded years past that year (electronic supplement)
 We split the remaining time series into two windows of equal length (figure \ref{emerge-aucs}*a*).
 The null interval is the first window, where $R_E(t)$ is increasing but far from 1.
 The test interval is the second window, where $R_E(t)$ is increasing and approaching 1.
@@ -330,7 +330,7 @@ To simulate elimination, we simulated a vaccine campaign in which vaccination co
 We ran simulations for 100 years, starting with 50 years of dynamics at the baseline vaccine coverage reported for Niger of 70\%, $p = 0.7$ [@Ferrari2008].
 Note that vaccination coverage is included in our model by discounting the birth rate of susceptibles by $1-p$.
 At year 50, we initiated the vaccination campaign and let the model run for another 50 years.
-We ran simulations across six vaccination ``speeds'' (the rate at which $p \rightarrow 1$; SI text), simulating situations of slow and fast approaches to elimination.
+We ran simulations across six vaccination ``speeds'' (the rate at which $p \rightarrow 1$; electronic supplement), simulating situations of slow and fast approaches to elimination.
 As in the re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant equilibrium population size. 
 
 We then split each time series into null and test intervals for calculating EWS.
@@ -568,7 +568,7 @@ The fitted models also had lower AIC values than two benchmarking models (table 
 Stochastic simulations of the models displayed dynamics typical of each city (figure S2), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
 
 Our model for Agadez performs poorly relative to the other cities, but still better than non-mechanistic models (table S1).
-Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the SI text (tables Sx-Sz).
+Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables Sx-Sz).
 
 The EWS generally perform as expected by theory on the approach to re-emergence.
 Most EWS increased as the critical transition is approached, resulting in positive AUC values near 1 (figure \ref{emerge-aucs}).
@@ -818,7 +818,7 @@ print(final)
 ```
 
 In all, the suite of EWS suggest that critical slowing down does occur in measles dynamics as a critical transition is approached.
-We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (SI text, figure S7).
+We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (electronic supplement, figure S7).
 But, all EWS performed worse when predicting the approach to emergence over the moving window (figure S7).
 \comment{I don't think these elimination results say much about critical slowing down. How does a decrease in variance and the mean relate to declining stability of the equilibrium? If we want to demonstrate that CSD is detectable, I think the analysis must demonstrate the expected changes in the autocorrelation function of increased periodicity }
 
@@ -900,7 +900,7 @@ percs <- fracs_less_than_half$frac_less*100
 ```
 
 A potential limitation of our findings is that the levels of susceptible depletion we modeled (figure \ref{emerge-aucs}*c*) might be lower than the levels that occur in reality.
-To check the relevance of this limitation, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (SI text).
+To check the relevance of this limitation, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (electronic supplement).
 We found that susceptible depletion was less than 0.5, the smallest susceptible depletion level we tested, for `r round(percs[1], 1)`% of outbreaks in Agadez, `r round(percs[2])`% of outbreaks in Maradi, `r round(percs[3])`% of outbreaks in Niamey, and `r round(percs[4])`% of outbreaks in Zinder.
 These statistics do not detract from our main findings of CSD in measles dynamics, but they do suggest that EWS might be less useful in some cases than in others.
 For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{emerge-aucs}*c*).
