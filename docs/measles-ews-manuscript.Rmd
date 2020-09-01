@@ -563,12 +563,12 @@ plot_grid(scatters, rnaughts, scale = 0.9, labels = c("(a)", "(b)"),
 
 # Results
 
-The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}*b*), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.54 for Agadez to 0.89 for Maradi (figure \ref{scatters}*a*).
+The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}*b*), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.55 for Agadez to 0.89 for Maradi (figure \ref{scatters}*a*).
 The fitted models also had lower AIC values than two benchmarking models (table S1).
 Stochastic simulations of the models displayed dynamics typical of each city (figure S2), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
 
 Our model for Agadez performs poorly relative to the other cities, but still better than non-mechanistic models (table S1).
-Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables Sx-Sz).
+Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables S4-S7).
 
 The EWS generally perform as expected by theory on the approach to re-emergence.
 Most EWS increased as the critical transition is approached, resulting in positive AUC values near 1 (figure \ref{emerge-aucs}).
@@ -801,7 +801,7 @@ ggplot() +
                      name = "AUC") +
   facet_wrap(~city, nrow = 1) +
   labs(x = expression(paste("rate to full vaccine coverage (", 
-                            phantom()%*%phantom(), 10^4, ")")), 
+                            phantom()%*%phantom(), 10^{-4}, phantom(0), d^{-1}, ")")), 
        y = NULL) +
   theme_minimal(base_size = 11, base_family = "Times") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
@@ -817,10 +817,9 @@ final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
 print(final)
 ```
 
-In all, the suite of EWS suggest that critical slowing down does occur in measles dynamics as a critical transition is approached.
-We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (electronic supplement, figure S7).
-But, all EWS performed worse when predicting the approach to emergence over the moving window (figure S7).
-\comment{I don't think these elimination results say much about critical slowing down. How does a decrease in variance and the mean relate to declining stability of the equilibrium? If we want to demonstrate that CSD is detectable, I think the analysis must demonstrate the expected changes in the autocorrelation function of increased periodicity }
+In all, the suite of EWS suggest that indicators of critical slowing down have some predictive value for emergence and elimination events.
+We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (figure S9b).
+But, all EWS performed worse when predicting the approach to emergence over the moving window (figure S9).
 
 # Discussion
 
