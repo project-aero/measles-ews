@@ -412,7 +412,7 @@ So, we define the test interval as the times between the beginning of year 50 an
 We then defined the null interval as a window with length equal to the test interval and ending at end of year 49.
 Figure \ref{elimin-sim} shows a typical example.
 
-```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate to full vaccination coverage is 1.5e-05 per day. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
+```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate of change in vaccination coverage is 1.5e-05 per day. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which vaccination coverage reaches the vaccination threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of herd immunity: the null interval ends at time 50 (when vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
 
 example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
 ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
@@ -494,23 +494,9 @@ Table: List of candidate early warning signals and their estimating equations. S
 
 Theory suggests that most EWS should increase as disease dynamics
 approach a critical transition from below (emergence).  When
-approaching the critical transition from above (elimination), a
-simple linear noise approximation to the SEIR model dynamics leads to
-the prediction that the mean and variance should decrease while the
-autocorrelation should develop a longer period.
+approaching the critical transition from above (elimination), we are not aware of any well-developed  theoretical predictions appliable to our model.
 
-\comment{If you would like a reference, I would suggest citing
-"Stochastic dynamics on slow manifolds" by Constable et al. They
-describe a technique for calculating the linear noise approximation
-for the SEIR model with seasonality and plot the power spectrum.}
-
-
-
-To confirm that the EWS are behaving as expected, and to document cases in which they do not, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
-
-\comment{The titles for Decay time and Index of dispersion facets are
-clipped off in some instances. I would be okay with eliminating decay
-time if that helps, since it a simple transform of autocorrelation.}
+To confirm that the EWS are behaving as expected, and to provide empirical results for cases in which we lack expectations, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
 
 ```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
@@ -521,9 +507,9 @@ emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
     metric = ifelse(metric == "variance_first_diff", "Var. 1st Diff.", metric),
     metric = ifelse(metric == "autocovariance", "Autocovar.", metric),
     metric = ifelse(metric == "autocorrelation", "Autocorr.", metric),
-    metric = ifelse(metric == "decay_time", "Decay time", metric),
+    metric = ifelse(metric == "decay_time", "Decay\ntime", metric),
     metric = ifelse(metric == "mean", "Mean", metric),
-    metric = ifelse(metric == "index_of_dispersion", "Index of dis.", metric),
+    metric = ifelse(metric == "index_of_dispersion", "Index of\ndispersion", metric),
     metric = ifelse(metric == "coefficient_of_variation", "Coeff. var.", metric),
     metric = ifelse(metric == "skewness", "Skewness", metric),
     metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
@@ -567,7 +553,7 @@ ews_hists <- cowplot::plot_grid(
 print(ews_hists)
 ```
 
-```{r ews-hists2, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where rate of vaccination coverage reaching 1 is 1.5e-05.", fig.height=5}
+```{r ews-hists2, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where the rate of change in vaccination coverage equals 1.5e-05 per day.", fig.height=5}
 elimination_ews <- read.csv("../results/ews-elimination.csv") %>%
   filter(metric != "variance_first_diff" & vacc_speed == 1.5e-05) %>%
   mutate(metric = as.character(metric)) %>%
@@ -576,9 +562,9 @@ elimination_ews <- read.csv("../results/ews-elimination.csv") %>%
     metric = ifelse(metric == "variance_first_diff", "Var. 1st Diff.", metric),
     metric = ifelse(metric == "autocovariance", "Autocovar.", metric),
     metric = ifelse(metric == "autocorrelation", "Autocorr.", metric),
-    metric = ifelse(metric == "decay_time", "Decay time", metric),
+    metric = ifelse(metric == "decay_time", "Decay\time", metric),
     metric = ifelse(metric == "mean", "Mean", metric),
-    metric = ifelse(metric == "index_of_dispersion", "Index of dis.", metric),
+    metric = ifelse(metric == "index_of_dispersion", "Index of\ndispersion", metric),
     metric = ifelse(metric == "coefficient_of_variation", "Coeff. var.", metric),
     metric = ifelse(metric == "skewness", "Skewness", metric),
     metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
@@ -833,7 +819,7 @@ read_csv("../results/elimination-bandwidths-colnames.csv",
   ggplot(aes(x = vacc_speed, y = bandwidth, color = city)) +
   geom_line() +
   geom_point(size = 3) +
-  labs(x = "Speed of vaccination campaign", 
+  labs(x = "Rate of increase in vaccination coverage (per day)", 
        y = "Number of weeks in interval",
        title = "Length of elimination intervals") +
   scale_color_colorblind(name = NULL) +
@@ -881,7 +867,7 @@ eliminate_plot <- ggplot() +
   geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = AUC)) +
   scale_fill_viridis(limits = c(0,1), direction = -1, option = "E", name = "AUC") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = expression(paste("Rate to full vaccine coverage (", phantom()%*%phantom(), 10^4, ")")), y = NULL) +
+  labs(x = expression(paste("Rate of change in vaccine coverage (", phantom()%*%phantom(), 10^{-4}, phantom(0), d^{-1}, ")")), y = NULL) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"),
