@@ -89,23 +89,46 @@ iterate_P <- function(xhat, P){
 xhat0 <- 0
 Phat0 <- 1
 dt <- 1 / 52
-z_k <- sd$reports[1]
-
-xhat_kmo <- xhat0
-P_kmo <- Phat0
+z_1 <- sd$reports[1]
 H <- coef(sim)["rho"] * dt * coef(sim)["gamma"]
 R <- 1
 
 # Predict
-xhat_k <- f(xhat_kmo)
-P_k <- iterate_P(xhat_kmo, P_kmo)
+xhat_1_0 <- f(xhat0)
+P_1_0 <- iterate_P(xhat0, Phat0)
 
 # Update
 
-K_k = P_k * t(H) %*% solve(H %*% P_k %*% t(H) + R)
-xhat_kk <- xhat_k + K_k %*% (z_k - H * xhat_k)
-P_kk <- (1 - K_k %*% H) %*% P_k
+K_1 = P_1_0 * t(H) %*% solve(H %*% P_1_0 %*% t(H) + R)
+xhat_1_1 <- xhat_1_0 + K_1 %*% (z_1 - H * xhat_1_0)
+P_1_1 <- (1 - K_1 %*% H) %*% P_1_0
+
+## Now calculate for each step in simulation
 
 
+T <- nrow(sd)
+z <- sd$reports
+K <- xhat_kk <- xhat_kkmo <- P_kk <- P_kkmo <- numeric(T)
+
+K[1] <- K_1
+xhat_kkmo[1] <- xhat_1_0
+xhat_kk[1] <- xhat_1_1
+P_kk[1] <- P_1_1
+P_kkmo[1] <- P_1_0
+
+for (i in seq(2, T)){
+  xhat_kkmo[i] <- f(xhat_kk[i - 1])
+  P_kkmo[i] <- iterate_P(xhat_kk[i - 1], P_kk[i - 1])
+  K[i] <- P_kkmo[i] * t(H) %*% solve(H %*% P_kkmo[i] %*% t(H) + R)
+  xhat_kk[i] <- xhat_kkmo[i] + K[i] %*% (z[i] - H * xhat_kkmo[i])
+  P_kk[i] <- (1 - K[i] %*% H) %*% P_kkmo[i]
+}
 
 
+plot(I ~ time, data = sd)
+points(cases ~ time, data = sd, col = "orange")
+points(sd$time, xhat_kk, col = "blue")
+plot(I ~ time, data = sd, log = 'y')
+lines(cases ~ time, data = sd)
+legend("topleft", col =c ("black", "orange", "blue"), legend = c("No. infecteds", "Reported cases", "Kalman filter"),
+       pch = 1)
