@@ -85,13 +85,27 @@ iterate_P <- function(xhat, P){
   PsystemSIS( init.vars = c(I = xhat, P = P))[2, "P"]
 }
 
+# Initialize
 xhat0 <- 0
 Phat0 <- 1
 dt <- 1 / 52
-xhat <- xhat0
-Phat <- Phat0
-xhat_next <- f(xhat)
-Pnext <- iterate_P(xhat, Phat)
+z_k <- sd$reports[1]
+
+xhat_kmo <- xhat0
+P_kmo <- Phat0
+H <- coef(sim)["rho"] * dt * coef(sim)["gamma"]
+R <- 1
+
+# Predict
+xhat_k <- f(xhat_kmo)
+P_k <- iterate_P(xhat_kmo, P_kmo)
+
+# Update
+
+K_k = P_k * t(H) %*% solve(H %*% P_k %*% t(H) + R)
+xhat_kk <- xhat_k + K_k %*% (z_k - H * xhat_k)
+P_kk <- (1 - K_k %*% H) %*% P_k
+
 
 
 
