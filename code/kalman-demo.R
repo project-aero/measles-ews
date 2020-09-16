@@ -108,20 +108,24 @@ P_1_1 <- (1 - K_1 %*% H) %*% P_1_0
 
 T <- nrow(sd)
 z <- sd$reports
-K <- xhat_kk <- xhat_kkmo <- P_kk <- P_kkmo <- numeric(T)
+ytilde_kk <- K <- xhat_kk <- xhat_kkmo <- P_kk <- P_kkmo <- S <- numeric(T)
 
 K[1] <- K_1
 xhat_kkmo[1] <- xhat_1_0
 xhat_kk[1] <- xhat_1_1
 P_kk[1] <- P_1_1
 P_kkmo[1] <- P_1_0
+S[1] <- H %*% P_kkmo[1] %*% t(H) + R
+ytilde_kk[1] <- z[1] - H %*% xhat_kk[1]
 
 for (i in seq(2, T)){
   xhat_kkmo[i] <- f(xhat_kk[i - 1])
   P_kkmo[i] <- iterate_P(xhat_kk[i - 1], P_kk[i - 1])
-  K[i] <- P_kkmo[i] * t(H) %*% solve(H %*% P_kkmo[i] %*% t(H) + R)
+  S[i] <- H %*% P_kkmo[i] %*% t(H) + R
+  K[i] <- P_kkmo[i] * t(H) %*% solve(S[i])
   xhat_kk[i] <- xhat_kkmo[i] + K[i] %*% (z[i] - H * xhat_kkmo[i])
   P_kk[i] <- (1 - K[i] %*% H) %*% P_kkmo[i]
+  ytilde_kk[i] <- z[i] - H %*% xhat_kk[i]
 }
 
 
@@ -130,5 +134,14 @@ points(cases ~ time, data = sd, col = "orange")
 points(sd$time, xhat_kk, col = "blue")
 plot(I ~ time, data = sd, log = 'y')
 lines(cases ~ time, data = sd)
-legend("topleft", col =c ("black", "orange", "blue"), legend = c("No. infecteds", "Reported cases", "Kalman filter"),
+legend("topleft", col =c ("black", "orange", "blue"), 
+       legend = c("No. infecteds", "Reported cases", "Kalman filter"),
        pch = 1)
+
+log_lik <- function(Sigma, resids){
+  -0.5 * sum(resids ^ 2 / Sigma + log(Sigma) + log( 2 * pi))
+}
+
+log_lik(S, ytilde_kk)
+
+
