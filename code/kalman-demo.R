@@ -181,7 +181,7 @@ log_lik(S, ytilde_k)
 
 # Now create  a higher-level function for the log likihood
 
-kfll <-
+kfnll <-
   function(z,
            beta = 30,
            rho = 0.1,
@@ -238,16 +238,21 @@ kfll <-
       ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
     }
     
-    - 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
+    0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
   }
 
-kfll(sd$reports)
+kfnll(sd$reports)
 
-beta_seq <- seq(29.5, 30.5, length.out = 10)
-llseq <- sapply(beta_seq, function(x) kfll(sd$reports, beta = x))
-plot(beta_seq, llseq)
+## BBMLE estimates
 
-obj <- function(x) kfll(z = sd$reports, beta = x)
+library(bbmle)
 
-res <- optimize(obj, c(24, 40), maximum = TRUE)
-points(res$maximum, res$objective)
+
+m0 <- mle2(minuslogl = kfnll, start = list(rho = .2), 
+           method = "L-BFGS-B", 
+           lower = 0.05, upper = .95, #if R0 goes below 1, then the lsoda calls have problems
+           trace = TRUE, data = list(z = sd$reports))
+
+p0 <- profile(m0)
+confint(p0)
+plot(p0, absVal = FALSE)
