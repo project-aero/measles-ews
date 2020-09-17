@@ -256,3 +256,150 @@ m0 <- mle2(minuslogl = kfnll, start = list(rho = .2),
 p0 <- profile(m0)
 confint(p0)
 plot(p0, absVal = FALSE)
+
+
+## example with spline beta
+
+sim_times <- seq(3.5 / 12, 9.5 / 12, by = 1 / 365) # mid-March to mid-Sept.
+seastimes <- c(3.6 / 12 - 1 / 365, sim_times, 9.5 / 12 + 1 / 365)
+seas <- cbind(time = seastimes, bspline.basis(x = seastimes, nbasis = 3, degree = 2, names = "b"))
+
+beta_par_t <- -10 * sinpi(sim_times * 3 )
+cov <- data.frame(time = sim_times, beta_par_t = beta_par_t, gamma_t = 0, mu_t = 0, d_t = 0, eta_t = 0, p_t = 0 )
+
+sim2 <- create_simulator(times = sim_times, process_model = "SIS", 
+                         transmission = "frequency-dependent",
+                         covar = cov)
+coef(sim2)["beta_par"] <- 30
+coef(sim2)["I_0"] <- 0.01
+sd2 <- pomp::simulate(sim2, seed = 2, as.data.frame = TRUE)
+
+par(mfrow =c(2, 1))
+plot(I~time,data = sd2)
+plot(beta_par_t~time, data = sd2)
+
+fb <- coef(sim2)["beta_par"] + cov$beta_par_t
+inds <- seq(2, nrow(seas) - 1)
+m <- lm(log(fb) ~ b.1 + b.2 + b.3 + 0, data = as.data.frame(seas[inds, ]))
+plot(cov$time, fb)
+lines(cov$time, exp(predict(m)))
+
+PsystemSISb3 <- function(b.1, b.2, b.3, seas, eta = 0, gamma = 24, pop.size = 1e5, 
+                       init.vars = c(I = 0, C = 0, Pii = 1, Pic = 1, Pci = 1, Pcc = 1),
+                       time.steps = c(0, 1 / 52)){
+  
+  parameters <- c(eta = eta, b.1 = b.2, b.2 = b.2, b.3 = b.3, gamma = gamma, pop.size = pop.size)
+  PModel <- function(t, x, parms) {
+    with(as.list(c(parms, x)), {
+      log_beta_t <- seas[, -1] %*% c(b.1, b.2, b.3)
+      beta <- exp(approx(x = seas[, 1], y = log_beta_t, xout = t)$y)
+      dI <- beta * (pop.size - I) * I / pop.size + eta * (1 - I) - gamma * I
+      dC <- gamma * I
+      F <- rbind(c(beta - 2 * beta * I / pop.size - eta - gamma, 0),
+                 c(gamma, 0))
+      Pmat <- rbind(c(Pii, Pic),
+                    c(Pci, Pcc))
+      Qmat <- rbind(c(beta * I / pop.size * (1 - I / pop.size) + eta * (1 - I / pop.size) + gamma * I / pop.size, -gamma * I / pop.size),
+                    c(-gamma * I / pop.size, gamma * I / pop.size))
+      dPmat <-  F %*% Pmat + Pmat %*% t(F) + Qmat
+      list(c(dI=dI, dC = dC, 
+             dPii = dPmat[1,1], dPic = dPmat[1,2], 
+             dPci = dPmat[2,1], dPcc = dPmat[2,2]))
+    })
+  }
+  lsoda(init.vars, time.steps, PModel, parameters)
+}
+
+iterate_f_and_Pb3 <- function(xhat, P, pop.size = 1e5, t, dt = 1 / 365, ...){
+  time.steps <- c(t, t + dt)
+  ret <- PsystemSISb3(init.vars = c(I = xhat[1], 
+                                  C = 0, 
+                                  Pii = P[1,1] / sqrt(pop.size), 
+                                  Pic = 0, 
+                                  Pci = 0, 
+                                  Pcc = 0), pop.size = pop.size, 
+                      time.steps = time.steps, ...)[2, c("I", "C", "Pii", "Pic", "Pci", "Pcc")]
+  list(xhat = matrix(c(ret[1], ret[2]), ncol = 1), 
+       Phat = rbind(c(ret[3], ret[4]),
+                    c(ret[5], ret[6])) * sqrt(pop.size))
+}
+
+kfnllb3 <-
+  function(z,
+           tvec, 
+           seas, 
+           b.1 = 2.3,
+           b.2 = 4.2,
+           b.3 = 1.6,
+           rho = 0.1,
+           gamma = 24,
+           dt = 1 / 52,
+           xhat0 = c(10, 0),
+           Phat0 = rbind(c(10, 0), 
+                         c(0, 0))) {
+    z_1 <- z[1]
+    H <- matrix(c(0, rho), ncol = 2)
+    
+    # Predict
+    xP <- iterate_f_and_Pb3(xhat0, Phat0, b.1 = b.1, b.2 = b.2, b.3 = b.3, gamma = gamma, seas = seas, t = tvec[1])
+    xhat_1_0 <- xP$xhat
+    PP_1_0 <- xP$Phat
+    # Update
+    
+    K_1 <- P_1_0 %*% t(H) %*% solve(H %*% P_1_0 %*% t(H) + R[1])
+    ytilde_1 <- z_1 - H %*% xhat_1_0
+    xhat_1_1 <- xhat_1_0 + K_1 %*% ytilde_1
+    P_1_1 <- (diag(2) - K_1 %*% H) %*% P_1_0
+    
+    T <- length(z)
+    ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
+    K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(2, T))
+    P_kk <- P_kkmo <- array(NA_real_, dim = c(2, 2, T))
+    
+    K[, 1] <- K_1
+    xhat_kkmo[, 1] <- xhat_1_0
+    xhat_kk[, 1] <- xhat_1_1
+    P_kk[, , 1] <- P_1_1
+    P_kkmo[, , 1] <- P_1_0
+    Rc <- xhat_kkmo[2, 1] * rho * (1 - rho)
+    if(Rc < 1){
+      Rc <- 1
+    }
+    S[, 1] <- H %*% P_kkmo[, , 1] %*% t(H) + Rc
+    ytilde_kk[, 1] <- z[1] - H %*% xhat_kk[, 1]
+    ytilde_k[, 1] <- ytilde_1
+    
+    for (i in seq(2, T)){
+      xP <- iterate_f_and_Pb3(xhat_kk[, i - 1], P_kk[, , i - 1], b.1 = b.1, b.2 = b.2, b.3 = b.3, seas = seas, gamma = gamma, t = tvec[i])
+      xhat_kkmo[, i] <- xP$xhat
+      P_kkmo[, , i] <- xP$Phat
+      Rc <- xhat_kkmo[2, i] * rho * (1 - rho)
+      if(is.na(Rc)) browser()
+      if(Rc < 1){
+        Rc <- 1
+      }
+      S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + Rc
+      K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
+      ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
+      xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
+      P_kk[, , i] <- (1 - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
+      ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
+    }
+    
+    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
+    list(nll = nll, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
+  }
+
+out <- kfnllb3(z = sd2$reports, tvec = sd2$time, seas = seas)
+
+par(mfrow = c(1, 1))
+plot(sd2$time * 365, y = sd2$I, ylim = c(1, 23e3), log = 'y', xlab = "Day of year", ylab = "State variable", type = 'l')
+points(sd2$time * 365, 1 + out$xhat_kk[1, ])
+lines(sd2$time * 365, 1 + sd2$cases, col = "orange")
+points(sd2$time * 365, 1 + out$xhat_kk[2, ], col = "orange")
+lines(sd2$time * 365, sd2$reports, col = "blue")
+legend("topleft", lty = 1, pch = c(1, 1, NA), col = c(1, "orange", "blue"), legend = c("Infected", "Cases", "Reported cases"))
+
+plot(seas[, 1], exp(seas[, -1] %*% c(2.3, 4.2, 1.6)), xlab = "Time (y)", ylab = "Transmission rate", type = 'l')
+points(sd2$time, sd2$beta_par_t + coef(sim2)["beta_par"])
+legend("bottomleft", lty = c(NA, 1), pch = c(1, NA), legend = c("Fitting model", "Simulation model (Truth)"))
