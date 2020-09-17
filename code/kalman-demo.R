@@ -100,6 +100,19 @@ iterate_P <- function(xhat, P, ...){
         c(ret[3], ret[4])) * sqrt(1e5)
 }
 
+iterate_f_and_P <- function(xhat, P, pop.size = 1e5, ...){
+  ret <- PsystemSIS(init.vars = c(I = xhat[1], 
+                                  C = 0, 
+                                  Pii = P[1,1] / sqrt(pop.size), 
+                                  Pic = 0, 
+                                  Pci = 0, 
+                                  Pcc = 0), pop.size = pop.size, ...)[2, c("I", "C", "Pii", "Pic", "Pci", "Pcc")]
+  list(xhat = matrix(c(ret[1], ret[2]), ncol = 1), 
+       Phat = rbind(c(ret[3], ret[4]),
+                    c(ret[5], ret[6])) * sqrt(pop.size))
+}
+
+
 # Initialize
 xhat0 <- matrix(c(0, 0), ncol = 1)
 Phat0 <- rbind(c(1, 0),
@@ -181,9 +194,9 @@ kfll <-
     H <- matrix(c(0, rho), ncol = 2)
     
     # Predict
-    xhat_1_0 <- f(xhat0, beta = beta, gamma = gamma)
-    P_1_0 <- iterate_P(xhat0, Phat0, beta = beta, gamma = gamma)
-    
+    xP <- iterate_f_and_P(xhat0, Phat0, beta = beta, gamma = gamma)
+    xhat_1_0 <- xP$xhat
+    PP_1_0 <- xP$Phat
     # Update
     
     K_1 <- P_1_0 %*% t(H) %*% solve(H %*% P_1_0 %*% t(H) + R[1])
@@ -210,8 +223,9 @@ kfll <-
     ytilde_k[, 1] <- ytilde_1
     
     for (i in seq(2, T)){
-      xhat_kkmo[, i] <- f(xhat_kk[, i - 1], beta = beta, gamma = gamma)
-      P_kkmo[, , i] <- iterate_P(xhat_kk[, i - 1], P_kk[, , i - 1], beta = beta, gamma = gamma)
+      xP <- iterate_f_and_P(xhat_kk[, i - 1], P_kk[, , i - 1], beta = beta, gamma = gamma)
+      xhat_kkmo[, i] <- xP$xhat
+      P_kkmo[, , i] <- xP$Phat
       Rc <- xhat_kkmo[2, i] * rho * (1 - rho)
       if(Rc < 1){
         Rc <- 1
@@ -232,3 +246,8 @@ kfll(sd$reports)
 beta_seq <- seq(29.5, 30.5, length.out = 10)
 llseq <- sapply(beta_seq, function(x) kfll(sd$reports, beta = x))
 plot(beta_seq, llseq)
+
+obj <- function(x) kfll(z = sd$reports, beta = x)
+
+res <- optimize(obj, c(24, 40), maximum = TRUE)
+points(res$maximum, res$objective)
