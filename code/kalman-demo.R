@@ -1,4 +1,4 @@
-
+#!/usr/bin/env R
 
 library(spaero)
 library(pomp)
@@ -261,11 +261,16 @@ plot(p0, absVal = FALSE)
 ## example with spline beta
 
 sim_times <- seq(3.5 / 12, 9.5 / 12, by = 1 / 365) # mid-March to mid-Sept.
-seastimes <- c(3.6 / 12 - 1 / 365, sim_times, 9.5 / 12 + 1 / 365)
+seastimes <- seq(3 / 12, 10 / 12, by = 1 / 365) # avoid extrapopolation
 seas <- cbind(time = seastimes, bspline.basis(x = seastimes, nbasis = 3, degree = 2, names = "b"))
 
 beta_par_t <- -10 * sinpi(sim_times * 3 )
 cov <- data.frame(time = sim_times, beta_par_t = beta_par_t, gamma_t = 0, mu_t = 0, d_t = 0, eta_t = 0, p_t = 0 )
+
+
+test1 <- min(cov[, "time"]) > seas[, "time"]
+nobs <- length(sim_times)
+inds <- seq_len(nobs) + sum(test1)
 
 sim2 <- create_simulator(times = sim_times, process_model = "SIS", 
                          transmission = "frequency-dependent",
@@ -279,7 +284,8 @@ plot(I~time,data = sd2)
 plot(beta_par_t~time, data = sd2)
 
 fb <- coef(sim2)["beta_par"] + cov$beta_par_t
-inds <- seq(2, nrow(seas) - 1)
+
+
 m <- lm(log(fb) ~ b.1 + b.2 + b.3 + 0, data = as.data.frame(seas[inds, ]))
 plot(cov$time, fb)
 lines(cov$time, exp(predict(m)))
@@ -288,7 +294,7 @@ PsystemSISb3 <- function(b.1, b.2, b.3, seas, eta = 0, gamma = 24, pop.size = 1e
                        init.vars = c(I = 0, C = 0, Pii = 1, Pic = 1, Pci = 1, Pcc = 1),
                        time.steps = c(0, 1 / 52)){
   
-  parameters <- c(eta = eta, b.1 = b.2, b.2 = b.2, b.3 = b.3, gamma = gamma, pop.size = pop.size)
+  parameters <- c(eta = eta, b.1 = b.1, b.2 = b.2, b.3 = b.3, gamma = gamma, pop.size = pop.size)
   PModel <- function(t, x, parms) {
     with(as.list(c(parms, x)), {
       log_beta_t <- seas[, -1] %*% c(b.1, b.2, b.3)
@@ -334,9 +340,10 @@ kfnllb3 <-
            rho = 0.1,
            gamma = 24,
            dt = 1 / 52,
-           xhat0 = c(10, 0),
-           Phat0 = rbind(c(10, 0), 
-                         c(0, 0))) {
+           xhat0 = c(990, 0),
+           Phat0 = rbind(c(1000, 0), 
+                         c(0, 0)),
+           just_nll = TRUE) {
     z_1 <- z[1]
     H <- matrix(c(0, rho), ncol = 2)
     
@@ -387,10 +394,14 @@ kfnllb3 <-
     }
     
     nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
-    list(nll = nll, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
+    if (!just_nll){
+      list(nll = nll, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
+    } else {
+      nll
+    }
   }
 
-out <- kfnllb3(z = sd2$reports, tvec = sd2$time, seas = seas)
+out <- kfnllb3(z = sd2$reports, tvec = sd2$time, seas = seas, just_nll = FALSE)
 
 par(mfrow = c(1, 1))
 plot(sd2$time * 365, y = sd2$I, ylim = c(1, 23e3), log = 'y', xlab = "Day of year", ylab = "State variable", type = 'l')
@@ -402,4 +413,22 @@ legend("topleft", lty = 1, pch = c(1, 1, NA), col = c(1, "orange", "blue"), lege
 
 plot(seas[, 1], exp(seas[, -1] %*% c(2.3, 4.2, 1.6)), xlab = "Time (y)", ylab = "Transmission rate", type = 'l')
 points(sd2$time, sd2$beta_par_t + coef(sim2)["beta_par"])
-legend("bottomleft", lty = c(NA, 1), pch = c(1, NA), legend = c("Fitting model", "Simulation model (Truth)"))
+legend("bottomleft", lty = c(NA, 1), pch = c(1, NA), legend = rev(c("Fitting model", "Simulation model (Truth)")))
+
+# Now try optimizint the likelihood
+
+tictoc::tic()
+m1 <- mle2(minuslogl = kfnllb3, start = list(b.1 = 2, b.2 = 2, b.3 = 3), 
+           method = "Nelder-Mead", 
+           trace = TRUE, data = list(z = sd2$reports, seas=seas, tvec = sd2$time))
+tictoc::toc()
+
+summary(m1)
+vcov(m1)
+
+plot(seas[, 1], exp(seas[, -1] %*% coef(m1)), xlab = "Time (y)", ylab = "Transmission rate", type = 'l')
+points(sd2$time, sd2$beta_par_t + coef(sim2)["beta_par"])
+legend("bottomleft", lty = c(NA, 1), pch = c(1, NA), legend = rev(c("Fitting model", "Simulation model (Truth)")))
+
+
+
