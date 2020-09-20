@@ -476,6 +476,8 @@ PsystemSISconstAnalyt <- function(beta = 30, eta = 0, gamma = 24, pop.size = 1e5
       Winv <- solve(eig$vectors)
       M <- W %*% diag(exp(eig$values * time.steps[2])) %*% Winv
       
+      xhat <- M %*% with(as.list(init.vars), c(I, C))
+      
       Qtilde <- Winv %*% Qmat %*% t(Winv)
       E <- function(gamma, t){
         if(gamma == 0) return(t)
@@ -490,7 +492,10 @@ PsystemSISconstAnalyt <- function(beta = 30, eta = 0, gamma = 24, pop.size = 1e5
           Sigma_tilde[i, j] <- Qtilde[i, j] * E(coef[i, j], time.steps[2])
         }
       }
-      W %*% Sigma_tilde %*% t(W) + M %*% Pmat %*% t(M)
+      Phat <- W %*% Sigma_tilde %*% t(W) + M %*% Pmat %*% t(M)
+      r2 <- c(time = time.steps[2], xhat, Pii = Phat[1,1], Pic = Phat[1,2], Pci = Phat[2,1], Pcc = Phat[2,2])
+      rbind(c(time = 0, init.vars),
+            r2)
 }
 
 
