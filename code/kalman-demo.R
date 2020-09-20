@@ -431,4 +431,84 @@ points(sd2$time, sd2$beta_par_t + coef(sim2)["beta_par"])
 legend("bottomleft", lty = c(NA, 1), pch = c(1, NA), legend = rev(c("Fitting model", "Simulation model (Truth)")))
 
 
+## Now try regular Kalman filter using linearizations
+
+### verify equation for variance
+
+PsystemSISconst <- function(beta = 30, eta = 0, gamma = 24, pop.size = 1e5, 
+                       init.vars = c(I = 0, C = 0, Pii = 1, Pic = 1, Pci = 1, Pcc = 1),
+                       time.steps = c(0, 1 / 52)){
+  
+  parameters <- c(eta = eta, beta = beta, gamma = gamma, pop.size = pop.size)
+  PModel <- function(t, x, parms) {
+    with(as.list(c(parms, x)), {
+      dI <- 0
+      dC <- 0
+      F <- rbind(c(beta - 2 * beta * I / pop.size - eta - gamma, 0),
+                 c(gamma, 0))
+      Pmat <- rbind(c(Pii, Pic),
+                    c(Pci, Pcc))
+      Qmat <- rbind(c(beta * I / pop.size * (1 - I / pop.size) + eta * (1 - I / pop.size) + gamma * I / pop.size, -gamma * I / pop.size),
+                    c(-gamma * I / pop.size, gamma * I / pop.size))
+      dPmat <-  F %*% Pmat + Pmat %*% t(F) + Qmat
+      list(c(dI=dI, dC = dC, 
+             dPii = dPmat[1,1], dPic = dPmat[1,2], 
+             dPci = dPmat[2,1], dPcc = dPmat[2,2]))
+    })
+  }
+  lsoda(init.vars, time.steps, PModel, parameters)
+}
+
+PsystemSISconst()
+
+PsystemSISconstAnalyt <- function(beta = 30, eta = 0, gamma = 24, pop.size = 1e5, 
+                            init.vars = c(I = 0, C = 0, Pii = 1, Pic = 1, Pci = 1, Pcc = 1),
+                            time.steps = c(0, 1 / 52)){
+  
+      F <- rbind(c(beta - 2 * beta * init.vars["I"] / pop.size - eta - gamma, 0),
+                 c(gamma, 0))
+      Pmat <- with(as.list(init.vars), rbind(c(Pii, Pic),
+                    c(Pci, Pcc)))
+      Qmat <- with(as.list(init.vars), rbind(c(beta * I / pop.size * (1 - I / pop.size) + eta * (1 - I / pop.size) + gamma * I / pop.size, -gamma * I / pop.size),
+                    c(-gamma * I / pop.size, gamma * I / pop.size)))
+      eig <- eigen(F)
+      W <- eig$vectors 
+      Winv <- solve(eig$vectors)
+      M <- W %*% diag(exp(eig$values * time.steps[2])) %*% Winv
+      
+      Qtilde <- Winv %*% Qmat %*% t(Winv)
+      E <- function(gamma, t){
+        if(gamma == 0) return(t)
+        exp(gamma * t) / gamma - 1 / gamma
+      }
+      coef <- outer(eig$values, eig$values, "+")
+      n1 <- nrow(Qtilde)
+      n2 <- ncol(Qtilde)
+      Sigma_tilde <- matrix(NA, nrow = n1, ncol = n2)
+      for(i in seq_len(n1)) {
+        for(j in seq_len(n2)) {
+          Sigma_tilde[i, j] <- Qtilde[i, j] * E(coef[i, j], time.steps[2])
+        }
+      }
+      W %*% Sigma_tilde %*% t(W) + M %*% Pmat %*% t(M)
+}
+
+
+PsystemSISconst(beta = 2)
+PsystemSISconstAnalyt(beta = 2)
+
+PsystemSISconst(init.vars = c(I = 1, C = 0, Pii = 1, Pic = 1, Pci = 1, Pcc = 1), time.steps = c(0, 1 / 365))
+PsystemSISconstAnalyt(init.vars = c(I = 1, C = 0, Pii = 1, Pic = 1, Pci = 1, Pcc = 1), time.steps = c(0, 1 / 365))
+
+PsystemSIS(init.vars = c(I = 1, C = 0, Pii = 0, Pic = 0, Pci = 0, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSISconst(init.vars = c(I = 1, C = 0, Pii = 0, Pic = 0, Pci = 0, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSISconstAnalyt(init.vars = c(I = 1, C = 0, Pii = 0, Pic = 0, Pci = 0, Pcc = 0), time.steps = c(0, 1 / 365))
+
+PsystemSIS(init.vars = c(I = 2000, C = 0, Pii = 0, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSISconst(init.vars = c(I = 2000, C = 0, Pii = 0, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSISconstAnalyt(init.vars = c(I = 2000, C = 0, Pii = 0, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
+
+PsystemSIS(init.vars = c(I = 20000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSISconst(init.vars = c(I = 20000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSISconstAnalyt(init.vars = c(I = 20000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
 
