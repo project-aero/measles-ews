@@ -189,7 +189,8 @@ kfnll <-
            dt = 1 / 52,
            xhat0 = c(0, 0),
            Phat0 = rbind(c(1, 0), 
-                         c(0, 0))) {
+                         c(0, 0)),
+           just_nll = TRUE) {
     z_1 <- z[1]
     H <- matrix(c(0, rho), ncol = 2)
     
@@ -238,7 +239,12 @@ kfnll <-
       ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
     }
     
-    0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
+    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
+    if (!just_nll){
+      list(nll = nll, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
+    } else {
+      nll
+    }
   }
 
 kfnll(sd$reports)
@@ -476,7 +482,12 @@ PsystemSISconstAnalyt <- function(beta = 30, eta = 0, gamma = 24, pop.size = 1e5
       Winv <- solve(eig$vectors)
       M <- W %*% diag(exp(eig$values * time.steps[2])) %*% Winv
       
-      xhat <- M %*% with(as.list(init.vars), c(I, C))
+      I <- init.vars["I"]
+      C <- init.vars["C"]
+      dI <- beta * (pop.size - I) * I / pop.size + eta * (1 - I) - gamma * I
+      dC <- gamma * I
+      xhat <- c(dI * time.steps[2] + I,
+                dC * time.steps[2] + C)
       
       Qtilde <- Winv %*% Qmat %*% t(Winv)
       E <- function(gamma, t){
@@ -513,7 +524,96 @@ PsystemSIS(init.vars = c(I = 2000, C = 0, Pii = 0, Pic = 1.23, Pci = 1.23, Pcc =
 PsystemSISconst(init.vars = c(I = 2000, C = 0, Pii = 0, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
 PsystemSISconstAnalyt(init.vars = c(I = 2000, C = 0, Pii = 0, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
 
-PsystemSIS(init.vars = c(I = 20000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
-PsystemSISconst(init.vars = c(I = 20000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
-PsystemSISconstAnalyt(init.vars = c(I = 20000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSIS(init.vars = c(I = 16000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSISconst(init.vars = c(I = 16000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
+PsystemSISconstAnalyt(init.vars = c(I = 16000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 365))
 
+PsystemSIS(init.vars = c(I = 16000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 52))
+PsystemSISconst(init.vars = c(I = 16000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 52))
+PsystemSISconstAnalyt(init.vars = c(I = 16000, C = 0, Pii = 10, Pic = 1.23, Pci = 1.23, Pcc = 0), time.steps = c(0, 1 / 52))
+
+iterate_f_and_P_lin <- function(xhat, P, pop.size = 1e5, ...){
+  ret <- PsystemSISconstAnalyt(init.vars = c(I = xhat[1], 
+                                  C = 0, 
+                                  Pii = P[1,1] / sqrt(pop.size), 
+                                  Pic = 0, 
+                                  Pci = 0, 
+                                  Pcc = 0), pop.size = pop.size, ...)[2, c("I", "C", "Pii", "Pic", "Pci", "Pcc")]
+  list(xhat = matrix(c(ret[1], ret[2]), ncol = 1), 
+       Phat = rbind(c(ret[3], ret[4]),
+                    c(ret[5], ret[6])) * sqrt(pop.size))
+}
+
+kfnll_lin <-
+  function(z,
+           beta = 30,
+           rho = 0.1,
+           gamma = 24,
+           dt = 1 / 52,
+           xhat0 = c(0, 0),
+           Phat0 = rbind(c(1, 0), 
+                         c(0, 0)),
+           just_nll = FALSE) {
+    z_1 <- z[1]
+    H <- matrix(c(0, rho), ncol = 2)
+    
+    # Predict
+    xP <- iterate_f_and_P_lin(xhat0, Phat0, beta = beta, gamma = gamma)
+    xhat_1_0 <- xP$xhat
+    PP_1_0 <- xP$Phat
+    # Update
+    
+    K_1 <- P_1_0 %*% t(H) %*% solve(H %*% P_1_0 %*% t(H) + R[1])
+    ytilde_1 <- z_1 - H %*% xhat_1_0
+    xhat_1_1 <- xhat_1_0 + K_1 %*% ytilde_1
+    P_1_1 <- (diag(2) - K_1 %*% H) %*% P_1_0
+    
+    T <- length(z)
+    ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
+    K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(2, T))
+    P_kk <- P_kkmo <- array(NA_real_, dim = c(2, 2, T))
+    
+    K[, 1] <- K_1
+    xhat_kkmo[, 1] <- xhat_1_0
+    xhat_kk[, 1] <- xhat_1_1
+    P_kk[, , 1] <- P_1_1
+    P_kkmo[, , 1] <- P_1_0
+    Rc <- xhat_kkmo[2, 1] * rho * (1 - rho)
+    if(Rc < 1){
+      Rc <- 1
+    }
+    S[, 1] <- H %*% P_kkmo[, , 1] %*% t(H) + Rc
+    ytilde_kk[, 1] <- z[1] - H %*% xhat_kk[, 1]
+    ytilde_k[, 1] <- ytilde_1
+    
+    for (i in seq(2, T)){
+      xP <- iterate_f_and_P_lin(xhat_kk[, i - 1], P_kk[, , i - 1], beta = beta, gamma = gamma)
+      xhat_kkmo[, i] <- xP$xhat
+      P_kkmo[, , i] <- xP$Phat
+      Rc <- xhat_kkmo[2, i] * rho * (1 - rho)
+      if(Rc < 1){
+        Rc <- 1
+      }
+      S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + Rc
+      K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
+      ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
+      xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
+      P_kk[, , i] <- (1 - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
+      ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
+    }
+    
+    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
+    if (!just_nll){
+      list(nll = nll, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
+    } else {
+      nll
+    }
+    
+  }
+
+tictoc::tic()
+res1 <- kfnll_lin(z = sd$reports)
+tictoc::toc()
+tictoc::tic()
+res2 <-kfnll(z = sd$reports, just_nll = FALSE)
+tictoc::toc()
