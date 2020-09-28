@@ -498,7 +498,7 @@ approaching the critical transition from above (elimination), we are not aware o
 
 To confirm that the EWS are behaving as expected, and to provide empirical results for cases in which we lack expectations, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
 
-```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
+```{r ews-hists, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
   filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
   mutate(metric = as.character(metric)) %>%
@@ -553,7 +553,7 @@ ews_hists <- cowplot::plot_grid(
 print(ews_hists)
 ```
 
-```{r ews-hists2, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where the rate of change in vaccination coverage equals 1.5e-05 per day.", fig.height=5}
+```{r ews-hists2, message=FALSE, warning=FALSE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where the rate of change in vaccination coverage equals 1.5e-05 per day.", fig.height=5}
 elimination_ews <- read.csv("../results/ews-elimination.csv") %>%
   filter(metric != "variance_first_diff" & vacc_speed == 1.5e-05) %>%
   mutate(metric = as.character(metric)) %>%
