@@ -1,2 +1,23 @@
 *.Rhistory
 *.DS_store
+code/Exported Items.bib
+code/inhibition.html
+code/inhibition.nb.html
+code/june-6-1547.RData
+docs/figure/
+docs/measles-ews-manuscript.aux
+docs/measles-ews-manuscript.log
+docs/measles-ews-manuscript.md
+docs/measles-ews-manuscript.out
+docs/measles-ews-supplement.md
+docs/measles-ews-supplement.tex
+docs/measles-ews-supplement_files/*
+docs/measles-ews-manuscript.fff
+docs/measles-ews-manuscript.pdf
+docs/measles-ews-manuscript.tex
+docs/measles-ews-manuscript_files/
+docs/measles-ews-manuscript_files/figure-latex/data-plot-1.pdf
+docs/measles-ews-manuscript_files/figure-latex/elimination-1.pdf
+docs/measles-ews-manuscript_files/figure-latex/emergence-results-1.pdf
+docs/measles-ews-manuscript_files/figure-latex/scatters-r0-1.pdf
+docs/measles-ews-supplement.pdf
