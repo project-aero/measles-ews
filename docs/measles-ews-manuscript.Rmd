@@ -571,14 +571,13 @@ Our model for Agadez performs poorly relative to the other cities, but still bet
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables S4-S7).
 
 The EWS generally perform as expected by theory on the approach to re-emergence.
-Most EWS increased as the critical transition is approached, resulting in positive AUC values near 1 (figure \ref{emerge-aucs}).
+Most EWS increased as the critical transition is approached, resulting in AUC values above 0.5 and near 1 (figure \ref{emerge-aucs}).
 Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities.
 Thus, these metrics are unreliable.
 
 Variance, mean, index of dispersion, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (figure \ref{emerge-aucs}*c*).
 Their performance declines as the amount of susceptible depletion decreases.
 This is expected because more rapid returns to $R_E(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise [@Brett2017].
-Moreover, as the time to reach $R_E(t)=1$ decreases, the chance of a bifurcation delay increases because of the changing equilibrium of $R_0$ combined with demographic stochasticity [@Dibble2016; @Brett2017].
 Thus, re-emergence may prove difficult to anticipate in "fast" transmission systems, as demonstrated theoretically by @Brett2017 and seen here when susceptible depletion was relatively small (figure \ref{emerge-aucs}*c*).
 
 ```{r emergence-results, fig.width=6.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to emergence. (*a*) A typical example of an emergence simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each level of susceptible discount factor. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See figure S8 for a visualization of how susceptible discounting factor maps to number of weeks in the null and test intervals.  \\label{emerge-aucs}"}
@@ -713,7 +712,7 @@ print(final)
 
 
 The EWS did not perform as well when anticipating elimination, relative to emergence (figure \ref{elim-aucs}).
-Only three metrics are reliable: mean, autocovariance, and variance.
+Only three metrics were reliable: mean, autocovariance, and variance.
 All three metrics decreased as $R_E(t)$ approached the critical transition (figure S5).
 As in the case of anticipating elimination, AUC values moved closer to 0.5 as the speed of the vaccine campaign increased (figure \ref{elim-aucs}*c*).
 Again, this is because of shorter null and test intervals.
