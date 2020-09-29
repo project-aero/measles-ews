@@ -695,7 +695,7 @@ ggplot() +
   # geom_text(data = star_tbl, aes(x = x, y = y, label = "*"), color = "white", size = 6) +
   scale_fill_viridis(limits = c(0,1), direction = -1, option = "E", name = "AUC") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = "proportion of mean susceptibles", y = NULL) +
+  labs(x = "susceptible discount factor", y = NULL) +
   theme_minimal(base_family = "Times") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"),
@@ -824,21 +824,18 @@ But, all EWS performed worse when predicting the approach to emergence over the 
 
 Using empirically-based disease transmission models, we found that generic indicators of critical slowing down were informative of simulated re-emergence and elimination of measles.
 
-The generic indicators performed better in scenarios of re-emergence, and moreover these indicators behaved as expected based on a generic model of fluctuations around an equilibrium with gradually declining stability --- the prototypical model of critical slowing down.
-This is because the autocorrelation and other EWS increased on the approach to $R_E = 1$ (figure \ref{emerge-aucs}*c*).
-If, alternatively, the variance had increased but the autocorrelation had not, an alternative generic model would be an equilibrium with fixed stability but subject to increasing intensity of perturbations.
+The generic indicators performed better in scenarios of re-emergence, and moreover these indicators behaved as expected based on a simple one-dimensional model of fluctuations around an equilibrium with gradually declining stability --- the prototypical model of critical slowing down.
+This is because the autocorrelation and variance increased on the approach to $R_E = 1$ (figure \ref{emerge-aucs}*c*).
+If, alternatively, the variance had increased but the autocorrelation had not, a better supported model would be an equilibrium with fixed stability but subject to increasing intensity of perturbations.
 From a model selection point of view, our simulations of re-emergence can be said to support the prototypical critical slowing down model. 
-And since our simulations were fit to measles data and had high one-step-ahead predictive accuracy, it seems reasonable to suppose that the prototypical model of critical slowing down are supported by read data and can provide predictive value.
+And since our simulations were fit to measles data and had high one-step-ahead predictive accuracy, it suggests that the prototypical model of critical slowing down may be supported by data sets similar to the ones we fit and can provide predictive value for them.
 The definitive test of this approach, or course, would be to record prospective predictions of re-emergence based on indicators of critical slowing down and evaluate their accuracy.
 
-The autocorrelation was not a strong indicator of the transition to elimination (figure \ref{elim-aucs}*c*), suggesting weaker evidence for CSD.
-\comment{I disagree completely. I don't think the autocorrelation has been analyzed properly.}
-Other EWS (variane, autocovariance, and mean) did show altered behavior as the transition to elimination was approached, but these EWS were less sensitive under elimination scenarios compared to re-emergence scenarios.
-These results suggest that CSD might not preempt disease elimination or that CSD is harder to detect when a disease is fading out rather than emerging.
-We have reasons to expect CSD at the elimination threshold based on theoretical modeling studies [@ORegan2013; @ORegan2016; @Drake2017], but most theory has been developed for SIR models rather than the SEIR model we employed here.
-Still, we think it is more likely that CSD is simply harder to detect in noisy systems approaching elimination.
-\textcolor{blue}{EAMON: Can you add text on why this might be the case?}
-\comment{I think the combination of seasonality and the intrinsic oscillations of the state variables around the endemic equilibrium both can lead to the autocorrelation at a single lag increasing or decreasing as the elimination threshold is approached. Thus a wavelet analysis or an analysis of the full autocorrelation function may be necessary. I don't think this is too much work for us to try to do for this paper. I think the paper would be much better for it, and am willing to work on it myself.}
+The lag-1 autocorrelation was not a strong indicator of the transition to elimination (figure \ref{elim-aucs}*c*).
+Thus, the prototypical model of critical slowing down appears less useful in this scenario.
+Other EWS (variance, autocovariance, and mean) did show altered behavior as the transition to elimination was approached, but these EWS were less sensitive under elimination scenarios compared to re-emergence scenarios.
+These results suggest that although distributional changes in indicators occur prior to disease elimination, interpreting these changes in terms of loss of stability of an equilibrium, or declining $R_e$, requires a model which accounts for complicating system features such as seasonality, non-linearity, damped oscillations, and local extinction.
+
 
 ```{r susc-deplete}
 # Define threshold for outbreak year --------------------------------------
@@ -897,18 +894,19 @@ fracs_less_than_half <- outbreak_years %>%
 percs <- fracs_less_than_half$frac_less*100
 ```
 
-A potential limitation of our findings is that the levels of susceptible depletion we modeled (figure \ref{emerge-aucs}*c*) might be lower than the levels that occur in reality.
+A potential limitation of our findings is that the susceptible discount factors in our simulations study (figure \ref{emerge-aucs}*c*) might be smaller than the factors that occur in reality.
+A smaller discount factor corresponds to a larger level of susceptible depletion.
 To check the relevance of this limitation, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (electronic supplement).
 We found that susceptible depletion was less than 0.5, the smallest susceptible depletion level we tested, for `r round(percs[1], 1)`% of outbreaks in Agadez, `r round(percs[2])`% of outbreaks in Maradi, `r round(percs[3])`% of outbreaks in Niamey, and `r round(percs[4])`% of outbreaks in Zinder.
 These statistics do not detract from our main findings of CSD in measles dynamics, but they do suggest that EWS might be less useful in some cases than in others.
 For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{emerge-aucs}*c*).
-Thus, EWS are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
+Thus, our analysis methods are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
 Our results should encourage efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
-We have shown that critical slowing down precedes tipping points in real disease dynamics, but how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
+We have shown that critical slowing down precedes tipping points in stochastic models that were fit to data with state-of-the-art methods, but how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
 Emerging technologies like artificial intelligence might offer new ways to find optimal detection thresholds for early warning signals.
-But there will always be a role for expert judgement.
-Early warning signals, though powerful and now accompanied with empirical support, will likely be just one part of a decision-support toolkit.
+But there will always be a role for expert judgment.
+Early warning signals, though powerful and now accompanied with additional support, will likely be just one part of a decision-support toolkit.
 
 # Acknowledgements
 We thank Tobias Brett and Andrew Park for comments on the modeling approach, and Paige Miller and Éric Marty for helpful comments on early versions of this work.
