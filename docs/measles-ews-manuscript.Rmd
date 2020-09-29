@@ -713,7 +713,7 @@ print(final)
 
 The EWS did not perform as well when anticipating elimination, relative to emergence (figure \ref{elim-aucs}).
 Only three metrics were reliable: mean, autocovariance, and variance.
-All three metrics decreased as $R_E(t)$ approached the critical transition (figure S5).
+All three metrics decreased as $R_E(t)$ approached the critical transition (figure S6).
 As in the case of anticipating elimination, AUC values moved closer to 0.5 as the speed of the vaccine campaign increased (figure \ref{elim-aucs}*c*).
 Again, this is because of shorter null and test intervals.
 
@@ -824,11 +824,12 @@ But, all EWS performed worse when predicting the approach to emergence over the 
 
 Using empirically-based disease transmission models, we found that generic indicators of critical slowing down were informative of simulated re-emergence and elimination of measles.
 
-The strength of information is strongest for scenarios of re-emergence.
+The generic indicators performed better in scenarios of re-emergence, and moreover these indicators behaved as expected based on a generic model of fluctuations around an equilibrium with gradually declining stability --- the prototypical model of critical slowing down.
 This is because the autocorrelation and other EWS increased on the approach to $R_E = 1$ (figure \ref{emerge-aucs}*c*).
-Increases in EWS besides the autocorrelation, such as the variance, are necessary but insufficient evidence of CSD because such EWS can also increase when a critical transition does not exist (**CITATION?**).
-However, an increase in the autocorrelation, coupled with coincident increases in other EWS, provides stronger evidence of CSD (**CITATION?**).
-\textcolor{blue}{JOHN: I remember you making the points in the previous two sentences in a meeting once. Can you provide citations?}
+If, alternatively, the variance had increased but the autocorrelation had not, an alternative generic model would be an equilibrium with fixed stability but subject to increasing intensity of perturbations.
+From a model selection point of view, our simulations of re-emergence can be said to support the prototypical critical slowing down model. 
+And since our simulations were fit to measles data and had high one-step-ahead predictive accuracy, it seems reasonable to suppose that the prototypical model of critical slowing down are supported by read data and can provide predictive value.
+The definitive test of this approach, or course, would be to record prospective predictions of re-emergence based on indicators of critical slowing down and evaluate their accuracy.
 
 The autocorrelation was not a strong indicator of the transition to elimination (figure \ref{elim-aucs}*c*), suggesting weaker evidence for CSD.
 \comment{I disagree completely. I don't think the autocorrelation has been analyzed properly.}
@@ -905,7 +906,7 @@ Thus, EWS are not practical for cities that rarely experience levels of suscepti
 
 Our results should encourage efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
 We have shown that critical slowing down precedes tipping points in real disease dynamics, but how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
-Emerging technologies like artifical intelligence might offer new ways to find optimal detection thresholds for early warning signals.
+Emerging technologies like artificial intelligence might offer new ways to find optimal detection thresholds for early warning signals.
 But there will always be a role for expert judgement.
 Early warning signals, though powerful and now accompanied with empirical support, will likely be just one part of a decision-support toolkit.
 
