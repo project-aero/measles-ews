@@ -834,7 +834,7 @@ The definitive test of this approach, or course, would be to record prospective 
 The lag-1 autocorrelation was not a strong indicator of the transition to elimination (figure \ref{elim-aucs}*c*).
 Thus, the prototypical model of critical slowing down appears less useful in this scenario.
 Other EWS (variance, autocovariance, and mean) did show altered behavior as the transition to elimination was approached, but these EWS were less sensitive under elimination scenarios compared to re-emergence scenarios.
-These results suggest that although distributional changes in indicators occur prior to disease elimination, interpreting these changes in terms of loss of stability of an equilibrium, or declining $R_e$, requires a model which accounts for complicating system features such as seasonality, non-linearity, damped oscillations, and local extinction.
+These results suggest that although distributional changes in indicators occur prior to disease elimination, interpreting these changes in terms of loss of stability of an endemic equilibrium, or declining $R_e$, requires a model which accounts for complicating system features such as seasonality, non-linearity, damped oscillations, and local extinction.
 
 
 ```{r susc-deplete}
