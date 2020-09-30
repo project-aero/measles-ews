@@ -25,6 +25,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     double beta;              // transmission rate
     double eta = 365/8;       // infectious rate (8 days latent)
     double gamma = 365/5;     // recovery rate (5 days infectious)
+    double psi;               // rate of infection importation 
     double dW;                // white noise
     double seas;              // seasonality term
     double dNS0, dN0S, dNSE;  // S transitions
@@ -44,7 +45,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     rate[0] = nu;           // susceptible deaths
     rate[1] = lambda*dW/dt; // force of infection
     rate[2] = nu;           // exposed deaths
-    rate[3] = eta;          // infectious rate from latent
+    rate[3] = eta;          // rate of exit from latent compartment
     rate[4] = nu;           // infected deaths
     rate[5] = gamma;	      // recovery from infectious
     rate[6] = nu;           // recovered deaths
@@ -61,7 +62,7 @@ make_pomp_simulator <- function(do_city, mles, years_to_sim = 30,
     dNSE = trans[1];                                // S -> E
     dNE0 = trans[2];                                // exposed deaths
     dNEI = trans[3];                                // E -> I
-    dN0I = rpois(eta * dt);                         // imported infections
+    dN0I = rpois(psi * dt);                         // imported infections
     dNI0 = trans[4];                                // infected deaths
     dNIR = trans[5];                                // I -> R
     dN0R = rpois((1-vacc_discount) * mu * N * dt);  // births, vaccinated

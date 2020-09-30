@@ -180,7 +180,7 @@ ggplot() +
 ```
 
 # Comparisons with benchmarking models
-Here we compare our fitted *SEIR* models to two non-mechanistic benchmarking models.
+Here we compare our fitted SEIR models to two non-mechanistic benchmarking models.
 Doing so allows us to gain some intuition as to whether accounting for mechanism (i.e., transmission dynamics) improves model fit and eventual inference.
 The first benchmarking model is a negative binomial sampling model (NBM) that simply assumes all observations are independent and identically distributed.
 The second benchmarking model is a seasonal autoregressive moving average model (an ARIMA (2,0,2)(1,0,1)\textsubscript{52} model) that can account for data dependencies and annual periodicity.
@@ -190,7 +190,7 @@ We fitted both models to the weekly case count observations for each city using 
 After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where *k* is the number of estimated parameters in the model and *L* is the model's likelihood.
 The NBM model has 2 parameters, the SARIMA model has 8 parameters, and the SEIR model has 14 parameters.
 The results in table S1 show the AIC values for each model.
-The AIC values for the *SEIR* models are lowest for all cities, suggesting that the addition of mechanism via explicit disease transmission dynamics substantially improves model fit.
+The AIC values for the SEIR models are lowest for all cities, suggesting that the addition of mechanism via explicit disease transmission dynamics substantially improves model fit.
 
 ```{r aic-comp}
 data_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
@@ -256,7 +256,7 @@ all_logliks %>%
 # Long-run simulations from the fitted the SEIR models
 For fitting the SEIR model, we used known population size interpolated between years.
 This meant we were able to ignore certain demographic processes.
-For example, we ignored deaths from the susceptible pool under the assumption that the infection rate was much faster than death rate.
+For example, we ignored deaths from the susceptible pool under the assumption that the infection rate was much faster than the death rate.
 We also ignored the recovered class completely because their dynamics, outside of the contribution to population size (which we assumed to be known), do not impact the $S, E, \text{or } I$ compartments.
 However, we needed to include births and deaths from all compartments, including $R$, when simulating the model over arbitrarily long time periods that do not necessarily represent real times for which we would have information on population size.
 
@@ -280,7 +280,7 @@ Transition definitions are in Table S2.
 | ---------- | ----------------------------| ---------- |
 | $n_{0S}$ | Births into the *S* compartment, not vaccinated | (1, 0, 0, 0) |
 | $n_{SE}$ | Number of people transitioning from *S* to *E* | (-1, 1, 0, 0) |
-| $n_{SO}$ | Number of deaths leaving *S* | (-1, 0, 0, 0) |
+| $n_{S0}$ | Number of deaths leaving *S* | (-1, 0, 0, 0) |
 | $n_{EI}$ | Number of people transitioning from *E* to *I* | (0, -1, 1, 0) |
 | $n_{E0}$ | Number of deaths leaving *E* | (0, -1, 0, 0) |
 | $n_{0I}$ | Number of imported infections | (0, 0, 1, 0) |
@@ -294,28 +294,31 @@ Table: Transitions in the simulating model.
 The stochastic random variables are specified as follows:
 
 \begin{align}
-n_{0S,t} &\sim \text{Poisson}((1-p)\mu N_t \times dt) \\
-(n_{SE,t}, n_{S0,t}) &\sim \text{Mult}(S_{t}, (\lambda_{SE,t}, \lambda_{d,t})) \\
-(n_{EI,t}, n_{E0,t}) &\sim \text{Mult}(E_{t}, (\lambda_{EI,t}, \lambda_{d,t})) \\
-(n_{IR,t}, n_{I0,t}) &\sim \text{Mult}(I_{t}, (\lambda_{IR,t}, \lambda_{d,t})) \\
+n_{0S,t} &\sim \text{Poisson}((1-p)\mu N \times dt) \\
+(n_{SE,t}, n_{S0,t}) &\sim \text{EulerMultinomial}(S_{t}, (\beta_t I_t / N, \nu), dt) \\
+(n_{EI,t}, n_{E0,t}) &\sim \text{EulerMultinomial}(E_{t}, (\eta, \nu), dt)  \label{eq:emulti} \\
+(n_{IR,t}, n_{I0,t}) &\sim \text{EulerMultinomial}(I_{t}, (\gamma, \nu), dt) \\
 n_{I0,t} &\sim \text{Poisson}(\psi \times dt) \\
-n_{0R,t} &\sim \text{Poisson}(p\mu N_t \times dt) \\
-n_{R0,t} &\sim \text{Binomial}(R_t, \lambda_{d,t}),
+n_{0R,t} &\sim \text{Poisson}(p \mu N \times dt) \\
+n_{R0,t} &\sim \text{EulerMultinomial}(R_t, (\nu), dt),
 \end{align}
-
-\noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $\psi$ is the rate of imported infections (estimated by the model), and $\lambda_d$, $\lambda_{SE}$, $\lambda_{EI}$, and $\lambda_{IR}$ are the probabilities of death, exposure, becoming infectious, and recovery, respectively.
-These probabilities are modeled as:
-
+\noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $N$ is the equilibrium population size, $\sim \text{EulerMultinomial}(T, r_i, dt)$ specifies that the variables on the left follow an Euler Multinomial distribution for $T$ individuals with hazard rates $r_i$ and step size $dt$, and $\psi$ is the rate of imported infections (estimated by the model). 
+The Euler Multinomial distribution corresponds to a multinomial distribution where the event probabilities $p_i$ are determined by the Euler time step $dt$ and the hazard rates $r_i$, according to 
 \begin{align}
-\lambda_{d,t} &= 1 - e^{-\nu N_t dt} \\
-\lambda_{SE,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
-\lambda_{EI,t} &= 1 - e^{-\eta E_{t} dt} \\
-\lambda_{IR,t} &= 1 - e^{-\gamma I_{t} dt}
+p_0 &= \exp( -\sum_i r_i dt), \\
+p_i &= (1 - p_0) r_i / (\sum_i r_i)\qquad \text{for}\qquad i > 0.
 \end{align}
+Event zero is the event that an individual stays in its initial compartment and does not contribute to the counts
+respectively.
+To provide a specific example, equation \eqref{eq:emulti} corresponds to 
+\begin{equation}
+(E_{t} - n_{EI,t} - n_{E0,t}, \,n_{EI,t},\, n_{E0,t}) \sim \text{Multinomial}(E_{t}; p_0, (1 - p_0) \eta /(\eta + \nu), (1 - p_0) \nu / (\eta + \nu)),
+\end{equation}
+where $p_0 =  \exp(-(\eta + \nu) dt)$.
 
-\noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, and $\nu$ is the constant death rate.
+\noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, $\nu$ is the constant death rate, and $N$ is an equilibrium population size.
 We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = 0.05$. We used a daily time step of $dt = \text{year} / 365$.
-Recall that we set birth rate equal to death rate ($\nu = \mu = 0.05$) to achieve a relatively constant equilibrium population size.
+Setting the birth rate equal to $\mu N$ and the *per capita* death rate equal to $\nu = \mu$ makes $N$ a stable equilibrium population size.
 We modeled the rate of transmission as:
 
 \begin{equation}
@@ -497,7 +500,7 @@ approaching the critical transition from above (elimination), we are not aware o
 
 To confirm that the EWS are behaving as expected, and to provide empirical results for cases in which we lack expectations, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
 
-```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible discout factor was 1e-04.", fig.height=5}
+```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where the susceptible discout factor was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
   filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
   mutate(metric = as.character(metric)) %>%
