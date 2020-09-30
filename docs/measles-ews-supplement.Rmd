@@ -260,11 +260,11 @@ For example, we ignored deaths from the susceptible pool under the assumption th
 We also ignored the recovered class completely because their dynamics, outside of the contribution to population size (which we assumed to be known), do not impact the $S, E, \text{or } I$ compartments.
 However, we needed to include births and deaths from all compartments, including $R$, when simulating the model over arbitrarily long time periods that do not necessarily represent real times for which we would have information on population size.
 
-We added a few terms to the *SEIR* model presented in the main text to account for births and deaths in all compartments.
+We added a few terms to the SEIR model presented in the main text to account for births and deaths in all compartments.
 Our strategy was to simulate a population at a dynamic equilibrium, where total population was neither increasing or decreasing over time, but it does fluctuate.
 Our *simulating model* (in contrast to the *fitting model* in the main text) is as follows.
 
-As in the main text, the *SEIR* model is specified as a set of difference equations,
+As in the main text, the SEIR model is specified as a set of difference equations,
 
 \begin{align}
 S_{t+dt} - S_{t} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
@@ -493,11 +493,11 @@ Table: List of candidate early warning signals and their estimating equations. S
 
 Theory suggests that most EWS should increase as disease dynamics
 approach a critical transition from below (emergence).  When
-approaching the critical transition from above (elimination), we are not aware of any well-developed  theoretical predictions appliable to our model.
+approaching the critical transition from above (elimination), we are not aware of any well-developed  theoretical predictions applicable to our model.
 
 To confirm that the EWS are behaving as expected, and to provide empirical results for cases in which we lack expectations, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
 
-```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible depletion fraction was 1e-04.", fig.height=5}
+```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where susceptible discout factor was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
   filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
   mutate(metric = as.character(metric)) %>%
@@ -801,7 +801,7 @@ read_csv("../results/emergence-bandwidths-colnames.csv",
   ggplot(aes(x = susc_discount, y = bandwidth, color = city)) +
   geom_line() +
   geom_point(size = 3) +
-  labs(x = "Susceptible discounting factor", 
+  labs(x = "Susceptible discount factor", 
        y = "Number of weeks in interval",
        title = "Length of emergence intervals") +
   scale_color_colorblind(name = NULL) +
@@ -855,7 +855,7 @@ emerge_plot <- ggplot() +
   geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = AUC)) +
   scale_fill_viridis(limits = c(0,1), direction = -1, option = "E", name = "AUC") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = "Level of susceptible depletion", y = NULL) +
+  labs(x = "Susceptible discount factor", y = NULL) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"),
