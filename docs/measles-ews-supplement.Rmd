@@ -1,6 +1,6 @@
 ---
 title: "Supporting Information for:"
-subtitle: "Critical slowing down anticipates emergence and elimination of measles"
+subtitle: "Anticipating disease emergence and elimination: a test of early warning signals using empirically based models"
 author: "Andrew T. Tredennick, Eamon O'Dea, TBD, Pejman Rohani, John M. Drake"
 output: 
   pdf_document:
@@ -183,14 +183,13 @@ ggplot() +
 Here we compare our fitted *SEIR* models to two non-mechanistic benchmarking models.
 Doing so allows us to gain some intuition as to whether accounting for mechanism (i.e., transmission dynamics) improves model fit and eventual inference.
 The first benchmarking model is a negative binomial sampling model (NBM) that simply assumes all observations are independent and identically distributed.
-The second benchmarking model is a seasonal moving average model (SARIMA) that can account for data dependencies and seasonal periodicity.
+The second benchmarking model is a seasonal autoregressive moving average model (an ARIMA (2,0,2)(1,0,1)\textsubscript{52} model) that can account for data dependencies and annual periodicity.
 Beating the SARIMA is a harder test than beating the NBM.
 
 We fitted both models to the weekly case count observations for each city using maximum likelihood.
 After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where *k* is the number of estimated parameters in the model and *L* is the model's likelihood.
-The NBM model has 2 parameters, the SARIMA model has 7 parameters, and the SEIR model has 14 parameters.
+The NBM model has 2 parameters, the SARIMA model has 8 parameters, and the SEIR model has 14 parameters.
 The results in table S1 show the AIC values for each model.
-\comment{I think the SARIMA model should be described briefly for the sake of reproducibility.}
 The AIC values for the *SEIR* models are lowest for all cities, suggesting that the addition of mechanism via explicit disease transmission dynamics substantially improves model fit.
 
 ```{r aic-comp}
@@ -215,7 +214,7 @@ for(do_city in unique(measles$region)){
   # SARIMA model
   log_y <- log(as.vector(cases)+1)
   arma_fit <- arima(log_y,order=c(2,0,2),seasonal=list(order=c(1,0,1),period=52), method = "CSS")
-  arma_nll <- arma_fit$loglik-sum(log_y)
+  arma_nll <- arma_fit$loglik - sum(log_y) ## log normal likelihood
   
   # SEIR fit log likelihood
   mif_city <- str_sub(do_city, 1, 6)
@@ -238,7 +237,7 @@ for(do_city in unique(measles$region)){
 
 num_params <- tibble(
   `Neg. Binomial` = 2,
-  SARIMA = 7,
+  SARIMA = 8,
   SEIR = 14
 ) %>%
   gather(model, k)
