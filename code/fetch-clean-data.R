@@ -47,7 +47,7 @@ years <- rep(1995:2005, each = weeks_per_year)
 # Function for calculating start of week based on week number and year
 calculate_start_of_week = function(week, year){
   date <- ymd(paste(year, 1, 1, sep="-"))
-  week(date) = week
+  week(date) <- week
   return(date)
 }
 
@@ -56,17 +56,26 @@ measles_data <- niger_measles_raw %>%
   gather(key = week, value = cases, -X1) %>%
   mutate(
     obs_week = rep(1:num_weeks, each = num_regions),
+    obs_week2 = stringr::str_replace(week, "^X", ""),
+    obs_week2 = as.integer(obs_week2) - 1,
     year = rep(years, each  = num_regions),
+    year2 = (obs_week2 - 1) %/% 52 + 1995,
     week_of_year = rep(weeks, each = num_regions),
+    week_of_year2 = (obs_week2 - 1) %% 52 + 1,
     date = calculate_start_of_week(week_of_year, year)
   ) %>%
   dplyr::rename(region = X1) %>%
   filter(grepl("City", region)) %>%
-  dplyr::select(region, date, year, week_of_year, obs_week, cases) %>%
+  dplyr::select(region, date, year, year2, week_of_year, week_of_year2, obs_week, obs_week2, cases) %>%
   arrange(region, date) %>%
   mutate(
     time = decimal_date(date)
   )
+
+stopifnot(all(measles_data$year == measles_data$year2))
+stopifnot(all(measles_data$obs_week == measles_data$obs_week2))
+stopifnot(all(measles_data$week_of_year == measles_data$week_of_year2))
+measles_data[c("year2", "obs_week2", "week_of_year2")] <- NULL
 
 # Make tibble with initial conditions NA row, 1 week before data start
 initial_conditions_datarow <- tibble(
