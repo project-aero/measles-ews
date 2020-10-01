@@ -171,13 +171,7 @@ We then use the fitted models to perform model experiments designed to test the 
 Our results confirm theoretical expectations about several EWS and associated CSD.
 In particular, we show that CSD before a critical transition is detectable by several EWS in realistic scenarios, and they do so using much shorter time series than used in theoretical studies.
 However, our study highlights the limitations of EWS in situations where disease re-emergence and elimination occurs rapidly.
-Moreoever, and contrary to theoretical expectations [@ORegan2013], we find that EWS perform better at detecting CSD before re-emergence than before elimination.
-
-\comment{I don't believe @ORegan2013 created theoretical expectations
-in that regard, as John and I have agreed that the emergence
-simulations did not provide a fair comparison with the elimination
-simulations because the fraction of susceptibles changed very little
-in the emergence simulations.}
+Moreover, we find that EWS perform better at detecting CSD before re-emergence than before elimination.
 
 # Materials and methods
 

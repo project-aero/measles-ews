@@ -880,7 +880,7 @@ cowplot::plot_grid(emerge_plot, eliminate_plot, nrow = 2, align = "v", labels = 
 
 # Susceptible depletion after outbreaks
 
-We *a priori* defined the magnitude of susceptible depletion in our models of measles re-emergence after an outbreak.
+We *a priori* defined the magnitude of susceptible depletion in our models of measles re-emergence.
 Thus, a potential limit to our study is that the actual magnitudes of susceptible depletion are less than the values we modeled.
 That is, maybe we modeled very unrealistic levels of susceptible depletion, making our results interesting but not useful.
 To test the importance of this limitation, we calculated the relative decline of the susceptible class after outbreak years.
@@ -891,8 +891,8 @@ We used the simulations because the replicates gave us more outbreaks to work wi
 For each of the 100 replicates for each city, we defined an "outbreak year" as any year in which the cumulative number of reported cases exceeded 80% of the maximum number of cumulative cases observed across all years.
 We then calculated susceptible depletion (i.e., the susceptible discounting fraction used in our modeling study) as the minimum number of susceptible individuals in the outbreak year divided by the maximum number of susceptible individuals in the previous year.
 For example, let year *t* be an outbreak year where the cumulative number of cases exceeded 80% of the maximum cumulative cases observed.
-The level of susceptible depletion between year $t-1$ and year $t$ is then: $\text{min}(S_t)/\text{max}(S_{t-1})$.
-Essentially, this metric tells us the discounting fraction that would need to be applied to *S* to simulate an outbreak of the size in year *t*.
+The level of susceptible depletion between year $t-1$ and year $t$ is then: $\min(\{S_i \text{ in year } t\})/\max(\{S_i \text{ in year } t-1\})$.
+Essentially, this metric tells us the discounting factor that would need to be applied to *S* at its peak in year *t - 1* to match the reduction in $S$ caused by the outbreak of the size in year *t*.
 Histograms for each city are in Figure \ref{susc-disc}.
 
 ```{r, fig.width=4, fig.height=3, fig.cap="Histograms of susceptible depletion discounting factors for each city. Values were calculated by comparing the number of susceptible individuals before and after large outbreaks from 100 replicate simulations from the fitted models for each city.  \\label{susc-disc}"}
