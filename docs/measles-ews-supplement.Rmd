@@ -189,7 +189,7 @@ Beating the SARIMA is a harder test than beating the NBM.
 We fitted both models to the weekly case count observations for each city using maximum likelihood.
 After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where *k* is the number of estimated parameters in the model and *L* is the model's likelihood.
 The NBM model has 2 parameters, the SARIMA model has 8 parameters, and the SEIR model has 14 parameters.
-The results in table S1 show the AIC values for each model.
+The results in table \ref{tab:AIC} show the AIC values for each model.
 The AIC values for the SEIR models are lowest for all cities, suggesting that the addition of mechanism via explicit disease transmission dynamics substantially improves model fit.
 
 ```{r aic-comp}
@@ -250,7 +250,7 @@ all_logliks %>%
   ) %>%
   dplyr::select(-loglik, -k) %>%
   spread(key = model, value = AIC) %>%
-  knitr::kable(format = "pandoc", caption = "AIC values for the benchmarking and SEIR models.")
+  knitr::kable(format = "pandoc", caption = "AIC values for the benchmarking and SEIR models. \\label{tab:AIC}")
 ```
 
 # Long-run simulations from the fitted the SEIR models
@@ -274,7 +274,7 @@ R_{t+dt} - R_{t} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
 \end{align}
 
 \noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each update $t \rightarrow t+dt$.
-Transition definitions are in Table S2.
+Transition definitions are in table \ref{tab:transitions}.
 
 | Random variable | Transition | $\left(\Delta S, \Delta E, \Delta I, \Delta R\right)$ |
 | ---------- | ----------------------------| ---------- |
@@ -289,7 +289,7 @@ Transition definitions are in Table S2.
 | $n_{0R}$ | Births into the *R* compartment, vaccinated | (0, 0, 0, 1) |
 | $n_{R0}$ | Number of deaths leaving *R* | (0, 0, 0, -1) |
 
-Table: Transitions in the simulating model.
+Table: Transitions in the simulating model. \label{tab:transitions}
 
 The stochastic random variables are specified as follows:
 
@@ -345,7 +345,7 @@ When determining the critical year, we eliminate the variation in $R_E$ that ari
 From the full window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $R_E = 1$) and the test interval as the second half of the full window (near $R_E = 1$).
 Figure \ref{emerge-sim} shows a typical example.
 
-```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the initial number of susceptibles was scaled by 1e-04. (*a*) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
+```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the susceptible discount factor was 1e-04. (*a*) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
 
@@ -401,7 +401,9 @@ plot_grid(re_series, cases_series, nrow = 2, align = "v",
 
 For simulations of disease elimination by increasing the vaccination coverage of the population, we define the critical time as the time at which vaccination coverage reaches the threshold needed for herd immunity.
 This vaccination threshold is defined as $p = 1 - 1/R_0$.
-Because our transmission function is seasonal, we first aproximated time-specific $R_0$ as: $R_0(t) = \frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, and $\nu$ is the death rate. Only $\beta_t$ is estimated by our model. We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\nu$ = 0.05 per year.
+Because our transmission function is seasonal, we first approximated time-specific $R_0$ as: $R_0(t) = \frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, and $\nu$ is the death rate. 
+Only $\beta_t$ is estimated by our model. 
+We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\nu$ = 0.05 per year.
 Figure 2 in the main text shows our estimates of $R_0$ over the course of a year using this approximation.
 We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$ out of the range of values in its seasonal variation. That is, we set $p = 1 - 1/\text{max}(R_0(t))$.
 We set the time at which vaccination coverage is equal to *p* as the endpoint for the EWS analysis.
@@ -471,8 +473,7 @@ plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
 # Early warning signals
 
 We calculated nine early warning signals using the ```spaero::get_stats()``` function.
-Formulas for the early warning signals are in table S1.
-
+Formulas for the early warning signals are in table \ref{tab:ews}.
 
 | EWS | Estimator | Theoretical Correlation with $R_E(t)$ in an emergence scenario |
 | -------------------- | ----------------------------------- | ------------------------ |
@@ -486,7 +487,7 @@ Formulas for the early warning signals are in table S1.
 | Autocorrelation | \( r_1 = \frac{s^2_1 }{ s^2} \) | Positive |
 | Decay time | \( -1 / \text{ln}(r_1) \) | Positive |
 
-Table: List of candidate early warning signals and their estimating equations. See @Brett2018 for details.
+Table: List of candidate early warning signals and their estimating equations. See @Brett2018 for details. \label{tab:ews}
 
 # Trends of early warning signals
 
@@ -496,7 +497,7 @@ approaching the critical transition from above (elimination), we are not aware o
 
 To confirm that the EWS are behaving as expected, and to provide empirical results for cases in which we lack expectations, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
 
-```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where the susceptible discout factor was 1e-04.", fig.height=5}
+```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where the susceptible discount factor was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
   filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
   mutate(metric = as.character(metric)) %>%
@@ -610,7 +611,7 @@ print(ews_hists)
 
 We used a bootstrap approach to estimate approximate 95\% confidence intervals for all parameters.
 Below we show summary statistics for all parameters except the B-splines.
-For B-splines, and transmission rate more generally, we plot the seasonal transmission rate function for all bootstrap replicates (Figure \ref{season-trans}).
+For B-splines, and transmission rate more generally, we plot the seasonal transmission rate function for all bootstrap replicates (figure \ref{season-trans}).
 
 ```{r param-summaries, message=FALSE, warning=TRUE, echo = FALSE, results = "asis"}
 
