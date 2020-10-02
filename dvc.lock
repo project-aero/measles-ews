@@ -3,6 +3,9 @@ clean-data:
     Rscript fetch-clean-data.R
   deps:
   - path: code/fetch-clean-data.R
-    md5: 2f2bfb4570ebf1cdddc3229aa9156284
+    md5: 8e5c04c22a2f6f3b6fc70f016a36bf2f
   - path: data/raw-data
     md5: 0b86405b3b75b82dcb19a58d3600b553.dir
+  outs:
+  - path: data/clean-data
+    md5: 2988433306651ec8e557af7210d3248a.dir

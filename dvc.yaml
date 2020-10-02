@@ -5,3 +5,5 @@ stages:
     deps:
     - code/fetch-clean-data.R
     - data/raw-data
+    outs:
+    - data/clean-data

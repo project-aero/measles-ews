@@ -66,7 +66,8 @@ measles_data <- niger_measles_raw %>%
   ) %>%
   dplyr::rename(region = X1) %>%
   filter(grepl("City", region)) %>%
-  dplyr::select(region, date, year, year2, week_of_year, week_of_year2, obs_week, obs_week2, cases) %>%
+  dplyr::select(region, date, year, year2, week_of_year, week_of_year2, 
+                obs_week, obs_week2, cases) %>%
   arrange(region, date) %>%
   mutate(
     time = decimal_date(date)
@@ -176,6 +177,11 @@ for(do_city in unique(pop_data$region)){
 demog_data <- population_sizes %>%
   left_join(birth_rates, by = "time") %>%
   dplyr::select(-year)
+
+
+if(!dir.exists("../data/clean-data")){
+  dir.create("../data/clean-data")
+}
 
 saveRDS(
   object = demog_data,
