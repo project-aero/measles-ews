@@ -1,0 +1,7 @@
+stages:
+  clean-data:
+    cmd: podman run -w /root/code --rm --mount type=bind,src=$PWD,dst=/root docker.io/eamon/2019measles:v20200928
+      Rscript fetch-clean-data.R
+    deps:
+    - code/fetch-clean-data.R
+    - data/raw-data
