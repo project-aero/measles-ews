@@ -7,3 +7,14 @@ stages:
     - data/raw-data
     outs:
     - data/clean-data
+  construct-fitting-pomps:
+    cmd: podman run -w /root/code --rm --mount type=bind,src=$PWD,dst=/root docker.io/eamon/2019measles:v20200928
+      Rscript define-continuous-measles-pomp.R
+    deps:
+    - code/define-continuous-measles-pomp.R
+    - data/clean-data
+    outs:
+    - code/measles-pomp-object-Agadez.RDS
+    - code/measles-pomp-object-Maradi.RDS
+    - code/measles-pomp-object-Niamey.RDS
+    - code/measles-pomp-object-Zinder.RDS

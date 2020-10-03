@@ -9,3 +9,20 @@ clean-data:
   outs:
   - path: data/clean-data
     md5: 2988433306651ec8e557af7210d3248a.dir
+construct-fitting-pomps:
+  cmd: podman run -w /root/code --rm --mount type=bind,src=$PWD,dst=/root docker.io/eamon/2019measles:v20200928
+    Rscript define-continuous-measles-pomp.R
+  deps:
+  - path: code/define-continuous-measles-pomp.R
+    md5: 4a898ff14934b4dcd96f63d5bb85ace7
+  - path: data/clean-data
+    md5: 2988433306651ec8e557af7210d3248a.dir
+  outs:
+  - path: code/measles-pomp-object-Agadez.RDS
+    md5: 3913cbeee426f300a15723310b9dfcf2
+  - path: code/measles-pomp-object-Maradi.RDS
+    md5: de0317c0846d6f35269fab79ec7cb2da
+  - path: code/measles-pomp-object-Niamey.RDS
+    md5: 42549232956a5ca0bda19689dfd2dc1a
+  - path: code/measles-pomp-object-Zinder.RDS
+    md5: 59c8b5ece0f8df5a0a9f42a45934a81a
