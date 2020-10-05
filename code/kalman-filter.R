@@ -91,6 +91,57 @@ P <- with(as.list(init.vars[-c(1:4)]),
                 c(Psi, Pei, Pii, Pic),
                 c(Psc, Pec, Pic, Pcc)))
 
+iterate_f_and_P(xhat = xhat, PN = P, pvec = pvec, covf = covf, 
+                time.steps = c(1996, 1996 + 1 / 52))
 
-iterate_f_and_P(xhat = xhat, PN = P, pvec = pvec, covf = covf, time.steps = c(1996, 1996 + 1 / 52))
+# Initialize
+xhat0 <- matrix(xhat, ncol = 1)
+rownames(xhat0) <- names(xhat)
+Phat0 <- P
+z_1 <-  log(case_data$reports[2] + 1)
+H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
+R <- pvec["tau"]
+
+# Predict
+XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
+                         time.steps = case_data$time[c(2, 3)])
+xhat_1_0 <- XP_1_0$xhat
+P_1_0 <- XP_1_0$PN
+# Update
+
+K_1 <- P_1_0 %*% t(H) %*% solve(H %*% P_1_0 %*% t(H) + R[1])
+ytilde_1 <- z_1 - H %*% xhat_1_0
+xhat_1_1 <- xhat_1_0 + K_1 %*% ytilde_1
+P_1_1 <- (diag(4) - K_1 %*% H) %*% P_1_0
+
+## Now calculate for each step in simulation
+
+
+T <- nrow(case_data)
+z <- log(case_data$reports + 1)
+
+ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
+K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
+P_kk <- P_kkmo <- array(NA_real_, dim = c(4, 4, T))
+
+K[, 2] <- K_1
+xhat_kkmo[, 1] <- xhat_1_0
+xhat_kk[, 1] <- xhat_1_1
+P_kk[, , 1] <- P_1_1
+P_kkmo[, , 1] <- P_1_0
+S[, 1] <- H %*% P_kkmo[, , 1] %*% t(H) + R[1]
+ytilde_kk[, 1] <- z[1] - H %*% xhat_kk[, 1]
+ytilde_k[, 1] <- ytilde_1
+
+for (i in seq(2, T)){
+  xhat_kkmo[, i] <- f(xhat_kk[, i - 1], beta = 30)
+  P_kkmo[, , i] <- iterate_P(xhat_kk[, i - 1], P_kk[, , i - 1], beta = 30)
+  S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R[i]
+  K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
+  ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
+  xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
+  P_kk[, , i] <- (1 - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
+  ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
+}
+
 #todo zero x and P for cases
