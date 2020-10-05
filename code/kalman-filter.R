@@ -66,4 +66,31 @@ pvec <- coef(pob)
 init.vars <- c(S=3e-2, E=1.6e-4, I=1.6e-4, C = 0,
                Pss = 1, Pse = 0, Psi = 0, Psc = 0, Pee = 1, Pei = 0, Pec = 0, Pii = 1, Pic = 0, Pcc = 1)
 
-PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars)
+out <- PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars, time.steps = case_data$time)
+
+iterate_f_and_P <- function(xhat, PN, pvec, covf, time.steps){
+  P <- P / covf$N(time.steps[1])
+  init.vars <- c(xhat, Pss = P[1,1], Pse = P[1,2], 
+  Psi = P[1,3], Psc = P[1,4], Pee = P[2,2], Pei = P[2,3], Pec = P[2,4], 
+  Pii = P[3,3], Pic = P[3,4], Pcc = P[4,4])
+  ret <- PsystemSEIR(pvec = pvec, init.vars = init.vars, covf, time.steps)[2, ]
+  xhat <- ret[c("S", "E", "I", "C")]
+  P <- with(as.list(init.vars),        
+            rbind(c(Pss, Pse, Psi, Psc),
+                  c(Pse, Pee, Pei, Pec),
+                  c(Psi, Pei, Pii, Pic),
+                  c(Psc, Pec, Pic, Pcc)))
+  PN <- P * covf$N(time.steps[2])
+  list(xhat = xhat, PN = PN)
+}
+
+xhat <- init.vars[1:4]
+P <- with(as.list(init.vars[-c(1:4)]),        
+          rbind(c(Pss, Pse, Psi, Psc),
+                c(Pse, Pee, Pei, Pec),
+                c(Psi, Pei, Pii, Pic),
+                c(Psc, Pec, Pic, Pcc)))
+
+
+iterate_f_and_P(xhat = xhat, PN = P, pvec = pvec, covf = covf, time.steps = c(1996, 1996 + 1 / 52))
+#todo zero x and P for cases
