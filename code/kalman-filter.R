@@ -27,16 +27,35 @@ PsystemSEIR <- function(pvec, covf,
       eta <- 365 / 8  
       gamma <- 365 / 5
       
+      F <- rbind(c(-beta_t * I / N_t,    0, -beta_t * S / N_t, 0),
+                 c( beta_t * I / N_t, -eta,  beta_t * S / N_t, 0),
+                 c(                0,  eta,            -gamma, 0),
+                 c(                0,    0,             gamma, 0))
+      
+      
+      f <- c(mu_t * 0.3, beta_t * (S / N_t) * (I / N_t), eta * E / N_t, gamma * I / N_t)
+      Q <- rbind(c(f[1] + f[2],       -f[2],           0,     0),
+                 c(      -f[2], f[2] + f[3],       -f[3],     0),
+                 c(          0,       -f[3], f[3] + f[4], -f[4]),
+                 c(          0,           0,       -f[4],  f[4]))
+      
+      P <- rbind(c(Pss, Pse, Psi, Psc),
+                 c(Pse, Pee, Pei, Pec),
+                 c(Psi, Pei, Pii, Pic),
+                 c(Psc, Pec, Pic, Pcc))
+      
       dS <- N_t * mu_t * 0.3 - beta_t * S * I / N_t
       dE <- beta_t * S * I / N_t - eta * E
       dI <- iota + eta * E -  gamma * I
       dC <- gamma * I
+      dP <-  F %*% P + P %*% t(F) + Q
       
-      list(c(dS=dS, dE=dE, dI=dI, dC = dC))
+      list(c(dS=dS, dE=dE, dI=dI, dC = dC, dPss = dP[1,1], dPse = dP[1,2], 
+             dPsi = dP[1,3], dPsc = dP[1,4], dPee = dP[2,2], dPei = dP[2,3], dPec = dP[2,4], 
+             dPii = dP[3,3], dPic = dP[3,4], dPcc = dP[4,4]))
     })
   }
-  iv <- sapply(init.vars, unlist)
-  deSolve::lsoda(iv$xvec, time.steps, PModel, pvec)
+  deSolve::lsoda(init.vars, time.steps, PModel, pvec)
 }
 
 genfun <- function(y) {
@@ -44,8 +63,7 @@ genfun <- function(y) {
 }
 covf <- apply(cov_data, 2, genfun)
 pvec <- coef(pob)
-xvec <- c(S=3e-2, E=1.6e-4, I=1.6e-4, C = 0)
-Pmat <- matrix(0) 
+init.vars <- c(S=3e-2, E=1.6e-4, I=1.6e-4, C = 0,
+               Pss = 1, Pse = 0, Psi = 0, Psc = 0, Pee = 1, Pei = 0, Pec = 0, Pii = 1, Pic = 0, Pcc = 1)
 
-init.vars <- list(xvec = xvec, Pmat = Pmat)             
 PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars)
