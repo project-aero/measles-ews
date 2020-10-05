@@ -122,26 +122,32 @@ z <- log(case_data$reports + 1)
 
 ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
 K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
+rownames(xhat_kk) <- names(xhat)
 P_kk <- P_kkmo <- array(NA_real_, dim = c(4, 4, T))
 
 K[, 2] <- K_1
-xhat_kkmo[, 1] <- xhat_1_0
-xhat_kk[, 1] <- xhat_1_1
-P_kk[, , 1] <- P_1_1
-P_kkmo[, , 1] <- P_1_0
-S[, 1] <- H %*% P_kkmo[, , 1] %*% t(H) + R[1]
-ytilde_kk[, 1] <- z[1] - H %*% xhat_kk[, 1]
+xhat_kkmo[, 2] <- xhat_1_0
+xhat_kk[, 2] <- xhat_1_1
+P_kk[, , 2] <- P_1_1
+P_kkmo[, , 2] <- P_1_0
+S[, 2] <- H %*% P_kkmo[, , 1] %*% t(H) + R
+ytilde_kk[, 2] <- z[2] - H %*% xhat_kk[, 2]
 ytilde_k[, 1] <- ytilde_1
 
-for (i in seq(2, T)){
-  xhat_kkmo[, i] <- f(xhat_kk[, i - 1], beta = 30)
-  P_kkmo[, , i] <- iterate_P(xhat_kk[, i - 1], P_kk[, , i - 1], beta = 30)
-  S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R[i]
+for (i in seq(3, T)){
+  xhat_init <- xhat_kk[, i - 1]
+  xhat_init["C"] <- 0
+  PNinit <- P_kk[,,i - 1]
+  PNinit[, 4] <- PNinit[4, ] <- 0
+  XP <- iterate_f_and_P(xhat_init, PN = PNinit, pvec = pvec, covf = covf,
+                            time.steps = case_data$time[c(i - 1, i)])
+  xhat_kkmo[, i] <- XP$xhat
+  P_kkmo[, , i] <- XP$PN
+  
+  S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
   K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
   ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
   xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
-  P_kk[, , i] <- (1 - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
+  P_kk[, , i] <- (diag(4) - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
   ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
 }
-
-#todo zero x and P for cases
