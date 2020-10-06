@@ -63,7 +63,7 @@ genfun <- function(y) {
 }
 covf <- apply(cov_data, 2, genfun)
 pvec <- coef(pob)
-init.vars <- c(S=3e-2, E=1.6e-4, I=1.6e-4, C = 0,
+init.vars <- c(S=3e-2 * 6.2e5, E=1.6e-4 * 6.2e5, I=1.6e-4 * 6.2e5, C = 0,
                Pss = 1, Pse = 0, Psi = 0, Psc = 0, Pee = 1, Pei = 0, Pec = 0, Pii = 1, Pic = 0, Pcc = 1)
 
 out <- PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars, time.steps = case_data$time)
@@ -100,7 +100,7 @@ rownames(xhat0) <- names(xhat)
 Phat0 <- P
 z_1 <-  case_data$reports[2]
 H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
-R <- 1
+R <- z_1 * (1 - pvec["rho"])
 
 # Predict
 XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
@@ -122,7 +122,7 @@ z <- case_data$reports
 
 ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
 K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
-rownames(xhat_kk) <- names(xhat)
+rownames(xhat_kk) <- rownames(xhat_kkmo) <- names(xhat)
 P_kk <- P_kkmo <- array(NA_real_, dim = c(4, 4, T))
 
 K[, 2] <- K_1
@@ -143,7 +143,7 @@ for (i in seq(3, T)){
                             time.steps = case_data$time[c(i - 1, i)])
   xhat_kkmo[, i] <- XP$xhat
   P_kkmo[, , i] <- XP$PN
-  
+  R <- xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"])
   S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
   K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
   ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
