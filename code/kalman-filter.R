@@ -10,7 +10,7 @@ case_data <- tibble(time = pob@times, reports = pob@data["reports",])
 cov_data <- bind_cols(tibble(time = pob@tcovar), as_tibble(pob@covar))
 
 PsystemSEIR <- function(pvec, covf,
-                        init.vars = list(xvec, Pmat),
+                        init.vars,
                         time.steps = c(1995, 1995 + 1 / 52)){
   
   PModel <- function(t, x, parms) {
@@ -26,7 +26,9 @@ PsystemSEIR <- function(pvec, covf,
       beta_t <- beta_mu * (1 + exp(xi1t * b1 + xi2t * b2 + xi3t * b3 + xi4t * b4 + xi5t * b5 + xi6t * b6))
       eta <- 365 / 8  
       gamma <- 365 / 5
-      
+      S <- exp(lS)
+      E <- exp(lE)
+      I <- exp(lI)
       F <- rbind(c(-beta_t * I / N_t,    0, -beta_t * S / N_t, 0),
                  c( beta_t * I / N_t, -eta,  beta_t * S / N_t, 0),
                  c(                0,  eta,            -gamma, 0),
@@ -44,13 +46,13 @@ PsystemSEIR <- function(pvec, covf,
                  c(Psi, Pei, Pii, Pic),
                  c(Psc, Pec, Pic, Pcc))
       
-      dS <- N_t * mu_t * 0.3 - beta_t * S * I / N_t
-      dE <- beta_t * S * I / N_t - eta * E
-      dI <- iota + eta * E -  gamma * I
-      dC <- gamma * I
+      dlS <- (N_t * mu_t * 0.3 - beta_t * S * I / N_t) / S
+      dlE <- (beta_t * S * I / N_t - eta * E) / E
+      dlI <- (iota + eta * E -  gamma * I) / I
+      dC <- (gamma * I)
       dP <-  F %*% P + P %*% t(F) + Q
       
-      list(c(dS=dS, dE=dE, dI=dI, dC = dC, dPss = dP[1,1], dPse = dP[1,2], 
+      list(c(dlS = dlS, dlE = dlE, dlI = dlI, dC = dC, dPss = dP[1,1], dPse = dP[1,2], 
              dPsi = dP[1,3], dPsc = dP[1,4], dPee = dP[2,2], dPei = dP[2,3], 
              dPec = dP[2,4], dPii = dP[3,3], dPic = dP[3,4], dPcc = dP[4,4]))
     })
@@ -63,28 +65,34 @@ genfun <- function(y) {
 }
 covf <- apply(cov_data, 2, genfun)
 pvec <- coef(pob)
-init.vars <- c(S=3e-2 * 6.2e5, E=1.6e-4 * 6.2e5, I=1.6e-4 * 6.2e5, C = 0,
+init.vars <- c(lS=log(3e-2 * 6.2e5), lE=log(1.6e-4 * 6.2e5), lI=log(1.6e-4 * 6.2e5), C = 0,
                Pss = 1, Pse = 0, Psi = 0, Psc = 0, Pee = 1, Pei = 0, Pec = 0, Pii = 1, Pic = 0, Pcc = 1)
 
 out <- PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars, time.steps = case_data$time)
 
 iterate_f_and_P <- function(xhat, PN, pvec, covf, time.steps){
   P <- PN / covf$N(time.steps[1])
-  init.vars <- c(xhat, Pss = P[1,1], Pse = P[1,2], 
+  xhat_trans <- c(log(xhat[c("S", "E", "I")]), xhat["C"])
+  if(!all(is.finite(xhat_trans))) {
+    browser()
+  }
+  names(xhat_trans)[1:3] <- c("lS", "lE", "lI")
+  init.vars <- c(xhat_trans, Pss = P[1,1], Pse = P[1,2], 
   Psi = P[1,3], Psc = P[1,4], Pee = P[2,2], Pei = P[2,3], Pec = P[2,4], 
   Pii = P[3,3], Pic = P[3,4], Pcc = P[4,4])
   ret <- PsystemSEIR(pvec = pvec, init.vars = init.vars, covf, time.steps)[2, ]
-  xhat <- ret[c("S", "E", "I", "C")]
-  P <- with(as.list(ret),        
+  xhat_new <- c(exp(ret[c("lS", "lE", "lI")]), ret["C"])
+  names(xhat_new)[1:3] <- c("S", "E", "I")
+  P_new  <- with(as.list(ret),        
             rbind(c(Pss, Pse, Psi, Psc),
                   c(Pse, Pee, Pei, Pec),
                   c(Psi, Pei, Pii, Pic),
                   c(Psc, Pec, Pic, Pcc)))
-  PN <- P * covf$N(time.steps[2])
-  list(xhat = xhat, PN = PN)
+  PN_new <- P_new * covf$N(time.steps[2])
+  list(xhat = xhat_new, PN = PN_new)
 }
 
-xhat <- init.vars[1:4]
+xhat <-  c(S=(3e-2 * 6.2e5), E=(1.6e-4 * 6.2e5), I=(1.6e-4 * 6.2e5), C = 0)
 P <- with(as.list(init.vars[-c(1:4)]),        
           rbind(c(Pss, Pse, Psi, Psc),
                 c(Pse, Pee, Pei, Pec),
@@ -148,6 +156,7 @@ for (i in seq(3, T)){
   K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
   ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
   xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
+  xhat_kk[xhat_kk[, i] < 0, i] <- 1e-4
   P_kk[, , i] <- (diag(4) - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
   ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
 }
