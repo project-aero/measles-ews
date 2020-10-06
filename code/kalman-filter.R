@@ -152,6 +152,7 @@ for (i in seq(3, T)){
   xhat_kkmo[, i] <- XP$xhat
   P_kkmo[, , i] <- XP$PN
   R <- xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"])
+  R <- max(5, z[i - 1] * (1 - pvec["rho"]))
   S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
   K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
   ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
