@@ -69,13 +69,13 @@ init.vars <- c(S=3e-2 * 6.2e5, E=1.6e-4 * 6.2e5, I=1.6e-4 * 6.2e5, C = 0,
 out <- PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars, time.steps = case_data$time)
 
 iterate_f_and_P <- function(xhat, PN, pvec, covf, time.steps){
-  P <- P / covf$N(time.steps[1])
+  P <- PN / covf$N(time.steps[1])
   init.vars <- c(xhat, Pss = P[1,1], Pse = P[1,2], 
   Psi = P[1,3], Psc = P[1,4], Pee = P[2,2], Pei = P[2,3], Pec = P[2,4], 
   Pii = P[3,3], Pic = P[3,4], Pcc = P[4,4])
   ret <- PsystemSEIR(pvec = pvec, init.vars = init.vars, covf, time.steps)[2, ]
   xhat <- ret[c("S", "E", "I", "C")]
-  P <- with(as.list(init.vars),        
+  P <- with(as.list(ret),        
             rbind(c(Pss, Pse, Psi, Psc),
                   c(Pse, Pee, Pei, Pec),
                   c(Psi, Pei, Pii, Pic),
