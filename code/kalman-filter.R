@@ -51,8 +51,8 @@ PsystemSEIR <- function(pvec, covf,
       dP <-  F %*% P + P %*% t(F) + Q
       
       list(c(dS=dS, dE=dE, dI=dI, dC = dC, dPss = dP[1,1], dPse = dP[1,2], 
-             dPsi = dP[1,3], dPsc = dP[1,4], dPee = dP[2,2], dPei = dP[2,3], dPec = dP[2,4], 
-             dPii = dP[3,3], dPic = dP[3,4], dPcc = dP[4,4]))
+             dPsi = dP[1,3], dPsc = dP[1,4], dPee = dP[2,2], dPei = dP[2,3], 
+             dPec = dP[2,4], dPii = dP[3,3], dPic = dP[3,4], dPcc = dP[4,4]))
     })
   }
   deSolve::lsoda(init.vars, time.steps, PModel, pvec)
@@ -98,9 +98,9 @@ iterate_f_and_P(xhat = xhat, PN = P, pvec = pvec, covf = covf,
 xhat0 <- matrix(xhat, ncol = 1)
 rownames(xhat0) <- names(xhat)
 Phat0 <- P
-z_1 <-  log(case_data$reports[2] + 1)
+z_1 <-  case_data$reports[2]
 H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
-R <- pvec["tau"]
+R <- 1
 
 # Predict
 XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
@@ -118,7 +118,7 @@ P_1_1 <- (diag(4) - K_1 %*% H) %*% P_1_0
 
 
 T <- nrow(case_data)
-z <- log(case_data$reports + 1)
+z <- case_data$reports
 
 ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
 K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
