@@ -171,11 +171,14 @@ log_lik(S, ytilde_k)
 kfnll <-
   function(cdata,
            pvec,
+           beta_mu,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
            just_nll = TRUE) {
  
+    print(beta_mu)
+    pvec["beta_mu"] <- beta_mu
     # Initialize
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
@@ -235,10 +238,22 @@ kfnll <-
     if (!just_nll){
       list(nll = nll, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
     } else {
+      print(nll)
       nll
     }
   }
 
-kfnll(cdata = case_data, pvec = pvec)
+kfnll(cdata = case_data, pvec = pvec, beta_mu = 100)
 
+library(bbmle)
+
+m0 <- mle2(minuslogl = kfnll, start = list(beta_mu = 551.8461), 
+           method = "L-BFGS-B", 
+           lower = 73, upper = 600, 
+           control = list(factr = 1e13),
+           trace = TRUE, data = list(cdata = case_data, pvec = pvec))
+
+p0 <- profile(m0, tol.newmin = 0.1)
+confint(p0)
+plot(p0, absVal = FALSE)
 
