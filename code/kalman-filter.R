@@ -168,3 +168,77 @@ log_lik <- function(Sigma, resids){
 
 log_lik(S, ytilde_k)
 
+kfnll <-
+  function(cdata,
+           pvec,
+           xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
+                             .Dimnames = list(c("S", "E", "I", "C"), NULL)),
+           Phat0 = diag(c(1, 1, 1, 0)),
+           just_nll = TRUE) {
+ 
+    # Initialize
+    z_1 <-  cdata$reports[-1][1]
+    H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
+    R <- z_1 * (1 - pvec["rho"])
+    
+    # Predict
+    XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
+                              time.steps = cdata$time[c(2, 3)])
+    xhat_1_0 <- XP_1_0$xhat
+    P_1_0 <- XP_1_0$PN
+    # Update
+    
+    K_1 <- P_1_0 %*% t(H) %*% solve(H %*% P_1_0 %*% t(H) + R)
+    ytilde_1 <- z_1 - H %*% xhat_1_0
+    xhat_1_1 <- xhat_1_0 + K_1 %*% ytilde_1
+    P_1_1 <- (diag(4) - K_1 %*% H) %*% P_1_0
+    
+    ## Now calculate for each step in simulation
+    
+    T <- nrow(case_data[-1,])
+    z <- cdata$reports[-1]
+    
+    ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
+    K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
+    rownames(xhat_kk) <- rownames(xhat_kkmo) <- names(xhat)
+    P_kk <- P_kkmo <- array(NA_real_, dim = c(4, 4, T))
+    
+    K[, 1] <- K_1
+    xhat_kkmo[, 1] <- xhat_1_0
+    xhat_kk[, 1] <- xhat_1_1
+    P_kk[, , 1] <- P_1_1
+    P_kkmo[, , 1] <- P_1_0
+    S[, 1] <- H %*% P_kkmo[, , 1] %*% t(H) + R
+    ytilde_kk[, 1] <- z[1] - H %*% xhat_kk[, 1]
+    ytilde_k[, 1] <- ytilde_1
+    
+    for (i in seq(2, T)){
+      xhat_init <- xhat_kk[, i - 1]
+      xhat_init["C"] <- 0
+      PNinit <- P_kk[,,i - 1]
+      PNinit[, 4] <- PNinit[4, ] <- 0
+      XP <- iterate_f_and_P(xhat_init, PN = PNinit, pvec = pvec, covf = covf,
+                            time.steps = cdata$time[c(i - 1, i)])
+      xhat_kkmo[, i] <- XP$xhat
+      P_kkmo[, , i] <- XP$PN
+      R <- max(5, z[i - 1] * (1 - pvec["rho"]))
+      S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
+      K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
+      ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
+      xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
+      xhat_kk[xhat_kk[, i] < 0, i] <- 1e-4
+      P_kk[, , i] <- (diag(4) - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
+      ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
+    }
+    
+    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
+    if (!just_nll){
+      list(nll = nll, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
+    } else {
+      nll
+    }
+  }
+
+kfnll(cdata = case_data, pvec = pvec)
+
+
