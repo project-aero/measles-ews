@@ -188,7 +188,8 @@ kfnll <-
     # Initialize
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
-    R <- z_1 * (1 - pvec["rho"])
+    #R <- max(5, z[1] * pvec["tau"])
+    R <- max(5, z_1 * (1 - pvec["rho"]))
     
     # Predict
     XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
@@ -230,6 +231,7 @@ kfnll <-
                             time.steps = cdata$time[c(i - 1, i)])
       xhat_kkmo[, i] <- XP$xhat
       P_kkmo[, , i] <- XP$PN
+      #R <- max(5, z[i - 1] * pvec["tau"])
       R <- max(5, z[i - 1] * (1 - pvec["rho"]))
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
@@ -242,14 +244,12 @@ kfnll <-
     
     nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
     if (!just_nll){
-      list(nll = nll, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
+      list(nll = nll, xhat_kkmo = xhat_kkmo, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
     } else {
       print(nll)
       nll
     }
   }
-
-kfnll(cdata = case_data, pvec = pvec, beta_mu = 371, S0frac = 0.11)
 
 library(bbmle)
 
@@ -265,16 +265,24 @@ b_beta_mu <- 1000
 a_S0 <- 0
 b_S0 <- 628e3
 
+pvec2 <- pvec
+pvec2["rho"] <- 0.1
+pvec2["b1"] <- 0.3
+pvec2["b2"] <- 0.3
+pvec2["b3"] <- 0.6
+pvec2["b4"] <- 0.5
+pvec2["b5"] <- 0.2
+pvec2["b6"] <- 0
+
+
+
 m0 <- mle2(minuslogl = kfnll, 
-           start = list(logit_beta_mu = scaled_logit(600, a_beta_mu, b_beta_mu), 
-                        logit_S0 = scaled_logit(0.019, a_S0, b_S0)), 
+           start = list(logit_beta_mu = scaled_logit(371, a_beta_mu, b_beta_mu), 
+                        logit_S0 = scaled_logit(100e3, a_S0, b_S0)), 
            method = "Nelder-Mead",
            control = list(factr = 1e13),
            trace = TRUE, 
-           data = list(cdata = case_data, pvec = pvec))
-
-beta_grid <- seq(690, 700)
-nll_grid <- lapply(beta_grid, function(x) kfnll(cdata = case_data, pvec = pvec, beta_mu = x, S0frac = 0.019))
+           data = list(cdata = case_data, pvec = pvec2))
 
 p0 <- profile(m0)
 confint(p0)
@@ -282,3 +290,42 @@ plot(p0, absVal = FALSE)
 confint(p0)[2,]
 scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
 
+
+
+
+kfret <- kfnll(cdata = case_data, pvec = pvec2, logit_beta_mu = 1.143438, logit_S0 = -1.856390, just_nll = FALSE)
+
+plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec["rho"])
+points(case_data$time[-1], kfret$xhat_kk["C",] * pvec["rho"], col = 2, pch = 2)
+lines(case_data$time[-1], case_data$reports[-1])
+
+plot(case_data$time[-1], kfret$xhat_kkmo["I",])
+points(case_data$time[-1], kfret$xhat_kk["I",], col = 2, pch = 2)
+
+
+tgrid <- seq(0, 1, length.out = 100) + 1995
+ximat <- cbind(covf$xi1(tgrid),
+               covf$xi2(tgrid),
+               covf$xi3(tgrid),
+               covf$xi4(tgrid),
+               covf$xi5(tgrid),
+               covf$xi6(tgrid))
+
+matplot(tgrid, ximat)
+
+
+seasgrid <- 1 + exp(ximat %*% pvec2[c("b1", "b2", "b3", "b4", "b5", "b6")])
+R0grid <- scaled_expit(1.1434, a_beta_mu, b_beta_mu) * seasgrid / (365 / 5)
+plot(tgrid, R0grid)
+
+par(mfrow = c(2, 1))
+
+plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec["rho"], xlim = c(1995, 1997))
+points(case_data$time[-1], kfret$xhat_kk["C",] * pvec["rho"], col = 2, pch = 2, xlim = c(1995, 1997))
+lines(case_data$time[-1], case_data$reports[-1])
+
+plot(case_data$time[-1], kfret$xhat_kkmo["I",], xlim = c(1995, 1997))
+points(case_data$time[-1], kfret$xhat_kk["I",], col = 2, pch = 2, xlim = c(1995, 1997))
+
+
+plot(kfret$xhat_kk, kfret$xhat_kkmo)
