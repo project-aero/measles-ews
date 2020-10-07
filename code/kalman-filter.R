@@ -171,16 +171,19 @@ log_lik(S, ytilde_k)
 kfnll <-
   function(cdata,
            pvec,
-           beta_mu,
-           S0frac,
+           logit_beta_mu,
+           logit_S0,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
            just_nll = TRUE) {
  
-    print(paste("pars:", c(beta_mu, S0frac)))
-    pvec["beta_mu"] <- beta_mu
-    xhat0["S", 1] <- S0frac * 628696.2
+    
+
+    pvec["beta_mu"] <- scaled_expit(logit_beta_mu, a_beta_mu, b_beta_mu)
+    xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
+    
+    print(paste("pars:", c(pvec["beta_mu"], xhat0["S", 1])))
     
     # Initialize
     z_1 <-  cdata$reports[-1][1]
@@ -250,14 +253,28 @@ kfnll(cdata = case_data, pvec = pvec, beta_mu = 371, S0frac = 0.11)
 
 library(bbmle)
 
+scaled_expit <- function(y, a, b){
+  (b - a) * exp(y)/ (1 + exp(y)) + a
+} 
+
+scaled_logit <- function(x, a, b){
+  log((x - a) / (b - x))
+}
+a_beta_mu <- 1
+b_beta_mu <- 1000
+a_S0 <- 0
+b_S0 <- 628e3
+
 m0 <- mle2(minuslogl = kfnll, 
-           start = list(beta_mu = 600, S0frac = 0.019), 
-           method = "L-BFGS-B", 
-           lower = c(beta_mu = 53, S0frac = 0.01), 
-           upper = c(beta_mu = 700, S0frac = 0.95), 
+           start = list(logit_beta_mu = scaled_logit(600, a_beta_mu, b_beta_mu), 
+                        logit_S0 = scaled_logit(0.019, a_S0, b_S0)), 
+           method = "Nelder-Mead",
            control = list(factr = 1e13),
            trace = TRUE, 
            data = list(cdata = case_data, pvec = pvec))
+
+beta_grid <- seq(690, 700)
+nll_grid <- lapply(beta_grid, function(x) kfnll(cdata = case_data, pvec = pvec, beta_mu = x, S0frac = 0.019))
 
 p0 <- profile(m0, tol.newmin = 0.1)
 confint(p0)
