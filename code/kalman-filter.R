@@ -183,7 +183,7 @@ kfnll <-
     pvec["beta_mu"] <- scaled_expit(logit_beta_mu, a_beta_mu, b_beta_mu)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     
-    print(paste("pars:", c(pvec["beta_mu"], xhat0["S", 1])))
+    print(paste("pars:", c(pvec["beta_mu"], xhat0["S", 1] / b_S0)))
     
     # Initialize
     z_1 <-  cdata$reports[-1][1]
@@ -276,7 +276,9 @@ m0 <- mle2(minuslogl = kfnll,
 beta_grid <- seq(690, 700)
 nll_grid <- lapply(beta_grid, function(x) kfnll(cdata = case_data, pvec = pvec, beta_mu = x, S0frac = 0.019))
 
-p0 <- profile(m0, tol.newmin = 0.1)
+p0 <- profile(m0)
 confint(p0)
 plot(p0, absVal = FALSE)
+confint(p0)[2,]
+scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
 
