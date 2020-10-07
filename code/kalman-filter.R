@@ -172,13 +172,16 @@ kfnll <-
   function(cdata,
            pvec,
            beta_mu,
+           S0frac,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
            just_nll = TRUE) {
  
-    print(beta_mu)
+    print(paste("pars:", c(beta_mu, S0frac)))
     pvec["beta_mu"] <- beta_mu
+    xhat0["S", 1] <- S0frac * 628696.2
+    
     # Initialize
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
@@ -243,15 +246,18 @@ kfnll <-
     }
   }
 
-kfnll(cdata = case_data, pvec = pvec, beta_mu = 100)
+kfnll(cdata = case_data, pvec = pvec, beta_mu = 371, S0frac = 0.11)
 
 library(bbmle)
 
-m0 <- mle2(minuslogl = kfnll, start = list(beta_mu = 551.8461), 
+m0 <- mle2(minuslogl = kfnll, 
+           start = list(beta_mu = 600, S0frac = 0.019), 
            method = "L-BFGS-B", 
-           lower = 73, upper = 600, 
+           lower = c(beta_mu = 53, S0frac = 0.01), 
+           upper = c(beta_mu = 700, S0frac = 0.95), 
            control = list(factr = 1e13),
-           trace = TRUE, data = list(cdata = case_data, pvec = pvec))
+           trace = TRUE, 
+           data = list(cdata = case_data, pvec = pvec))
 
 p0 <- profile(m0, tol.newmin = 0.1)
 confint(p0)
