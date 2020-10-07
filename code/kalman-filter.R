@@ -106,7 +106,7 @@ iterate_f_and_P(xhat = xhat, PN = P, pvec = pvec, covf = covf,
 xhat0 <- matrix(xhat, ncol = 1)
 rownames(xhat0) <- names(xhat)
 Phat0 <- P
-z_1 <-  case_data$reports[2]
+z_1 <-  case_data$reports[-1][1]
 H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
 R <- z_1 * (1 - pvec["rho"])
 
@@ -125,24 +125,24 @@ P_1_1 <- (diag(4) - K_1 %*% H) %*% P_1_0
 ## Now calculate for each step in simulation
 
 
-T <- nrow(case_data)
-z <- case_data$reports
+T <- nrow(case_data[-1,])
+z <- case_data$reports[-1]
 
 ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
 K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
 rownames(xhat_kk) <- rownames(xhat_kkmo) <- names(xhat)
 P_kk <- P_kkmo <- array(NA_real_, dim = c(4, 4, T))
 
-K[, 2] <- K_1
-xhat_kkmo[, 2] <- xhat_1_0
-xhat_kk[, 2] <- xhat_1_1
-P_kk[, , 2] <- P_1_1
-P_kkmo[, , 2] <- P_1_0
-S[, 2] <- H %*% P_kkmo[, , 1] %*% t(H) + R
-ytilde_kk[, 2] <- z[2] - H %*% xhat_kk[, 2]
+K[, 1] <- K_1
+xhat_kkmo[, 1] <- xhat_1_0
+xhat_kk[, 1] <- xhat_1_1
+P_kk[, , 1] <- P_1_1
+P_kkmo[, , 1] <- P_1_0
+S[, 1] <- H %*% P_kkmo[, , 1] %*% t(H) + R
+ytilde_kk[, 1] <- z[1] - H %*% xhat_kk[, 1]
 ytilde_k[, 1] <- ytilde_1
 
-for (i in seq(3, T)){
+for (i in seq(2, T)){
   xhat_init <- xhat_kk[, i - 1]
   xhat_init["C"] <- 0
   PNinit <- P_kk[,,i - 1]
@@ -151,7 +151,7 @@ for (i in seq(3, T)){
                             time.steps = case_data$time[c(i - 1, i)])
   xhat_kkmo[, i] <- XP$xhat
   P_kkmo[, , i] <- XP$PN
-  R <- xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"])
+  #R <- xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"])
   R <- max(5, z[i - 1] * (1 - pvec["rho"]))
   S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
   K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
@@ -161,3 +161,10 @@ for (i in seq(3, T)){
   P_kk[, , i] <- (diag(4) - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
   ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
 }
+
+log_lik <- function(Sigma, resids){
+  -0.5 * sum(resids ^ 2 / Sigma + log(Sigma) + log(2 * pi))
+}
+
+log_lik(S, ytilde_k)
+
