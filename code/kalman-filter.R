@@ -179,6 +179,7 @@ kfnll <-
            logit_b4, 
            logit_b5,
            logit_b6,
+           logit_rho,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
@@ -191,6 +192,7 @@ kfnll <-
     pvec["b4"] <- scaled_expit(logit_b4, a_bpar, b_bpar)
     pvec["b5"] <- scaled_expit(logit_b5, a_bpar, b_bpar)
     pvec["b6"] <- scaled_expit(logit_b6, a_bpar, b_bpar)
+    pvec["rho"] <- scaled_expit(logit_rho, a_rho, b_rho)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     
     #print(c("                                     ", pvec["beta_mu"], xhat0["S", 1] / b_S0, pvec["b2"]))
@@ -278,6 +280,9 @@ b_S0 <- 628e3
 a_bpar <- 0
 b_bpar <- 5
 
+a_rho <- 0
+b_rho <- 1
+
 pvec2 <- pvec
 pvec2["rho"] <- 0.1
 pvec2["b1"] <- 0.3
@@ -296,7 +301,8 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_b3 = scaled_logit(1, a_bpar, b_bpar),
                         logit_b4 = scaled_logit(.1, a_bpar, b_bpar),
                         logit_b5 = scaled_logit(.4, a_bpar, b_bpar),
-                        logit_b6 = scaled_logit(.8, a_bpar, b_bpar)), 
+                        logit_b6 = scaled_logit(.8, a_bpar, b_bpar),
+                        logit_rho = scaled_logit(0.1, a_rho, b_rho)), 
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 2),
@@ -309,14 +315,15 @@ confint(p0)[2,]
 scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
 
 kfret <- kfnll(cdata = case_data, pvec = pvec2, 
-               logit_beta_mu = -.8219, 
-               logit_S0 = -2.0709,
-               logit_b1 = -12.589,
-               logit_b2 = 0.4088, 
-               logit_b3 = -5.577,
-               logit_b4 = -4.459,
-               logit_b5 = -11.54,
-               logit_b6 = 1.788,
+               logit_beta_mu = -.358, 
+               logit_S0 = -2.5485,
+               logit_b1 = -1.78,
+               logit_b2 = -0.142, 
+               logit_b3 = -3.95,
+               logit_b4 = -6.39,
+               logit_b5 = -1.3,
+               logit_b6 = 0.3697224,
+               logit_rho = -.8335,
                just_nll = FALSE)
 
 
