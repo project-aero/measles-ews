@@ -173,16 +173,20 @@ kfnll <-
            pvec,
            logit_beta_mu,
            logit_S0,
+           logit_b1,
            logit_b2,
            logit_b3,
+           logit_b4, 
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
            just_nll = TRUE) {
 
     pvec["beta_mu"] <- scaled_expit(logit_beta_mu, a_beta_mu, b_beta_mu)
+    pvec["b1"] <- scaled_expit(logit_b1, a_bpar, b_bpar)
     pvec["b2"] <- scaled_expit(logit_b2, a_bpar, b_bpar)
     pvec["b3"] <- scaled_expit(logit_b3, a_bpar, b_bpar)
+    pvec["b4"] <- scaled_expit(logit_b4, a_bpar, b_bpar)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     
     #print(c("                                     ", pvec["beta_mu"], xhat0["S", 1] / b_S0, pvec["b2"]))
@@ -191,7 +195,7 @@ kfnll <-
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(5, z_1 * (1 - pvec["rho"]))
+    R <- max(.5, z_1 * (1 - pvec["rho"]))
     
     # Predict
     XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
@@ -233,8 +237,8 @@ kfnll <-
                             time.steps = cdata$time[c(i - 1, i)])
       xhat_kkmo[, i] <- XP$xhat
       P_kkmo[, , i] <- XP$PN
-      R <- max(5, z[i - 1] * pvec["tau"])
-      R <- max(5, z[i - 1] * (1 - pvec["rho"]))
+      #R <- max(5, z[i - 1] * pvec["tau"])
+      R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
       #R <- max(5, xhat_kk["C", i - 1] * pvec["rho"] * (1 - pvec["rho"]))
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
@@ -282,8 +286,10 @@ pvec2["b6"] <- 0
 m0 <- mle2(minuslogl = kfnll, 
            start = list(logit_beta_mu = scaled_logit(516, a_beta_mu, b_beta_mu), 
                         logit_S0 = scaled_logit(70e3, a_S0, b_S0),
+                        logit_b1 = scaled_logit(.3, a_bpar, b_bpar),
                         logit_b2 = scaled_logit(1.6, a_bpar, b_bpar),
-                        logit_b3 = scaled_logit(1, a_bpar, b_bpar)), 
+                        logit_b3 = scaled_logit(1, a_bpar, b_bpar),
+                        logit_b4 = scaled_logit(.1, a_bpar, b_bpar)), 
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 2),
@@ -295,19 +301,28 @@ plot(p0, absVal = FALSE)
 confint(p0)[2,]
 scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
 
-kfret <- kfnll(cdata = case_data, pvec = pvec2, logit_beta_mu = 0.1326351, 
-               logit_S0 = -2.0008322, logit_b2 = -0.5584351, 
-               logit_b3 = -1.0823994, just_nll = FALSE)
+kfret <- kfnll(cdata = case_data, pvec = pvec2, 
+               logit_beta_mu = 0.2189, 
+               logit_S0 = -2.037792,
+               logit_b1 = -3.4914253,
+               logit_b2 = -0.47616, 
+               logit_b3 = -1.0649,
+               logit_b4 = -2.9458,
+               just_nll = FALSE)
 
 
 
-plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec["rho"])
-points(case_data$time[-1], kfret$xhat_kk["C",] * pvec["rho"], col = 2, pch = 2)
+par(mfrow = c(3, 1))
+plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec2["rho"])
+points(case_data$time[-1], kfret$xhat_kk["C",] * pvec2["rho"], col = 2, pch = 2)
 lines(case_data$time[-1], case_data$reports[-1])
+abline(v = seq(2001, 2002, by = 0.1))
 
 plot(case_data$time[-1], kfret$xhat_kkmo["I",])
 points(case_data$time[-1], kfret$xhat_kk["I",], col = 2, pch = 2)
 
+plot(case_data$time[-1], kfret$xhat_kkmo["S",])
+points(case_data$time[-1], kfret$xhat_kk["S",], col = 2, pch = 2)
 
 tgrid <- seq(0, 1, length.out = 100) + 1995
 ximat <- cbind(covf$xi1(tgrid),
@@ -323,15 +338,3 @@ matplot(tgrid, ximat)
 seasgrid <- 1 + exp(ximat %*% pvec2[c("b1", "b2", "b3", "b4", "b5", "b6")])
 R0grid <- scaled_expit(1.1434, a_beta_mu, b_beta_mu) * seasgrid / (365 / 5)
 plot(tgrid, R0grid)
-
-par(mfrow = c(2, 1))
-
-plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec["rho"], xlim = c(1995, 1997))
-points(case_data$time[-1], kfret$xhat_kk["C",] * pvec["rho"], col = 2, pch = 2, xlim = c(1995, 1997))
-lines(case_data$time[-1], case_data$reports[-1])
-
-plot(case_data$time[-1], kfret$xhat_kkmo["I",], xlim = c(1995, 1997))
-points(case_data$time[-1], kfret$xhat_kk["I",], col = 2, pch = 2, xlim = c(1995, 1997))
-
-
-plot(kfret$xhat_kk, kfret$xhat_kkmo)
