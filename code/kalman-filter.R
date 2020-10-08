@@ -276,7 +276,7 @@ a_S0 <- 0
 b_S0 <- 628e3
 
 a_bpar <- 0
-b_bpar <- 4
+b_bpar <- 5
 
 pvec2 <- pvec
 pvec2["rho"] <- 0.1
@@ -287,7 +287,8 @@ pvec2["b4"] <- 0.5
 pvec2["b5"] <- 0.2
 pvec2["b6"] <- 0
 
-m0 <- mle2(minuslogl = kfnll, 
+
+system.time(m0 <- mle2(minuslogl = kfnll, 
            start = list(logit_beta_mu = scaled_logit(516, a_beta_mu, b_beta_mu), 
                         logit_S0 = scaled_logit(70e3, a_S0, b_S0),
                         logit_b1 = scaled_logit(.3, a_bpar, b_bpar),
@@ -299,7 +300,7 @@ m0 <- mle2(minuslogl = kfnll,
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 2),
-           data = list(cdata = case_data, pvec = pvec2))
+           data = list(cdata = case_data, pvec = pvec2)))
 
 p0 <- profile(m0)
 confint(p0)
@@ -308,17 +309,16 @@ confint(p0)[2,]
 scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
 
 kfret <- kfnll(cdata = case_data, pvec = pvec2, 
-               logit_beta_mu = -1.30, 
-               logit_S0 = -2.2259,
-               logit_b1 = -76.92,
-               logit_b2 = 9.79, 
-               logit_b3 = -4.87,
-               logit_b4 = -41.70,
-               logit_b5 = -0.98,
-               logit_b6 = 9.196,
+               logit_beta_mu = -.8219, 
+               logit_S0 = -2.0709,
+               logit_b1 = -12.589,
+               logit_b2 = 0.4088, 
+               logit_b3 = -5.577,
+               logit_b4 = -4.459,
+               logit_b5 = -11.54,
+               logit_b6 = 1.788,
                just_nll = FALSE)
 
-bhat <- scaled_expit(coef(m0)[-c(1,2)], a_bpar, b_bpar)
 
 par(mfrow = c(3, 1))
 plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec2["rho"])
@@ -342,7 +342,7 @@ ximat <- cbind(covf$xi1(tgrid),
 
 matplot(tgrid, ximat)
 
-
+bhat <- scaled_expit(coef(m0)[-c(1,2)], a_bpar, b_bpar)
 seasgrid <- 1 + exp(ximat %*% bhat)
-R0grid <- scaled_expit(-1.299, a_beta_mu, b_beta_mu) * seasgrid / (365 / 5)
+R0grid <- scaled_expit(coef(m0)[1], a_beta_mu, b_beta_mu) * seasgrid / (365 / 5)
 plot(tgrid, R0grid)
