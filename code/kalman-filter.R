@@ -182,6 +182,7 @@ kfnll <-
            logit_b5,
            logit_b6,
            logit_rho,
+           logit_iota,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
@@ -195,6 +196,7 @@ kfnll <-
     pvec["b5"] <- scaled_expit(logit_b5, a_bpar, b_bpar)
     pvec["b6"] <- scaled_expit(logit_b6, a_bpar, b_bpar)
     pvec["rho"] <- scaled_expit(logit_rho, a_rho, b_rho)
+    pvec["iota"] <- scaled_expit(logit_iota, a_iota, b_iota)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     xhat0["I", 1] <- scaled_expit(logit_I0, a_I0, b_I0)
     xhat0["E", 1] <- scaled_expit(logit_E0, a_E0, b_E0)
@@ -291,6 +293,9 @@ b_bpar <- 5
 a_rho <- 0
 b_rho <- 1
 
+a_iota <- 0
+b_iota <- 100
+
 pvec2 <- pvec
 pvec2["rho"] <- 0.1
 pvec2["b1"] <- 0.3
@@ -311,7 +316,8 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_b4 = scaled_logit(0.107, a_bpar, b_bpar),
                         logit_b5 = scaled_logit(0.0134, a_bpar, b_bpar),
                         logit_b6 = scaled_logit(3.9512, a_bpar, b_bpar),
-                        logit_rho = scaled_logit(0.30, a_rho, b_rho)),
+                        logit_rho = scaled_logit(0.30, a_rho, b_rho),
+                        logit_iota = scaled_logit(10, a_iota, b_iota)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
@@ -325,7 +331,8 @@ system.time(m0 <- mle2(minuslogl = kfnll,
 scaled_expit(coef(m0)["logit_S0"], a_S0, b_S0)
 scaled_expit(coef(m0)["logit_I0"], a_I0, b_I0)
 scaled_expit(coef(m0)["logit_E0"], a_E0, b_E0)
-rho_hat <- scaled_expit(coef(m0)["logit_rho"], a_rho, b_rho)
+(rho_hat <- scaled_expit(coef(m0)["logit_rho"], a_rho, b_rho))
+scaled_expit(coef(m0)["logit_iota"], a_iota, b_iota)
 
 kfret <- with(as.list(coef(m0)), 
               kfnll(cdata = case_data, pvec = pvec2, 
@@ -340,6 +347,7 @@ kfret <- with(as.list(coef(m0)),
                logit_b5 = logit_b5,
                logit_b6 = logit_b6,
                logit_rho = logit_rho,
+               logit_iota = logit_iota,
                just_nll = FALSE))
 
 par(mfrow = c(3, 1))
