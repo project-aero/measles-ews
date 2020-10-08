@@ -207,7 +207,8 @@ kfnll <-
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(.5, z_1 * (1 - pvec["rho"]))
+    R <- max(5, z_1 * (1 - pvec["rho"]))
+    
     
     # Predict
     XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
@@ -250,8 +251,8 @@ kfnll <-
       xhat_kkmo[, i] <- XP$xhat
       P_kkmo[, , i] <- XP$PN
       #R <- max(5, z[i - 1] * pvec["tau"])
-      R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
-      #R <- max(5, xhat_kk["C", i - 1] * pvec["rho"] * (1 - pvec["rho"]))
+      #R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
+      R <- max(5, xhat_kkmo["C", i - 1] * pvec["rho"] * (1 - pvec["rho"]))
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -353,7 +354,7 @@ kfret <- with(as.list(coef(m0)),
                just_nll = FALSE))
 
 par(mfrow = c(1, 1))
-test <- case_data$time > 1998
+test <- case_data$time > 1990
 qqnorm(kfret$ytilde_k[test]/ kfret$S[test]) # evalutate departure from normality
 abline(0, 1)
 
@@ -395,8 +396,8 @@ cor(case_data$reports[-1], rho_hat * kfret$xhat_kkmo["C",]) ^ 2
 
 1 - sum((case_data$reports[-1] - rho_hat * kfret$xhat_kkmo["C", ])^2) / sum((case_data$reports[-1] - mean(case_data$reports[-1])) ^ 2)
 
-upper95 <- kfret$xhat_kkmo["C",] + sqrt(kfret$P_kkmo[4, 4, ]) * 1.96
-lower95 <- kfret$xhat_kkmo["C",] - sqrt(kfret$P_kkmo[4, 4, ]) * 1.96 
+upper95 <- kfret$xhat_kkmo["C",] + sqrt(kfret$P_kkmo[4, 4, ]) * 1.96 * 4
+lower95 <- kfret$xhat_kkmo["C",] - sqrt(kfret$P_kkmo[4, 4, ]) * 1.96 * 4
 lower95 <- ifelse(lower95 < 0, 0, lower95)
 
 plot(case_data$time[-1], (rho_hat * upper95) ^ .5, type = 'l')
