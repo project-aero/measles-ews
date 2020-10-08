@@ -174,6 +174,7 @@ kfnll <-
            logit_beta_mu,
            logit_S0,
            logit_b2,
+           logit_b3,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
@@ -181,6 +182,7 @@ kfnll <-
 
     pvec["beta_mu"] <- scaled_expit(logit_beta_mu, a_beta_mu, b_beta_mu)
     pvec["b2"] <- scaled_expit(logit_b2, a_bpar, b_bpar)
+    pvec["b3"] <- scaled_expit(logit_b3, a_bpar, b_bpar)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     
     #print(c("                                     ", pvec["beta_mu"], xhat0["S", 1] / b_S0, pvec["b2"]))
@@ -280,7 +282,8 @@ pvec2["b6"] <- 0
 m0 <- mle2(minuslogl = kfnll, 
            start = list(logit_beta_mu = scaled_logit(516, a_beta_mu, b_beta_mu), 
                         logit_S0 = scaled_logit(70e3, a_S0, b_S0),
-                        logit_b2 = scaled_logit(1.6, a_bpar, b_bpar)), 
+                        logit_b2 = scaled_logit(1.6, a_bpar, b_bpar),
+                        logit_b3 = scaled_logit(1, a_bpar, b_bpar)), 
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 2),
@@ -292,8 +295,9 @@ plot(p0, absVal = FALSE)
 confint(p0)[2,]
 scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
 
-kfret <- kfnll(cdata = case_data, pvec = pvec2, logit_beta_mu = 0.0742105, 
-               logit_S0 = -2.0157974, logit_b2 = -0.4215741, just_nll = FALSE)
+kfret <- kfnll(cdata = case_data, pvec = pvec2, logit_beta_mu = 0.1326351, 
+               logit_S0 = -2.0008322, logit_b2 = -0.5584351, 
+               logit_b3 = -1.0823994, just_nll = FALSE)
 
 
 
