@@ -263,7 +263,9 @@ kfnll <-
     
     nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
     if (!just_nll){
-      list(nll = nll, xhat_kkmo = xhat_kkmo, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
+      list(nll = nll, xhat_kkmo = xhat_kkmo, xhat_kk = xhat_kk, 
+           P_kkmo = P_kkmo, P_kk = P_kk, 
+           ytilde_k = ytilde_k, S = S)
     } else {
       nll
     }
@@ -350,11 +352,21 @@ kfret <- with(as.list(coef(m0)),
                logit_iota = logit_iota,
                just_nll = FALSE))
 
-par(mfrow = c(3, 1))
+par(mfrow = c(1, 1))
+test <- case_data$time > 1998
+qqnorm(kfret$ytilde_k[test]/ kfret$S[test]) # evalutate departure from normality
+abline(0, 1)
+
+par(mfrow = c(4, 1))
 plot(case_data$time[-1], kfret$xhat_kkmo["C",] * rho_hat)
 points(case_data$time[-1], kfret$xhat_kk["C",] * rho_hat, col = 2, pch = 2)
 lines(case_data$time[-1], case_data$reports[-1])
+plot(case_data$time[-1], kfret$S, log = "y")
+plot(case_data$time[-1], kfret$ytilde_k)
+plot(case_data$time[-1], kfret$ytilde_k / kfret$S)
 
+
+par(mfrow = c(2, 1))
 plot(case_data$time[-1], kfret$xhat_kkmo["I",])
 points(case_data$time[-1], kfret$xhat_kk["I",], col = 2, pch = 2)
 
@@ -382,3 +394,12 @@ plot(log(case_data$reports[-1] + 1), log(rho_hat * kfret$xhat_kkmo["C",] + 1))
 cor(case_data$reports[-1], rho_hat * kfret$xhat_kkmo["C",]) ^ 2
 
 1 - sum((case_data$reports[-1] - rho_hat * kfret$xhat_kkmo["C", ])^2) / sum((case_data$reports[-1] - mean(case_data$reports[-1])) ^ 2)
+
+upper95 <- kfret$xhat_kkmo["C",] + sqrt(kfret$P_kkmo[4, 4, ]) * 1.96
+lower95 <- kfret$xhat_kkmo["C",] - sqrt(kfret$P_kkmo[4, 4, ]) * 1.96 
+lower95 <- ifelse(lower95 < 0, 0, lower95)
+
+plot(case_data$time[-1], (rho_hat * upper95) ^ .5, type = 'l')
+lines(case_data$time[-1], (rho_hat * lower95) ^ .5, type = 'l')
+lines(case_data$time[-1], case_data$reports[-1] ^ .5, col = 2)
+mean(case_data$reports[-1] >= rho_hat * lower95 & case_data$reports[-1] < rho_hat * upper95)
