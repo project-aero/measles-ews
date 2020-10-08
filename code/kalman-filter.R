@@ -173,17 +173,17 @@ kfnll <-
            pvec,
            logit_beta_mu,
            logit_S0,
+           logit_b2,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
            just_nll = TRUE) {
- 
-    
 
     pvec["beta_mu"] <- scaled_expit(logit_beta_mu, a_beta_mu, b_beta_mu)
+    pvec["b2"] <- scaled_expit(logit_b2, a_bpar, b_bpar)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     
-    print(paste("pars:", c(pvec["beta_mu"], xhat0["S", 1] / b_S0)))
+    #print(c("                                     ", pvec["beta_mu"], xhat0["S", 1] / b_S0, pvec["b2"]))
     
     # Initialize
     z_1 <-  cdata$reports[-1][1]
@@ -231,8 +231,9 @@ kfnll <-
                             time.steps = cdata$time[c(i - 1, i)])
       xhat_kkmo[, i] <- XP$xhat
       P_kkmo[, , i] <- XP$PN
-      #R <- max(5, z[i - 1] * pvec["tau"])
+      R <- max(5, z[i - 1] * pvec["tau"])
       R <- max(5, z[i - 1] * (1 - pvec["rho"]))
+      #R <- max(5, xhat_kk["C", i - 1] * pvec["rho"] * (1 - pvec["rho"]))
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -246,7 +247,6 @@ kfnll <-
     if (!just_nll){
       list(nll = nll, xhat_kkmo = xhat_kkmo, xhat_kk = xhat_kk, P_kk = P_kk, ytilde_k = ytilde_k)
     } else {
-      print(nll)
       nll
     }
   }
@@ -265,6 +265,9 @@ b_beta_mu <- 1000
 a_S0 <- 0
 b_S0 <- 628e3
 
+a_bpar <- 0
+b_bpar <- 4
+
 pvec2 <- pvec
 pvec2["rho"] <- 0.1
 pvec2["b1"] <- 0.3
@@ -274,14 +277,13 @@ pvec2["b4"] <- 0.5
 pvec2["b5"] <- 0.2
 pvec2["b6"] <- 0
 
-
-
 m0 <- mle2(minuslogl = kfnll, 
-           start = list(logit_beta_mu = scaled_logit(371, a_beta_mu, b_beta_mu), 
-                        logit_S0 = scaled_logit(100e3, a_S0, b_S0)), 
+           start = list(logit_beta_mu = scaled_logit(516, a_beta_mu, b_beta_mu), 
+                        logit_S0 = scaled_logit(70e3, a_S0, b_S0),
+                        logit_b2 = scaled_logit(1.6, a_bpar, b_bpar)), 
            method = "Nelder-Mead",
-           control = list(factr = 1e13),
-           trace = TRUE, 
+           skip.hessian = TRUE,
+           control = list(reltol = 1e-4, trace = 2),
            data = list(cdata = case_data, pvec = pvec2))
 
 p0 <- profile(m0)
@@ -290,10 +292,10 @@ plot(p0, absVal = FALSE)
 confint(p0)[2,]
 scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
 
+kfret <- kfnll(cdata = case_data, pvec = pvec2, logit_beta_mu = 0.0742105, 
+               logit_S0 = -2.0157974, logit_b2 = -0.4215741, just_nll = FALSE)
 
 
-
-kfret <- kfnll(cdata = case_data, pvec = pvec2, logit_beta_mu = 1.143438, logit_S0 = -1.856390, just_nll = FALSE)
 
 plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec["rho"])
 points(case_data$time[-1], kfret$xhat_kk["C",] * pvec["rho"], col = 2, pch = 2)
