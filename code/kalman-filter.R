@@ -177,6 +177,8 @@ kfnll <-
            logit_b2,
            logit_b3,
            logit_b4, 
+           logit_b5,
+           logit_b6,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
@@ -187,6 +189,8 @@ kfnll <-
     pvec["b2"] <- scaled_expit(logit_b2, a_bpar, b_bpar)
     pvec["b3"] <- scaled_expit(logit_b3, a_bpar, b_bpar)
     pvec["b4"] <- scaled_expit(logit_b4, a_bpar, b_bpar)
+    pvec["b5"] <- scaled_expit(logit_b5, a_bpar, b_bpar)
+    pvec["b6"] <- scaled_expit(logit_b6, a_bpar, b_bpar)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     
     #print(c("                                     ", pvec["beta_mu"], xhat0["S", 1] / b_S0, pvec["b2"]))
@@ -289,7 +293,9 @@ m0 <- mle2(minuslogl = kfnll,
                         logit_b1 = scaled_logit(.3, a_bpar, b_bpar),
                         logit_b2 = scaled_logit(1.6, a_bpar, b_bpar),
                         logit_b3 = scaled_logit(1, a_bpar, b_bpar),
-                        logit_b4 = scaled_logit(.1, a_bpar, b_bpar)), 
+                        logit_b4 = scaled_logit(.1, a_bpar, b_bpar),
+                        logit_b5 = scaled_logit(.4, a_bpar, b_bpar),
+                        logit_b6 = scaled_logit(.8, a_bpar, b_bpar)), 
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 2),
@@ -302,15 +308,17 @@ confint(p0)[2,]
 scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
 
 kfret <- kfnll(cdata = case_data, pvec = pvec2, 
-               logit_beta_mu = 0.2189, 
-               logit_S0 = -2.037792,
-               logit_b1 = -3.4914253,
-               logit_b2 = -0.47616, 
-               logit_b3 = -1.0649,
-               logit_b4 = -2.9458,
+               logit_beta_mu = -1.30, 
+               logit_S0 = -2.2259,
+               logit_b1 = -76.92,
+               logit_b2 = 9.79, 
+               logit_b3 = -4.87,
+               logit_b4 = -41.70,
+               logit_b5 = -0.98,
+               logit_b6 = 9.196,
                just_nll = FALSE)
 
-
+bhat <- scaled_expit(coef(m0)[-c(1,2)], a_bpar, b_bpar)
 
 par(mfrow = c(3, 1))
 plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec2["rho"])
@@ -335,6 +343,6 @@ ximat <- cbind(covf$xi1(tgrid),
 matplot(tgrid, ximat)
 
 
-seasgrid <- 1 + exp(ximat %*% pvec2[c("b1", "b2", "b3", "b4", "b5", "b6")])
-R0grid <- scaled_expit(1.1434, a_beta_mu, b_beta_mu) * seasgrid / (365 / 5)
+seasgrid <- 1 + exp(ximat %*% bhat)
+R0grid <- scaled_expit(-1.299, a_beta_mu, b_beta_mu) * seasgrid / (365 / 5)
 plot(tgrid, R0grid)
