@@ -173,6 +173,7 @@ kfnll <-
            pvec,
            logit_beta_mu,
            logit_S0,
+           logit_I0,
            logit_b1,
            logit_b2,
            logit_b3,
@@ -194,6 +195,7 @@ kfnll <-
     pvec["b6"] <- scaled_expit(logit_b6, a_bpar, b_bpar)
     pvec["rho"] <- scaled_expit(logit_rho, a_rho, b_rho)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
+    xhat0["I", 1] <- scaled_expit(logit_I0, a_I0, b_I0)
     
     #print(c("                                     ", pvec["beta_mu"], xhat0["S", 1] / b_S0, pvec["b2"]))
     
@@ -276,6 +278,9 @@ a_beta_mu <- 1
 b_beta_mu <- 1000
 a_S0 <- 0
 b_S0 <- 628e3
+a_I0 <- 0
+b_I0 <- 100
+
 
 a_bpar <- 0
 b_bpar <- 5
@@ -292,44 +297,47 @@ pvec2["b4"] <- 0.5
 pvec2["b5"] <- 0.2
 pvec2["b6"] <- 0
 
-
 system.time(m0 <- mle2(minuslogl = kfnll, 
-           start = list(logit_beta_mu = scaled_logit(516, a_beta_mu, b_beta_mu), 
-                        logit_S0 = scaled_logit(70e3, a_S0, b_S0),
-                        logit_b1 = scaled_logit(.3, a_bpar, b_bpar),
-                        logit_b2 = scaled_logit(1.6, a_bpar, b_bpar),
-                        logit_b3 = scaled_logit(1, a_bpar, b_bpar),
-                        logit_b4 = scaled_logit(.1, a_bpar, b_bpar),
-                        logit_b5 = scaled_logit(.4, a_bpar, b_bpar),
-                        logit_b6 = scaled_logit(.8, a_bpar, b_bpar),
-                        logit_rho = scaled_logit(0.1, a_rho, b_rho)), 
+           start = list(logit_beta_mu = scaled_logit(415, a_beta_mu, b_beta_mu), 
+                        logit_S0 = scaled_logit(47052, a_S0, b_S0),
+                        logit_I0 = scaled_logit(3.95, a_I0, b_I0),
+                        logit_b1 = scaled_logit(1.045, a_bpar, b_bpar),
+                        logit_b2 = scaled_logit(2.122, a_bpar, b_bpar),
+                        logit_b3 = scaled_logit(0.228, a_bpar, b_bpar),
+                        logit_b4 = scaled_logit(0.089, a_bpar, b_bpar),
+                        logit_b5 = scaled_logit(0.076, a_bpar, b_bpar),
+                        logit_b6 = scaled_logit(2.84, a_bpar, b_bpar),
+                        logit_rho = scaled_logit(0.30, a_rho, b_rho)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
-           control = list(reltol = 1e-4, trace = 2),
+           control = list(reltol = 1e-4, trace = 1, maxit = 1000),
            data = list(cdata = case_data, pvec = pvec2)))
 
-p0 <- profile(m0)
-confint(p0)
-plot(p0, absVal = FALSE)
-confint(p0)[2,]
-scaled_expit(confint(p0)[2,], a_S0, b_S0) / b_S0
+#p0 <- profile(m0)
+#confint(p0)
+#plot(p0, absVal = FALSE)
+#confint(p0)[2,]
+
+scaled_expit(coef(m0)["logit_S0"], a_S0, b_S0)
+scaled_expit(coef(m0)["logit_I0"], a_I0, b_I0)
+rho_hat <- scaled_expit(coef(m0)["logit_rho"], a_rho, b_rho)
 
 kfret <- kfnll(cdata = case_data, pvec = pvec2, 
-               logit_beta_mu = -.358, 
-               logit_S0 = -2.5485,
-               logit_b1 = -1.78,
-               logit_b2 = -0.142, 
-               logit_b3 = -3.95,
-               logit_b4 = -6.39,
-               logit_b5 = -1.3,
-               logit_b6 = 0.3697224,
-               logit_rho = -.8335,
+               logit_beta_mu = -1.186, 
+               logit_S0 = -2.535,
+               logit_I0 = -6.76,
+               logit_b1 = -0.788,
+               logit_b2 = -0.249, 
+               logit_b3 = -1.34,
+               logit_b4 = -3.81,
+               logit_b5 = -5.92,
+               logit_b6 = 1.32,
+               logit_rho = -.842,
                just_nll = FALSE)
 
-
 par(mfrow = c(3, 1))
-plot(case_data$time[-1], kfret$xhat_kkmo["C",] * pvec2["rho"])
-points(case_data$time[-1], kfret$xhat_kk["C",] * pvec2["rho"], col = 2, pch = 2)
+plot(case_data$time[-1], kfret$xhat_kkmo["C",] * rho_hat)
+points(case_data$time[-1], kfret$xhat_kk["C",] * rho_hat, col = 2, pch = 2)
 lines(case_data$time[-1], case_data$reports[-1])
 abline(v = seq(2001, 2002, by = 0.1))
 
@@ -349,7 +357,14 @@ ximat <- cbind(covf$xi1(tgrid),
 
 matplot(tgrid, ximat)
 
-bhat <- scaled_expit(coef(m0)[-c(1,2)], a_bpar, b_bpar)
+is_spline_par <- grepl("^logit_b[1-6]$", names(coef(m0)))
+bhat <- scaled_expit(coef(m0)[is_spline_par], a_bpar, b_bpar)
 seasgrid <- 1 + exp(ximat %*% bhat)
-R0grid <- scaled_expit(coef(m0)[1], a_beta_mu, b_beta_mu) * seasgrid / (365 / 5)
+beta_mu_hat <- scaled_expit(coef(m0)["logit_beta_mu"], a_beta_mu, b_beta_mu)
+R0grid <- beta_mu_hat * seasgrid / (365 / 5)
 plot(tgrid, R0grid)
+
+plot(log(case_data$reports[-1] + 1), log(rho_hat * kfret$xhat_kkmo["C",] + 1))
+cor(case_data$reports[-1], rho_hat * kfret$xhat_kkmo["C",]) ^ 2
+
+1 - sum((case_data$reports[-1] - rho_hat * kfret$xhat_kkmo["C", ])^2) / sum((case_data$reports[-1] - mean(case_data$reports[-1])) ^ 2)
