@@ -302,7 +302,7 @@ a_iota <- 0
 b_iota <- 100
 
 a_tau <- 0.1
-b_tau <- 10
+b_tau <- 100
 
 pvec2 <- pvec
 pvec2["rho"] <- 0.1
@@ -312,6 +312,9 @@ pvec2["b3"] <- 0.6
 pvec2["b4"] <- 0.5
 pvec2["b5"] <- 0.2
 pvec2["b6"] <- 0
+
+Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
+
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
            start = list(logit_beta_mu = scaled_logit(234, a_beta_mu, b_beta_mu), 
@@ -330,7 +333,7 @@ system.time(m0 <- mle2(minuslogl = kfnll,
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
-           data = list(cdata = case_data, pvec = pvec2)))
+           data = list(cdata = case_data, pvec = pvec2, Phat0 = Phat0)))
 
 #p0 <- profile(m0)
 #confint(p0)
