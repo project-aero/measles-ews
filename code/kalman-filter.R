@@ -183,6 +183,7 @@ kfnll <-
            logit_b6,
            logit_rho,
            logit_iota,
+           logit_tau,
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
                              .Dimnames = list(c("S", "E", "I", "C"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
@@ -197,6 +198,7 @@ kfnll <-
     pvec["b6"] <- scaled_expit(logit_b6, a_bpar, b_bpar)
     pvec["rho"] <- scaled_expit(logit_rho, a_rho, b_rho)
     pvec["iota"] <- scaled_expit(logit_iota, a_iota, b_iota)
+    pvec["tau"] <- scaled_expit(logit_tau, a_tau, b_tau)
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     xhat0["I", 1] <- scaled_expit(logit_I0, a_I0, b_I0)
     xhat0["E", 1] <- scaled_expit(logit_E0, a_E0, b_E0)
@@ -207,7 +209,7 @@ kfnll <-
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(5, z_1 * (1 - pvec["rho"]) * 4)
+    R <- max(5, z_1 * (1 - pvec["rho"]) * pvec["tau"])
     
     
     # Predict
@@ -252,7 +254,7 @@ kfnll <-
       P_kkmo[, , i] <- XP$PN
       #R <- max(5, z[i - 1] * pvec["tau"])
       #R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
-      R <- max(5, xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"]) * 4)
+      R <- max(5, xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"]) * pvec["tau"])
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -299,6 +301,9 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 100
 
+a_tau <- 0.1
+b_tau <- 10
+
 pvec2 <- pvec
 pvec2["rho"] <- 0.1
 pvec2["b1"] <- 0.3
@@ -320,7 +325,8 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_b5 = scaled_logit(0.0134, a_bpar, b_bpar),
                         logit_b6 = scaled_logit(3.9512, a_bpar, b_bpar),
                         logit_rho = scaled_logit(0.30, a_rho, b_rho),
-                        logit_iota = scaled_logit(10, a_iota, b_iota)),
+                        logit_iota = scaled_logit(10, a_iota, b_iota),
+                        logit_tau = scaled_logit(1, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
@@ -336,6 +342,7 @@ scaled_expit(coef(m0)["logit_I0"], a_I0, b_I0)
 scaled_expit(coef(m0)["logit_E0"], a_E0, b_E0)
 (rho_hat <- scaled_expit(coef(m0)["logit_rho"], a_rho, b_rho))
 scaled_expit(coef(m0)["logit_iota"], a_iota, b_iota)
+scaled_expit(coef(m0)["logit_tau"], a_tau, b_tau)
 
 kfret <- with(as.list(coef(m0)), 
               kfnll(cdata = case_data, pvec = pvec2, 
@@ -351,6 +358,7 @@ kfret <- with(as.list(coef(m0)),
                logit_b6 = logit_b6,
                logit_rho = logit_rho,
                logit_iota = logit_iota,
+               logit_tau = logit_tau,
                just_nll = FALSE))
 
 par(mfrow = c(1, 1))
