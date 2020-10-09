@@ -209,7 +209,7 @@ kfnll <-
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(5, z_1 * (1 - pvec["rho"]) * pvec["tau"])
+    R <- max(5, z_1  * (1 + 1 /  pvec["tau"])) 
     
     
     # Predict
@@ -254,7 +254,7 @@ kfnll <-
       P_kkmo[, , i] <- XP$PN
       #R <- max(5, z[i - 1] * pvec["tau"])
       #R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
-      R <- max(5, xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"]) * pvec["tau"])
+      R <- max(5, xhat_kkmo["C", i] * pvec["rho"] * (1 + 1 /  pvec["tau"]))
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -301,8 +301,8 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 100
 
-a_tau <- 0.1
-b_tau <- 100
+a_tau <- 0.001
+b_tau <- 1000
 
 pvec2 <- pvec
 pvec2["rho"] <- 0.1
@@ -329,7 +329,7 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_b6 = scaled_logit(3.9512, a_bpar, b_bpar),
                         logit_rho = scaled_logit(0.30, a_rho, b_rho),
                         logit_iota = scaled_logit(10, a_iota, b_iota),
-                        logit_tau = scaled_logit(1, a_tau, b_tau)),
+                        logit_tau = scaled_logit(0.1, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
