@@ -207,7 +207,7 @@ kfnll <-
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(5, z_1 * (1 - pvec["rho"]))
+    R <- max(5, z_1 * (1 - pvec["rho"]) * 4)
     
     
     # Predict
@@ -252,7 +252,7 @@ kfnll <-
       P_kkmo[, , i] <- XP$PN
       #R <- max(5, z[i - 1] * pvec["tau"])
       #R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
-      R <- max(5, xhat_kkmo["C", i - 1] * pvec["rho"] * (1 - pvec["rho"]))
+      R <- max(5, xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"]) * 4)
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -396,8 +396,8 @@ cor(case_data$reports[-1], rho_hat * kfret$xhat_kkmo["C",]) ^ 2
 
 1 - sum((case_data$reports[-1] - rho_hat * kfret$xhat_kkmo["C", ])^2) / sum((case_data$reports[-1] - mean(case_data$reports[-1])) ^ 2)
 
-upper95 <- kfret$xhat_kkmo["C",] + sqrt(kfret$P_kkmo[4, 4, ]) * 1.96 * 4
-lower95 <- kfret$xhat_kkmo["C",] - sqrt(kfret$P_kkmo[4, 4, ]) * 1.96 * 4
+upper95 <- kfret$xhat_kkmo["C",] + sqrt(kfret$P_kkmo[4, 4, ]) * 1.96
+lower95 <- kfret$xhat_kkmo["C",] - sqrt(kfret$P_kkmo[4, 4, ]) * 1.96
 lower95 <- ifelse(lower95 < 0, 0, lower95)
 
 plot(case_data$time[-1], (rho_hat * upper95) ^ .5, type = 'l')
