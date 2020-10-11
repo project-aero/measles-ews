@@ -28,19 +28,10 @@ PsystemSEIR <- function(pvec, covf,
       gamma <- 365 / 5
       S <- S_0 + exp(Nt_birth) - exp(Nt_trans)
       C <- exp(Nt_cases) - 1
-      if (S < 0) {
-        S <- 0
-        Nt_trans <- log(S_0 + exp(Nt_birth))
-      }
       E <- E_0 + exp(Nt_trans) - exp(Nt_prog)
-      if (E < 0) {
-        E <- 0
-        Nt_prog <- log(E_0 + exp(Nt_trans))
-      }
       I <- I_0 + exp(Nt_prog) - exp(Nt_recov)
-      if (I < 0){
-        I <- 0
-        Nt_recov <- log(I_0 + exp(Nt_prog))
+      if (any(c(S, C, E, I) < 0)){
+        browser()
       }
       lambda <- c(beta_t / P_t * S * I + iota,
                   P_t * mu_t * 0.3,
@@ -203,6 +194,26 @@ P <- with(as.list(init.vars),
 iterate_f_and_P(xhat = xhat, P = P, pvec = pvec, covf = covf, 
                 time.steps = c(1996, 1996 + 1 / 52))
 
+keep_valid <- function(xh, pr){
+  ## constrain to valid S, E, I values
+  S <- pr["S_0"] + exp(xh["Nt_birth"]) - exp(xh["Nt_trans"])
+  if (S < 0) {
+    S <- 0
+    xh["Nt_trans"] <- log(pr["S_0"] + exp(xh["Nt_birth"]))
+  }
+  E <- pr["E_0"] + exp(xh["Nt_trans"]) - exp(xh["Nt_prog"])
+  if (E < 0) {
+    E <- 0
+    xh["Nt_prog"] <- log(pr["E_0"] + exp(xh["Nt_trans"]))
+  }
+  I <- pr["I_0"] + exp(xh["Nt_prog"]) - exp(xh["Nt_recov"])
+  if (I < 0){
+    xh["Nt_recov"] <- log(pr["I_0"] + exp(xh["Nt_prog"]))
+  }
+  xh
+}
+
+
 # Initialize
 xhat0 <- matrix(xhat, ncol = 1)
 rownames(xhat0) <- names(xhat)
@@ -217,7 +228,7 @@ XP_1_0 <- iterate_f_and_P(xhat0[, 1],
                           pvec = pvec, 
                           covf = covf,
                           time.steps = case_data$time[c(2, 3)])
-xhat_1_0 <- XP_1_0$xhat
+xhat_1_0 <- keep_valid(XP_1_0$xhat, pvec)
 P_1_0 <- XP_1_0$P
 # Update
 
@@ -261,8 +272,10 @@ for (i in seq(2, T)){
   K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
   ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
   xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
+  xhat_kk[, i] <- keep_valid(xhat_kk[, i], pvec)
   P_kk[, , i] <- (diag(5) - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
   ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
+
 }
 
 log_lik <- function(Sigma, resids){
@@ -274,8 +287,9 @@ log_lik(S, ytilde_k)
 Ssol <- pvec["S_0"] + (exp(xhat_kkmo["Nt_birth",]) - 1) - (exp(xhat_kkmo["Nt_trans",]) - 1)
 Esol <- pvec["E_0"] + (exp(xhat_kkmo["Nt_trans",]) - 1) - (exp(xhat_kkmo["Nt_prog",]) - 1)
 Isol <- pvec["I_0"] + (exp(xhat_kkmo["Nt_prog",]) - 1) - (exp(xhat_kkmo["Nt_recov",]) - 1)
-
-
+csol <- 0 + exp(xhat_kkmo["Nt_cases",]) - 1
+csol2 <- 0 + exp(xhat_kk["Nt_cases", ]) - 1
+Isol2 <- pvec["I_0"] + (exp(xhat_kk["Nt_prog",]) - 1) - (exp(xhat_kk["Nt_recov",]) - 1)
 
 kfnll <-
   function(cdata,
