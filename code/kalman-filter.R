@@ -36,14 +36,13 @@ PsystemSEIR <- function(pvec, covf,
                   P_t * mu_t * 0.3,
                   eta * E,
                   gamma * I)
-      Lambda <- sqrt(lambda)
       ito_factors_make <- function(Nt){
         exp(-Nt) - 0.5 * exp(-2 * Nt)
       }
-      Ntv <- c(Nt_birth, Nt_trans, Nt_prog, Nt_recov)
+      Ntv <- c(Nt_trans, Nt_birth, Nt_prog, Nt_recov)
       itof <- sapply(Ntv, ito_factors_make)
-      dNt_birth <- itof[1] * lambda[1]
-      dNt_trans <- itof[2] * lambda[2]
+      dNt_trans <- itof[1] * lambda[1]
+      dNt_birth <- itof[2] * lambda[2]
       dNt_prog <- itof[3] * lambda[3]
       dNt_recov <- itof[4] * lambda[4]
       
@@ -59,26 +58,29 @@ PsystemSEIR <- function(pvec, covf,
                  c(itof[3] * eta * exp(Ntv[1]), 0, itofp[3] * lambda[3] + itof[3] * eta * -1 * exp(Ntv[3]), 0),
                  c(0, 0, itof[4] * gamma * exp(Ntv[3]), itofp[4] * lambda[4] + itof[4] * gamma * -1 * exp(Ntv[4]))) 
 
-      f <- c(mu_t * 0.3, beta_t * (S / N_t) * (I / N_t), eta * E / N_t, gamma * I / N_t)
-      Q <- rbind(c(f[1] + f[2],       -f[2],           0,     0),
-                 c(      -f[2], f[2] + f[3],       -f[3],     0),
-                 c(          0,       -f[3], f[3] + f[4], -f[4]),
-                 c(          0,           0,       -f[4],  f[4]))
+      Q <- diag(exp(-Ntv) * lambda)
       
-      P <- rbind(c(Pss, Pse, Psi, Psc),
-                 c(Pse, Pee, Pei, Pec),
-                 c(Psi, Pei, Pii, Pic),
-                 c(Psc, Pec, Pic, Pcc))
+      P <- rbind(c(P11, P12, P13, P14),
+                 c(P12, P22, P23, P24),
+                 c(P13, P23, P33, P34),
+                 c(P14, P24, P34, P44))
       
-      dlS <- (N_t * mu_t * 0.3 - beta_t * S * I / N_t) / S
-      dlE <- (beta_t * S * I / N_t - eta * E) / E
-      dlI <- (iota + eta * E -  gamma * I) / I
-      dC <- (gamma * I)
       dP <-  F %*% P + P %*% t(F) + Q
       
-      list(c(dlS = dlS, dlE = dlE, dlI = dlI, dC = dC, dPss = dP[1,1], dPse = dP[1,2], 
-             dPsi = dP[1,3], dPsc = dP[1,4], dPee = dP[2,2], dPei = dP[2,3], 
-             dPec = dP[2,4], dPii = dP[3,3], dPic = dP[3,4], dPcc = dP[4,4]))
+      list(c(dNt_trans = dNt_trans, 
+             dNt_birth = dNt_birth,
+             dNt_prog = dNt_prog,
+             dNt_recov = dNt_recov,
+             dP11 = dP[1,1], 
+             dP12 = dP[1,2], 
+             dP13 = dP[1,3], 
+             dP14 = dP[1,4], 
+             dP22 = dP[2,2], 
+             dP23 = dP[2,3], 
+             dP24 = dP[2,4], 
+             dP33 = dP[3,3], 
+             dP34 = dP[3,4], 
+             dP44 = dP[4,4]))
     })
   }
   deSolve::lsoda(init.vars, time.steps, PModel, pvec)
