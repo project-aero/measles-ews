@@ -307,10 +307,9 @@ kfnll <-
            logit_rho,
            logit_iota,
            logit_tau,
-           logit_tau2, 
-           xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
-                             .Dimnames = list(c("S", "E", "I", "C"), NULL)),
-           Phat0 = diag(c(1, 1, 1, 0)),
+           xhat0 = structure(c(2.4, 2.4, 2.4, 2.4, 0), .Dim = c(5L, 1L), 
+                             .Dimnames = list(c("Nt_trans", "Nt_birth", "Nt_prog", "Nt_recov", "Nt_cases"), NULL)),
+           Phat0 = diag(c(1, 1, 1, 1, 0)),
            just_nll = TRUE) {
 
     pvec["beta_mu"] <- scaled_expit(logit_beta_mu, a_beta_mu, b_beta_mu)
@@ -323,45 +322,51 @@ kfnll <-
     pvec["rho"] <- scaled_expit(logit_rho, a_rho, b_rho)
     pvec["iota"] <- scaled_expit(logit_iota, a_iota, b_iota)
     pvec["tau"] <- scaled_expit(logit_tau, a_tau, b_tau)
-    xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
-    xhat0["I", 1] <- scaled_expit(logit_I0, a_I0, b_I0)
-    xhat0["E", 1] <- scaled_expit(logit_E0, a_E0, b_E0)
-    tau2 <- scaled_expit(logit_tau2, a_tau2, b_tau2)
+    pvec["S_0"] <- scaled_expit(logit_S0, a_S0, b_S0)
+    pvec["I_0"] <- scaled_expit(logit_I0, a_I0, b_I0)
+    pvec["E_0"] <- scaled_expit(logit_E0, a_E0, b_E0)
     
     #print(c("                                     ", pvec["beta_mu"], xhat0["S", 1] / b_S0, pvec["b2"]))
     
     # Initialize
-    z_1 <-  cdata$reports[-1][1]
-    H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
+    z_1 <-  log(cdata$reports[-1][1] + 1)
+    H <- matrix(c(0, 0, 0, 0, 1), ncol = 5)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(tau2, z_1  * (1 + 1 /  pvec["tau"])) 
+    R <- z_1  * pvec["tau"] 
     
     
     # Predict
-    XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
-                              time.steps = cdata$time[c(2, 3)])
-    xhat_1_0 <- XP_1_0$xhat
-    P_1_0 <- XP_1_0$PN
+    
+    XP_1_0 <- iterate_f_and_P(xhat0[, 1], 
+                              P = Phat0, 
+                              pvec = pvec, 
+                              covf = covf,
+                              time.steps = case_data$time[c(2, 3)])
+    xhat_1_0 <- keep_valid(XP_1_0$xhat, pvec)
+    P_1_0 <- XP_1_0$P
+    
     # Update
     
     K_1 <- P_1_0 %*% t(H) %*% solve(H %*% P_1_0 %*% t(H) + R)
     ytilde_1 <- z_1 - H %*% xhat_1_0
     xhat_1_1 <- xhat_1_0 + K_1 %*% ytilde_1
-    P_1_1 <- (diag(4) - K_1 %*% H) %*% P_1_0
-    
+    P_1_1 <- (diag(5) - K_1 %*% H) %*% P_1_0
+   
     ## Now calculate for each step in simulation
     
     T <- nrow(case_data[-1,])
-    z <- cdata$reports[-1]
+    z <- log(case_data$reports[-1] + 1)
     
     ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
-    K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
+    K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(5, T))
     rownames(xhat_kk) <- rownames(xhat_kkmo) <- names(xhat)
-    P_kk <- P_kkmo <- array(NA_real_, dim = c(4, 4, T))
+    P_kk <- P_kkmo <- array(NA_real_, dim = c(5, 5, T))
     
     K[, 1] <- K_1
     xhat_kkmo[, 1] <- xhat_1_0
     xhat_kk[, 1] <- xhat_1_1
+    xhat_kk[, 1] <- keep_valid(xhat_kk[, 1], pvec)
+    
     P_kk[, , 1] <- P_1_1
     P_kkmo[, , 1] <- P_1_0
     S[, 1] <- H %*% P_kkmo[, , 1] %*% t(H) + R
@@ -369,24 +374,23 @@ kfnll <-
     ytilde_k[, 1] <- ytilde_1
     
     for (i in seq(2, T)){
-      xhat_init <- xhat_kk[, i - 1]
-      xhat_init["C"] <- 0
-      PNinit <- P_kk[,,i - 1]
-      PNinit[, 4] <- PNinit[4, ] <- 0
-      XP <- iterate_f_and_P(xhat_init, PN = PNinit, pvec = pvec, covf = covf,
-                            time.steps = cdata$time[c(i - 1, i)])
+      XP <- iterate_f_and_P(xhat = xhat_kk[, i - 1], 
+                            P = P_kk[,, i -1], 
+                            pvec = pvec, 
+                            covf = covf,
+                            time.steps = case_data$time[c(i - 1, i)])
       xhat_kkmo[, i] <- XP$xhat
-      P_kkmo[, , i] <- XP$PN
-      #R <- max(5, z[i - 1] * pvec["tau"])
-      #R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
-      R <- max(tau2, xhat_kkmo["C", i] * pvec["rho"] * (1 + 1 /  pvec["tau"]))
+      P_kkmo[, , i] <- XP$P
+      #R <- xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"])
+      R <- max(1, z[i - 1] * pvec["tau"])
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
       xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
-      xhat_kk[xhat_kk[, i] < 0, i] <- 1e-4
-      P_kk[, , i] <- (diag(4) - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
+      xhat_kk[, i] <- keep_valid(xhat_kk[, i], pvec)
+      P_kk[, , i] <- (diag(5) - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
       ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
+      
     }
     
     nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
@@ -426,8 +430,8 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 100
 
-a_tau <- 0.001
-b_tau <- 1000
+a_tau <- 0.1
+b_tau <- 2
 
 a_tau2 <- 0
 b_tau2 <- 20
@@ -441,8 +445,32 @@ pvec2["b4"] <- 0.5
 pvec2["b5"] <- 0.2
 pvec2["b6"] <- 0
 
-Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
+out <- kfnll(logit_beta_mu = scaled_logit(234, a_beta_mu, b_beta_mu), 
+                                    logit_S0 = scaled_logit(46098, a_S0, b_S0),
+                                    logit_I0 = scaled_logit(50, a_I0, b_I0),
+                                    logit_E0 = scaled_logit(25, a_E0, b_E0),
+                                    logit_b1 = scaled_logit(1.56, a_bpar, b_bpar),
+                                    logit_b2 = scaled_logit(2.81, a_bpar, b_bpar),
+                                    logit_b3 = scaled_logit(1.03, a_bpar, b_bpar),
+                                    logit_b4 = scaled_logit(0.107, a_bpar, b_bpar),
+                                    logit_b5 = scaled_logit(0.0134, a_bpar, b_bpar),
+                                    logit_b6 = scaled_logit(3.9512, a_bpar, b_bpar),
+                                    logit_rho = scaled_logit(0.30, a_rho, b_rho),
+                                    logit_iota = scaled_logit(10, a_iota, b_iota),
+                                    logit_tau = scaled_logit(0.1, a_tau, b_tau),
+      cdata = case_data, pvec = pvec2, Phat0 = Phat0, just_nll = FALSE)
 
+Ssol <- pvec2["S_0"] + (exp(out$xhat_kkmo["Nt_birth",]) - 1) - (exp(out$xhat_kkmo["Nt_trans",]) - 1)
+plot(case_data$time[-1], Ssol)
+
+Esol <- pvec2["E_0"] + (exp(out$xhat_kkmo["Nt_trans",]) - 1) - (exp(out$xhat_kkmo["Nt_prog",]) - 1)
+plot(case_data$time[-1], Esol)
+
+Isol <- pvec2["I_0"] + (exp(out$xhat_kkmo["Nt_prog",]) - 1) - (exp(out$xhat_kkmo["Nt_recov",]) - 1)
+points(case_data$time[-1], Isol, col = 2)
+
+plot(case_data$time[-1], exp(out$xhat_kkmo["Nt_cases",]) + 1)
+lines(case_data$time[-1], case_data$reports[-1])
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
            start = list(logit_beta_mu = scaled_logit(234, a_beta_mu, b_beta_mu), 
@@ -457,11 +485,10 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_b6 = scaled_logit(3.9512, a_bpar, b_bpar),
                         logit_rho = scaled_logit(0.30, a_rho, b_rho),
                         logit_iota = scaled_logit(10, a_iota, b_iota),
-                        logit_tau = scaled_logit(0.1, a_tau, b_tau),
-                        logit_tau2 = scaled_logit(5, a_tau2, b_tau2)),
+                        logit_tau = scaled_logit(0.1, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
-           control = list(reltol = 1e-4, trace = 1, maxit = 1000),
+           control = list(reltol = 1e-4, trace = 1, maxit = 1),
            data = list(cdata = case_data, pvec = pvec2, Phat0 = Phat0)))
 
 #p0 <- profile(m0)
