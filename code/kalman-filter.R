@@ -332,7 +332,7 @@ kfnll <-
     z_1 <-  log(cdata$reports[-1][1] + 1)
     H <- matrix(c(0, 0, 0, 0, 1), ncol = 5)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- z_1  * pvec["tau"] 
+    R <- pvec["tau"] 
     
     
     # Predict
@@ -382,7 +382,8 @@ kfnll <-
       xhat_kkmo[, i] <- XP$xhat
       P_kkmo[, , i] <- XP$P
       #R <- xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"])
-      R <- max(1, z[i - 1] * pvec["tau"])
+      #R <- max(1, z[i - 1] * pvec["tau"])
+      R <- pvec["tau"]
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -430,8 +431,8 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 100
 
-a_tau <- 0.05
-b_tau <- 2
+a_tau <- 0.001
+b_tau <- 1
 
 a_tau2 <- 0
 b_tau2 <- 20
@@ -457,7 +458,7 @@ out <- kfnll(logit_beta_mu = scaled_logit(234, a_beta_mu, b_beta_mu),
                                     logit_b6 = scaled_logit(3.9512, a_bpar, b_bpar),
                                     logit_rho = scaled_logit(0.30, a_rho, b_rho),
                                     logit_iota = scaled_logit(10, a_iota, b_iota),
-                                    logit_tau = scaled_logit(0.1, a_tau, b_tau),
+                                    logit_tau = scaled_logit(0.05, a_tau, b_tau),
       cdata = case_data, pvec = pvec2, Phat0 = Phat0, just_nll = FALSE)
 
 Ssol <- pvec2["S_0"] + (exp(out$xhat_kkmo["Nt_birth",]) - 1) - (exp(out$xhat_kkmo["Nt_trans",]) - 1)
@@ -489,7 +490,7 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_tau = scaled_logit(0.1, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
-           control = list(reltol = 1e-4, trace = 1, maxit = 100),
+           control = list(reltol = 1e-4, trace = 1, maxit = 1000),
            data = list(cdata = case_data, pvec = pvec2, Phat0 = Phat0)))
 
 #p0 <- profile(m0)
@@ -497,7 +498,7 @@ system.time(m0 <- mle2(minuslogl = kfnll,
 #plot(p0, absVal = FALSE)
 #confint(p0)[2,]
 
-scaled_expit(coef(m0)["logit_S0"], a_S0, b_S0)
+scaled_expit(coef(m0)["logit_S0"], a_S0, b_S0) / b_S0
 scaled_expit(coef(m0)["logit_I0"], a_I0, b_I0)
 scaled_expit(coef(m0)["logit_E0"], a_E0, b_E0)
 (rho_hat <- scaled_expit(coef(m0)["logit_rho"], a_rho, b_rho))
@@ -520,13 +521,31 @@ kfret <- with(as.list(coef(m0)),
                logit_rho = logit_rho,
                logit_iota = logit_iota,
                logit_tau = logit_tau,
-               logit_tau2 = logit_tau2,
                just_nll = FALSE))
 
 par(mfrow = c(1, 1))
 test <- case_data$time > 1990
 qqnorm(kfret$ytilde_k[test]/ kfret$S[test]) # evalutate departure from normality
 abline(0, 1)
+
+Ssol <- pvec2["S_0"] + (exp(kfret$xhat_kkmo["Nt_birth",]) - 1) - (exp(kfret$xhat_kkmo["Nt_trans",]) - 1)
+plot(case_data$time[-1], Ssol)
+
+Esol <- pvec2["E_0"] + (exp(kfret$xhat_kkmo["Nt_trans",]) - 1) - (exp(kfret$xhat_kkmo["Nt_prog",]) - 1)
+plot(case_data$time[-1], Esol)
+
+Isol <- pvec2["I_0"] + (exp(kfret$xhat_kkmo["Nt_prog",]) - 1) - (exp(kfret$xhat_kkmo["Nt_recov",]) - 1)
+points(case_data$time[-1], Isol, col = 2)
+
+plot(case_data$time[-1], exp(kfret$xhat_kkmo["Nt_cases",]) + 1)
+points(case_data$time[-1], exp(kfret$xhat_kk["Nt_cases",]) + 1, col = 2)
+lines(case_data$time[-1], case_data$reports[-1])
+
+plot(case_data$time[-1], kfret$xhat_kkmo["Nt_cases",])
+points(case_data$time[-1], kfret$xhat_kk["Nt_cases",], col = 2)
+lines(case_data$time[-1], log(case_data$reports[-1] + 1))
+
+
 
 par(mfrow = c(4, 1))
 plot(case_data$time[-1], kfret$xhat_kkmo["C",] * rho_hat)
@@ -561,7 +580,7 @@ R0grid <- beta_mu_hat * seasgrid / (365 / 5)
 plot(tgrid, R0grid)
 
 plot(log(case_data$reports[-1] + 1), log(rho_hat * kfret$xhat_kkmo["C",] + 1))
-cor(case_data$reports[-1], rho_hat * kfret$xhat_kkmo["C",]) ^ 2
+cor(case_data$reports[-1], exp(kfret$xhat_kkmo["Nt_cases",]) - 1)  ^ 2
 
 1 - sum((case_data$reports[-1] - rho_hat * kfret$xhat_kkmo["C", ])^2) / sum((case_data$reports[-1] - mean(case_data$reports[-1])) ^ 2)
 
