@@ -393,7 +393,7 @@ kfnll <-
       
     }
     
-    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
+    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi)) + sum(z)
     if (!just_nll){
       list(nll = nll, xhat_kkmo = xhat_kkmo, xhat_kk = xhat_kk, 
            P_kkmo = P_kkmo, P_kk = P_kk, 
@@ -430,7 +430,7 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 100
 
-a_tau <- 0.1
+a_tau <- 0.05
 b_tau <- 2
 
 a_tau2 <- 0
@@ -470,6 +470,7 @@ Isol <- pvec2["I_0"] + (exp(out$xhat_kkmo["Nt_prog",]) - 1) - (exp(out$xhat_kkmo
 points(case_data$time[-1], Isol, col = 2)
 
 plot(case_data$time[-1], exp(out$xhat_kkmo["Nt_cases",]) + 1)
+points(case_data$time[-1], exp(out$xhat_kk["Nt_cases",]) + 1, col = 2)
 lines(case_data$time[-1], case_data$reports[-1])
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
@@ -488,7 +489,7 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_tau = scaled_logit(0.1, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
-           control = list(reltol = 1e-4, trace = 1, maxit = 1),
+           control = list(reltol = 1e-4, trace = 1, maxit = 100),
            data = list(cdata = case_data, pvec = pvec2, Phat0 = Phat0)))
 
 #p0 <- profile(m0)
