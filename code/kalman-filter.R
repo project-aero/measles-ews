@@ -140,58 +140,39 @@ plot(case_data$time, Ssol)
 plot(case_data$time, Esol, log = "y")
 plot(case_data$time, Isol)
 plot(Ssol, Isol, log = "xy", type = 'b')
-plot(case_data$time, out[, "P11"], type = 'l', log = "y")
-plot(case_data$time, out[, "P12"])
 
-iterate_f_and_P <- function(xhat, P, pvec, covf, time.steps){
 
-  init.vars <- c(xhat["Nt_trans"],
-                 xhat["Nt_birth"],
-                 xhat["Nt_prog"],
-                 xhat["Nt_recov"],
-                 Nt_cases = 0,
-                 P11 = P[1,1],
-                 P12 = P[1,2],
-                 P13 = P[1,3],
-                 P14 = P[1,4],
-                 P15 = 0,
-                 P22 = P[2,2],
-                 P23 = P[2,3],
-                 P24 = P[2,4],
-                 P25 = 0,
-                 P33 = P[3,3],
-                 P34 = P[3,4],
-                 P35 = 0,
-                 P44 = P[4,4],
-                 P45 = 0,
-                 P55 = 0)
-  
+
+iterate_f_and_P <- function(xhat, PN, pvec, covf, time.steps){
+  P <- PN / covf$N(time.steps[1])
+  xhat_trans <- c(log(xhat[c("S", "E", "I")]), xhat["C"])
+  if(!all(is.finite(xhat_trans))) {
+    browser()
+  }
+  names(xhat_trans)[1:3] <- c("lS", "lE", "lI")
+  init.vars <- c(xhat_trans, Pss = P[1,1], Pse = P[1,2], 
+  Psi = P[1,3], Psc = P[1,4], Pee = P[2,2], Pei = P[2,3], Pec = P[2,4], 
+  Pii = P[3,3], Pic = P[3,4], Pcc = P[4,4])
   ret <- PsystemSEIR(pvec = pvec, init.vars = init.vars, covf, time.steps)[2, ]
-  xhat_new <- ret[c("Nt_trans", "Nt_birth", "Nt_prog", "Nt_recov", "Nt_cases")] 
-  P_new <- with(as.list(ret),
-            rbind(c(P11, P12, P13, P14, P15),
-             c(P12, P22, P23, P24, P25),
-             c(P13, P23, P33, P34, P35),
-             c(P14, P24, P34, P44, P45),
-             c(P15, P25, P35, P45, P55)))
-
-  list(xhat = xhat_new, P = P_new)
+  xhat_new <- c(exp(ret[c("lS", "lE", "lI")]), ret["C"])
+  names(xhat_new)[1:3] <- c("S", "E", "I")
+  P_new  <- with(as.list(ret),        
+            rbind(c(Pss, Pse, Psi, Psc),
+                  c(Pse, Pee, Pei, Pec),
+                  c(Psi, Pei, Pii, Pic),
+                  c(Psc, Pec, Pic, Pcc)))
+  PN_new <- P_new * covf$N(time.steps[2])
+  list(xhat = xhat_new, PN = PN_new)
 }
 
-xhat <-  c(Nt_trans = 2.39789527279837, 
-           Nt_birth = 2.39789527279837, 
-           Nt_prog = 2.39789527279837, 
-           Nt_recov = 2.39789527279837, 
-           Nt_cases = 0)
+xhat <-  c(S=(3e-2 * 6.2e5), E=(1.6e-4 * 6.2e5), I=(1.6e-4 * 6.2e5), C = 0)
+P <- with(as.list(init.vars[-c(1:4)]),        
+          rbind(c(Pss, Pse, Psi, Psc),
+                c(Pse, Pee, Pei, Pec),
+                c(Psi, Pei, Pii, Pic),
+                c(Psc, Pec, Pic, Pcc)))
 
-P <- with(as.list(init.vars),
-              rbind(c(P11, P12, P13, P14, P15),
-                    c(P12, P22, P23, P24, P25),
-                    c(P13, P23, P33, P34, P35),
-                    c(P14, P24, P34, P44, P45),
-                    c(P15, P25, P35, P45, P55)))
-
-iterate_f_and_P(xhat = xhat, P = P, pvec = pvec, covf = covf, 
+iterate_f_and_P(xhat = xhat, PN = P, pvec = pvec, covf = covf, 
                 time.steps = c(1996, 1996 + 1 / 52))
 
 # Initialize
