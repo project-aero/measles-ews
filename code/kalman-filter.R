@@ -26,9 +26,9 @@ PsystemSEIR <- function(pvec, covf,
       beta_t <- beta_mu * (1 + exp(xi1t * b1 + xi2t * b2 + xi3t * b3 + xi4t * b4 + xi5t * b5 + xi6t * b6))
       eta <- 365 / 8  
       gamma <- 365 / 5
-      S <- S_0 + exp(Nt_birth) - exp(Nt_trans)
-      E <- E_0 + exp(Nt_trans) - exp(Nt_prog)
-      I <- I_0 + exp(Nt_prog) - exp(Nt_recov)
+      S <- S0 + exp(Nt_birth) - exp(Nt_trans)
+      E <- E0 + exp(Nt_trans) - exp(Nt_prog)
+      I <- I0 + exp(Nt_prog) - exp(Nt_recov)
       C <- exp(Nt_cases) - 1
       if (S < 0) S <- 0
       if (E < 0) E <- 0
@@ -52,7 +52,7 @@ PsystemSEIR <- function(pvec, covf,
       ito_factors_derv_make <- function(Nt){
         exp(-2 * Nt) - exp(-Nt)
       }
-      itofp <- sapply(Ntv, ito_factors_derv_make)
+      itofp <- sapply(Nt_vec, ito_factors_derv_make)
       F <- rbind(c(itofp[1] * lambda[1] + itof[1] * beta_t / P_t * (-1) * exp(Ntv[1]) * I, 
                       itof[1] * beta_t / P_t * exp(Ntv[2]) * I, 
                       itof[1] * beta_t / P_t * S * exp(Ntv[3]), 
@@ -77,7 +77,6 @@ PsystemSEIR <- function(pvec, covf,
              dNt_birth = dNt_birth,
              dNt_prog = dNt_prog,
              dNt_recov = dNt_recov,
-             dNt_cases = dNt_cases,
              dP11 = dP[1,1], 
              dP12 = dP[1,2], 
              dP13 = dP[1,3], 
@@ -93,6 +92,7 @@ PsystemSEIR <- function(pvec, covf,
              dP44 = dP[4,4],
              dP45 = dP[4,5],
              dP55 = dP[5,5]))
+      
     })
   }
   deSolve::lsoda(init.vars, time.steps, PModel, pvec)
@@ -103,45 +103,10 @@ genfun <- function(y) {
 }
 covf <- apply(cov_data, 2, genfun)
 pvec <- coef(pob)
+init.vars <- c(lS=log(3e-2 * 6.2e5), lE=log(1.6e-4 * 6.2e5), lI=log(1.6e-4 * 6.2e5), C = 0,
+               Pss = 1, Pse = 0, Psi = 0, Psc = 0, Pee = 1, Pei = 0, Pec = 0, Pii = 1, Pic = 0, Pcc = 1)
 
-pvec["S_0"] <- 0.11 * 628e3
-pvec["E_0"] <- 10
-pvec["I_0"] <- 30
-
-init.vars <- c(Nt_trans = log(10 + 1),
-               Nt_birth = log(10 + 1),
-               Nt_prog = log(10 + 1),
-               Nt_recov = log(10 + 1),
-               Nt_cases = 0,
-               P11 = 1,
-               P12 = 0,
-               P13 = 0,
-               P14 = 0,
-               P15 = 0,
-               P22 = 1,
-               P23 = 0,
-               P24 = 0,
-               P25 = 0,
-               P33 = 1,
-               P34 = 0,
-               P35 = 0,
-               P44 = 1,
-               P45 = 0,
-               P55 = 1)
-
-out <- PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars, 
-                   time.steps = case_data$time)
-
-Ssol <- pvec["S_0"] + (exp(out[, "Nt_birth"]) - 1) - (exp(out[, "Nt_trans"]) - 1)
-Esol <- pvec["E_0"] + (exp(out[, "Nt_trans"]) - 1) - (exp(out[, "Nt_prog"]) - 1)
-Isol <- pvec["I_0"] + (exp(out[, "Nt_prog"]) - 1) - (exp(out[, "Nt_recov"]) - 1)
-
-plot(case_data$time, Ssol)
-plot(case_data$time, Esol, log = "y")
-plot(case_data$time, Isol)
-plot(Ssol, Isol, log = "xy", type = 'b')
-
-
+out <- PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars, time.steps = case_data$time)
 
 iterate_f_and_P <- function(xhat, PN, pvec, covf, time.steps){
   P <- PN / covf$N(time.steps[1])
