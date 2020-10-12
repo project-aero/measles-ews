@@ -29,25 +29,22 @@ PsystemSEIR <- function(pvec, covf,
       S <- S0 + exp(Nt_birth) - exp(Nt_trans)
       E <- E0 + exp(Nt_trans) - exp(Nt_prog)
       I <- I0 + exp(Nt_prog) - exp(Nt_recov)
-      C <- exp(Nt_cases) - 1
       if (S < 0) S <- 0
       if (E < 0) E <- 0
       if (I < 0) I <- 0
       lambda <- c(beta_t / P_t * S * I + iota,
                   P_t * mu_t * 0.3,
                   eta * E,
-                  gamma * I,
                   gamma * I)
       ito_factors_make <- function(Nt){
         exp(-Nt) - 0.5 * exp(-2 * Nt)
       }
-      Ntv <- c(Nt_trans, Nt_birth, Nt_prog, Nt_recov, Nt_cases)
+      Ntv <- c(Nt_trans, Nt_birth, Nt_prog, Nt_recov)
       itof <- sapply(Ntv, ito_factors_make)
       dNt_trans <- itof[1] * lambda[1]
       dNt_birth <- itof[2] * lambda[2]
       dNt_prog <- itof[3] * lambda[3]
       dNt_recov <- itof[4] * lambda[4]
-      dNt_cases <- itof[5] * lambda[5]
       
       ito_factors_derv_make <- function(Nt){
         exp(-2 * Nt) - exp(-Nt)
@@ -56,20 +53,17 @@ PsystemSEIR <- function(pvec, covf,
       F <- rbind(c(itofp[1] * lambda[1] + itof[1] * beta_t / P_t * (-1) * exp(Ntv[1]) * I, 
                       itof[1] * beta_t / P_t * exp(Ntv[2]) * I, 
                       itof[1] * beta_t / P_t * S * exp(Ntv[3]), 
-                      itof[1] * beta_t / P_t * S * (-1) * exp(Ntv[4]),
-                      0),
-                 c(0, itofp[2] * lambda[2], 0, 0, 0),
-                 c(itof[3] * eta * exp(Ntv[1]), 0, itofp[3] * lambda[3] + itof[3] * eta * -1 * exp(Ntv[3]), 0, 0),
-                 c(0, 0, itof[4] * gamma * exp(Ntv[3]), itofp[4] * lambda[4] + itof[4] * gamma * -1 * exp(Ntv[4]), 0),
-                 c(0, 0, itof[5] * gamma * exp(Ntv[3]), itof[5] * gamma * -1 * exp(Ntv[4]), itofp[5] * lambda[5])) 
+                      itof[1] * beta_t / P_t * S * (-1) * exp(Ntv[4])),
+                 c(0, itofp[2] * lambda[2], 0, 0),
+                 c(itof[3] * eta * exp(Ntv[1]), 0, itofp[3] * lambda[3] + itof[3] * eta * -1 * exp(Ntv[3]), 0),
+                 c(0, 0, itof[4] * gamma * exp(Ntv[3]), itofp[4] * lambda[4] + itof[4] * gamma * -1 * exp(Ntv[4]))) 
 
       Q <- diag(exp(-Ntv) * lambda)
       
-      P <- rbind(c(P11, P12, P13, P14, P15),
-                 c(P12, P22, P23, P24, P25),
-                 c(P13, P23, P33, P34, P35),
-                 c(P14, P24, P34, P44, P45),
-                 c(P15, P25, P35, P45, P55))
+      P <- rbind(c(P11, P12, P13, P14),
+                 c(P12, P22, P23, P24),
+                 c(P13, P23, P33, P34),
+                 c(P14, P24, P34, P44))
       
       dP <-  F %*% P + P %*% t(F) + Q
       
@@ -81,18 +75,12 @@ PsystemSEIR <- function(pvec, covf,
              dP12 = dP[1,2], 
              dP13 = dP[1,3], 
              dP14 = dP[1,4], 
-             dP15 = dP[1,5],
              dP22 = dP[2,2], 
              dP23 = dP[2,3], 
-             dP24 = dP[2,4],
-             dP25 = dP[2,5],
+             dP24 = dP[2,4], 
              dP33 = dP[3,3], 
-             dP34 = dP[3,4],
-             dP35 = dP[3,5],
-             dP44 = dP[4,4],
-             dP45 = dP[4,5],
-             dP55 = dP[5,5]))
-      
+             dP34 = dP[3,4], 
+             dP44 = dP[4,4]))
     })
   }
   deSolve::lsoda(init.vars, time.steps, PModel, pvec)
