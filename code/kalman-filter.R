@@ -15,7 +15,7 @@ PsystemSEIR <- function(pvec, covf,
   
   PModel <- function(t, x, parms) {
     with(as.list(c(parms, x)), {
-      P_t <- covf$N(t)
+      N_t <- covf$N(t)
       mu_t <- covf$mu(t)
       xi1t <- covf$xi1(t)
       xi2t <- covf$xi2(t)
@@ -26,39 +26,15 @@ PsystemSEIR <- function(pvec, covf,
       beta_t <- beta_mu * (1 + exp(xi1t * b1 + xi2t * b2 + xi3t * b3 + xi4t * b4 + xi5t * b5 + xi6t * b6))
       eta <- 365 / 8  
       gamma <- 365 / 5
-      S <- S0 + exp(Nt_birth) - exp(Nt_trans)
-      E <- E0 + exp(Nt_trans) - exp(Nt_prog)
-      I <- I0 + exp(Nt_prog) - exp(Nt_recov)
-      if (S < 0) S <- 0
-      if (E < 0) E <- 0
-      if (I < 0) I <- 0
-      lambda <- c(beta_t / P_t * S * I + iota,
-                  P_t * mu_t * 0.3,
-                  eta * E,
-                  gamma * I)
-      Lambda <- sqrt(lambda)
-      ito_factors_make <- function(Nt){
-        exp(-Nt) - 0.5 * exp(-2 * Nt)
-      }
-      Ntv <- c(Nt_birth, Nt_trans, Nt_prog, Nt_recov)
-      itof <- sapply(Ntv, ito_factors_make)
-      dNt_birth <- itof[1] * lambda[1]
-      dNt_trans <- itof[2] * lambda[2]
-      dNt_prog <- itof[3] * lambda[3]
-      dNt_recov <- itof[4] * lambda[4]
+      S <- exp(lS)
+      E <- exp(lE)
+      I <- exp(lI)
+      F <- rbind(c(-beta_t * I / N_t,    0, -beta_t * S / N_t, 0),
+                 c( beta_t * I / N_t, -eta,  beta_t * S / N_t, 0),
+                 c(                0,  eta,            -gamma, 0),
+                 c(                0,    0,             gamma, 0))
       
-      ito_factors_derv_make <- function(Nt){
-        exp(-2 * Nt) - exp(-Nt)
-      }
-      itofp <- sapply(Nt_vec, ito_factors_derv_make)
-      F <- rbind(c(itofp[1] * lambda[1] + itof[1] * beta_t / P_t * (-1) * exp(Ntv[1]) * I, 
-                      itof[1] * beta_t / P_t * exp(Ntv[2]) * I, 
-                      itof[1] * beta_t / P_t * S * exp(Ntv[3]), 
-                      itof[1] * beta_t / P_t * S * (-1) * exp(Ntv[4])),
-                 c(0, itofp[2] * lambda[2], 0, 0),
-                 c(itof[3] * eta * exp(Ntv[1]), 0, itofp[3] * lambda[3] + itof[3] * eta * -1 * exp(Ntv[3]), 0),
-                 c(0, 0, itof[4] * gamma * exp(Ntv[3]), itofp[4] * lambda[4] + itof[4] * gamma * -1 * exp(Ntv[4]))) 
-
+      
       f <- c(mu_t * 0.3, beta_t * (S / N_t) * (I / N_t), eta * E / N_t, gamma * I / N_t)
       Q <- rbind(c(f[1] + f[2],       -f[2],           0,     0),
                  c(      -f[2], f[2] + f[3],       -f[3],     0),

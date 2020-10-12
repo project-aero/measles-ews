@@ -215,7 +215,6 @@ for(do_city in unique(measles$region)){
   log_y <- log(as.vector(cases)+1)
   arma_fit <- arima(log_y,order=c(2,0,2),seasonal=list(order=c(1,0,1),period=52), method = "CSS")
   arma_nll <- arma_fit$loglik - sum(log_y) ## log normal likelihood
-  if (do_city == "Niamey (City)") narma <- list(arma_fit, arma_nll, log_y)
   
   # SEIR fit log likelihood
   mif_city <- str_sub(do_city, 1, 6)
