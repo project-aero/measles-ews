@@ -211,7 +211,7 @@ kfnll <-
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(tau2, z_1  * (1 + 1 /  pvec["tau"])) 
+    R <- max(tau2, z_1 + z_1 ^ 2 /  pvec["tau"]) 
     
     
     # Predict
@@ -256,7 +256,7 @@ kfnll <-
       P_kkmo[, , i] <- XP$PN
       #R <- max(5, z[i - 1] * pvec["tau"])
       #R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
-      R <- max(tau2, xhat_kkmo["C", i] * pvec["rho"] * (1 + 1 /  pvec["tau"]))
+      R <- max(tau2, xhat_kkmo["C", i] * pvec["rho"] + (xhat_kkmo["C", i] * pvec["rho"]) ^ 2 / pvec["tau"])
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -346,7 +346,7 @@ system.time(m0 <- mle2(minuslogl = kfnll,
 #plot(p0, absVal = FALSE)
 #confint(p0)[2,]
 
-scaled_expit(coef(m0)["logit_S0"], a_S0, b_S0)
+scaled_expit(coef(m0)["logit_S0"], a_S0, b_S0) / b_S0
 scaled_expit(coef(m0)["logit_I0"], a_I0, b_I0)
 scaled_expit(coef(m0)["logit_E0"], a_E0, b_E0)
 (rho_hat <- scaled_expit(coef(m0)["logit_rho"], a_rho, b_rho))
