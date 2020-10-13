@@ -4,7 +4,7 @@ library(deSolve)
 library(dplyr)
 library(pomp)
 
-pob <- readRDS("measles-pomp-object-Zinder.RDS")
+pob <- readRDS("measles-pomp-object-Agadez.RDS")
 
 case_data <- tibble(time = pob@times, reports = pob@data["reports",])
 cov_data <- bind_cols(tibble(time = pob@tcovar), as_tibble(pob@covar))
@@ -288,7 +288,7 @@ scaled_logit <- function(x, a, b){
 a_beta_mu <- 1
 b_beta_mu <- 1000
 a_S0 <- 0
-b_S0 <- 322e3
+b_S0 <- 267e3
 a_I0 <- 0
 b_I0 <- 100
 a_E0 <- 0
@@ -323,7 +323,7 @@ Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
            start = list(logit_beta_mu = scaled_logit(304, a_beta_mu, b_beta_mu), 
-                        logit_S0 = scaled_logit(19168, a_S0, b_S0),
+                        logit_S0 = scaled_logit(267e2, a_S0, b_S0),
                         logit_I0 = scaled_logit(10, a_I0, b_I0),
                         logit_E0 = scaled_logit(10, a_E0, b_E0),
                         logit_b1 = scaled_logit(1.82, a_bpar, b_bpar),
