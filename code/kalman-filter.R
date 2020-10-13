@@ -4,7 +4,7 @@ library(deSolve)
 library(dplyr)
 library(pomp)
 
-pob <- readRDS("measles-pomp-object-Maradi.RDS")
+pob <- readRDS("measles-pomp-object-Zinder.RDS")
 
 case_data <- tibble(time = pob@times, reports = pob@data["reports",])
 cov_data <- bind_cols(tibble(time = pob@tcovar), as_tibble(pob@covar))
@@ -288,7 +288,7 @@ scaled_logit <- function(x, a, b){
 a_beta_mu <- 1
 b_beta_mu <- 1000
 a_S0 <- 0
-b_S0 <- 267e3
+b_S0 <- 322e3
 a_I0 <- 0
 b_I0 <- 100
 a_E0 <- 0
@@ -322,20 +322,20 @@ Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
 
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
-           start = list(logit_beta_mu = scaled_logit(138, a_beta_mu, b_beta_mu), 
-                        logit_S0 = scaled_logit(29944, a_S0, b_S0),
-                        logit_I0 = scaled_logit(6.8e-2, a_I0, b_I0),
-                        logit_E0 = scaled_logit(100, a_E0, b_E0),
-                        logit_b1 = scaled_logit(1.55, a_bpar, b_bpar),
-                        logit_b2 = scaled_logit(3.46, a_bpar, b_bpar),
-                        logit_b3 = scaled_logit(0.892, a_bpar, b_bpar),
-                        logit_b4 = scaled_logit(4.7e-2, a_bpar, b_bpar),
-                        logit_b5 = scaled_logit(1.8e-2, a_bpar, b_bpar),
-                        logit_b6 = scaled_logit(3.32, a_bpar, b_bpar),
+           start = list(logit_beta_mu = scaled_logit(304, a_beta_mu, b_beta_mu), 
+                        logit_S0 = scaled_logit(19168, a_S0, b_S0),
+                        logit_I0 = scaled_logit(10, a_I0, b_I0),
+                        logit_E0 = scaled_logit(10, a_E0, b_E0),
+                        logit_b1 = scaled_logit(1.82, a_bpar, b_bpar),
+                        logit_b2 = scaled_logit(1.22, a_bpar, b_bpar),
+                        logit_b3 = scaled_logit(0.821, a_bpar, b_bpar),
+                        logit_b4 = scaled_logit(0.326, a_bpar, b_bpar),
+                        logit_b5 = scaled_logit(0.941, a_bpar, b_bpar),
+                        logit_b6 = scaled_logit(0.866, a_bpar, b_bpar),
                         logit_rho = scaled_logit(0.324, a_rho, b_rho),
-                        logit_iota = scaled_logit(71, a_iota, b_iota),
-                        logit_tau = scaled_logit(2.17, a_tau, b_tau),
-                        logit_tau2 = scaled_logit(0.37, a_tau2, b_tau2)),
+                        logit_iota = scaled_logit(21, a_iota, b_iota),
+                        logit_tau = scaled_logit(6, a_tau, b_tau),
+                        logit_tau2 = scaled_logit(0.15, a_tau2, b_tau2)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
