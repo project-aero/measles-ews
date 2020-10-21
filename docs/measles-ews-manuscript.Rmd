@@ -263,7 +263,7 @@ We assume observed case reports ($y_t$) are drawn from a negative binomial distr
 y_t \sim \text{Negative Binomial} \left( \rho x_t, \tau \right),
 \end{align}
 
-\noindent{}where $x_t$ are the accumulated cases that transition from the infected class to the recovered class in a one week period.
+\noindent{}where $x_t$ are the accumulated cases that transition from the infected class to the recovered class in a one week period. In this parameterization of the negative binomial, the mean is equal to $\rho x_t$ and the the variance is equal to $\rho x_t + (\rho x_t) ^ 2 \tau$. 
 
 ##  Model fitting and inference
 

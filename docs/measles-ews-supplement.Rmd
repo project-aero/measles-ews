@@ -325,7 +325,7 @@ $\beta$ is the minimum transmission rate over the season and the term $\sum^6_{i
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
 
-Finally, observations were simulated from the model on a weekly time step by drawing counts of cases ($y_t$) from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days ($x_t$), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $y_t \sim \text{Negative Binomial}(\rho x_t, \tau)$.
+Finally, observations were simulated from the model on a weekly time step by drawing counts of cases ($y_t$) from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days ($x_t$), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $y_t \sim \text{Negative Binomial}(\rho x_t, \tau)$, where we use the same parameterization of the negative binomial as described in our model definition in the main text.
 
 In this model, the effective reproduction number can be approximated as:
 
@@ -487,7 +487,7 @@ Formulas for the early warning signals are in table \ref{tab:ews}.
 | Autocorrelation | \( r_1 = \frac{s^2_1 }{ s^2} \) | Positive |
 | Decay time | \( -1 / \text{ln}(r_1) \) | Positive |
 
-Table: List of candidate early warning signals and their estimating equations. See @Brett2018 for details. \label{tab:ews}
+Table: List of candidate early warning signals and their estimating equations. See @Brett2018 for details, as well as moving window versions which we use in the section "Moving window analysis" in the following. \label{tab:ews}
 
 # Trends of early warning signals
 
@@ -831,7 +831,7 @@ cowplot::plot_grid(emerge_ints, elimin_ints, nrow = 1, align = "h")
 
 # Moving window analysis
 
-To complement our fixed window analysis presented in the main text, we conducted a moving window analysis as might be conducted on real surveilance data.
+To complement our fixed window analysis presented in the main text, we conducted a moving window analysis as might be conducted on real surveillance data.
 We used the same null and test intervals as described above for the emergence and elimination scenarios.
 However, instead of calculating a single value for each EWS over the entire window of the interval, we calculated EWS in the intervals over moving windows of 35 weeks.
 We then calculated the Kendall's rank correlation ($\tau$) between each EWS and time in each of the null and test intervals.
@@ -839,12 +839,6 @@ We used the distributions of Kendall's $\tau$ over the 500 replicate simulations
 For the approach to elimination, the results are similar to those for the fixed window analysis (Figure \ref{mvw-ews}B).
 For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure \ref{mvw-ews}A).
 
-\comment{I see now that the original version of Table S3 with moving
-window statistics does have value for interpretation of this
-section. Perhaps it would make sense to include both versions? If
-there is only one verion, I would still say the simpler one is
-preferable to me. We can cite Brett et al. "Anticipating disease
-emergence" for the more complicated version. }
 
 ```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (*a*) and elimination (*b*). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values. AUC values farther from 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
 library(viridis)

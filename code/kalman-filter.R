@@ -294,7 +294,7 @@ b_I0 <- 100
 a_E0 <- 0
 b_E0 <- 200
 
-a_bpar <- 0
+a_bpar <- -5
 b_bpar <- 5
 
 a_rho <- 0
