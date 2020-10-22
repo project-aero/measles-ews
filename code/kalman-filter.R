@@ -29,12 +29,12 @@ PsystemSEIR <- function(pvec, covf,
       S <- exp(lS)
       E <- exp(lE)
       I <- exp(lI)
-      itof <- exp(-Ct)
+      itof <- exp(-Ct) * rho
       F <- rbind(c(-beta_t * I / N_t,    0, -beta_t * S / N_t, 0),
                  c( beta_t * I / N_t, -eta,  beta_t * S / N_t, 0),
                  c(                0,  eta,            -gamma, 0),
                  c(                0,    0, itof * gamma - 1 / 2 * gamma / N_t * itof ^ 2, 
-                                   - itof * gamma * I + gamma * I / N_t * itof ^ 2))
+                                   - itof * gamma * I +  gamma * I / N_t * itof ^ 2))
       
       f <- c(mu_t * 0.3, beta_t * (S / N_t) * (I / N_t), eta * E / N_t, gamma * I / N_t)
       Q <- rbind(c(f[1] + f[2],       -f[2],           0,     0),
@@ -50,7 +50,7 @@ PsystemSEIR <- function(pvec, covf,
       dlS <- (N_t * mu_t * 0.3 - beta_t * S * I / N_t) / S
       dlE <- (beta_t * S * I / N_t - eta * E) / E
       dlI <- (iota + eta * E -  gamma * I) / I
-      dCt <- itof * (gamma * I) - 1 / 2  * gamma * I / N_t * itof ^ 2
+      dCt <- itof * (gamma * I) - 1 / 2 * gamma * I / N_t * itof ^ 2
       dP <-  F %*% P + P %*% t(F) + Q
       
       list(c(dlS = dlS, dlE = dlE, dlI = dlI, dCt = dCt, dPss = dP[1,1], dPse = dP[1,2], 
@@ -66,6 +66,7 @@ genfun <- function(y) {
 }
 covf <- apply(cov_data, 2, genfun)
 pvec <- coef(pob)
+pvec["tau"] <- 1
 init.vars <- c(lS=log(3e-2 * 6.2e5), lE=log(1.6e-4 * 6.2e5), lI=log(1.6e-4 * 6.2e5), Ct = 0,
                Pss = 1, Pse = 0, Psi = 0, Psc = 0, Pee = 1, Pei = 0, Pec = 0, Pii = 1, Pic = 0, Pcc = 1)
 
@@ -107,9 +108,9 @@ iterate_f_and_P(xhat = xhat, PN = P, pvec = pvec, covf = covf,
 xhat0 <- matrix(xhat, ncol = 1)
 rownames(xhat0) <- names(xhat)
 Phat0 <- P
-z_1 <-  case_data$reports[-1][1]
-H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
-R <- z_1 * (1 - pvec["rho"])
+z_1 <-  log(case_data$reports[-1][1] + 1)
+H <- matrix(c(0, 0, 0, 1), ncol = 4)
+R <- pvec["tau"]
 
 # Predict
 XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
@@ -127,7 +128,7 @@ P_1_1 <- (diag(4) - K_1 %*% H) %*% P_1_0
 
 
 T <- nrow(case_data[-1,])
-z <- case_data$reports[-1]
+z <- log(case_data$reports[-1] + 1)
 
 ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
 K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
@@ -145,7 +146,7 @@ ytilde_k[, 1] <- ytilde_1
 
 for (i in seq(2, T)){
   xhat_init <- xhat_kk[, i - 1]
-  xhat_init["C"] <- 0
+  xhat_init["Ct"] <- 0
   PNinit <- P_kk[,,i - 1]
   PNinit[, 4] <- PNinit[4, ] <- 0
   XP <- iterate_f_and_P(xhat_init, PN = PNinit, pvec = pvec, covf = covf,
@@ -153,7 +154,7 @@ for (i in seq(2, T)){
   xhat_kkmo[, i] <- XP$xhat
   P_kkmo[, , i] <- XP$PN
   #R <- xhat_kkmo["C", i] * pvec["rho"] * (1 - pvec["rho"])
-  R <- max(5, z[i - 1] * (1 - pvec["rho"]))
+  R <- pvec["tau"]
   S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
   K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
   ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -163,11 +164,11 @@ for (i in seq(2, T)){
   ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
 }
 
-log_lik <- function(Sigma, resids){
-  -0.5 * sum(resids ^ 2 / Sigma + log(Sigma) + log(2 * pi))
+log_lik <- function(Sigma, resids, z){
+  -0.5 * sum(resids ^ 2 / Sigma + log(Sigma) + log(2 * pi)) - sum(z)
 }
 
-log_lik(S, ytilde_k)
+log_lik(S, ytilde_k, z)
 
 kfnll <-
   function(cdata,
@@ -185,9 +186,8 @@ kfnll <-
            logit_rho,
            logit_iota,
            logit_tau,
-           logit_tau2, 
            xhat0 = structure(c(18600, 99.2, 99.2, 0), .Dim = c(4L, 1L), 
-                             .Dimnames = list(c("S", "E", "I", "C"), NULL)),
+                             .Dimnames = list(c("S", "E", "I", "Ct"), NULL)),
            Phat0 = diag(c(1, 1, 1, 0)),
            just_nll = TRUE) {
 
@@ -204,16 +204,14 @@ kfnll <-
     xhat0["S", 1] <- scaled_expit(logit_S0, a_S0, b_S0)
     xhat0["I", 1] <- scaled_expit(logit_I0, a_I0, b_I0)
     xhat0["E", 1] <- scaled_expit(logit_E0, a_E0, b_E0)
-    tau2 <- scaled_expit(logit_tau2, a_tau2, b_tau2)
-    
+
     #print(c("                                     ", pvec["beta_mu"], xhat0["S", 1] / b_S0, pvec["b2"]))
     
     # Initialize
-    z_1 <-  cdata$reports[-1][1]
-    H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
+    z_1 <-  log(cdata$reports[-1][1] + 1)
+    H <- matrix(c(0, 0, 0, 1), ncol = 4)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(tau2, z_1 + z_1 ^ 2 *  pvec["tau"]) 
-    
+    R <- pvec["tau"] 
     
     # Predict
     XP_1_0 <- iterate_f_and_P(xhat0[, 1], PN = Phat0, pvec = pvec, covf = covf,
@@ -230,7 +228,7 @@ kfnll <-
     ## Now calculate for each step in simulation
     
     T <- nrow(case_data[-1,])
-    z <- cdata$reports[-1]
+    z <- log(cdata$reports[-1] + 1)
     
     ytilde_kk <- ytilde_k <- S <- array(NA_real_, dim = c(1, T))
     K <- xhat_kk <- xhat_kkmo <- array(NA_real_, dim = c(4, T))
@@ -248,7 +246,7 @@ kfnll <-
     
     for (i in seq(2, T)){
       xhat_init <- xhat_kk[, i - 1]
-      xhat_init["C"] <- 0
+      xhat_init["Ct"] <- 0
       PNinit <- P_kk[,,i - 1]
       PNinit[, 4] <- PNinit[4, ] <- 0
       XP <- iterate_f_and_P(xhat_init, PN = PNinit, pvec = pvec, covf = covf,
@@ -257,7 +255,7 @@ kfnll <-
       P_kkmo[, , i] <- XP$PN
       #R <- max(5, z[i - 1] * pvec["tau"])
       #R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
-      R <- max(tau2, xhat_kkmo["C", i] * pvec["rho"] + (xhat_kkmo["C", i] * pvec["rho"]) ^ 2 * pvec["tau"])
+      R <- pvec["tau"] 
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -267,11 +265,11 @@ kfnll <-
       ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
     }
     
-    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi))
+    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi)) - sum(z)
     if (!just_nll){
       list(nll = nll, xhat_kkmo = xhat_kkmo, xhat_kk = xhat_kk, 
            P_kkmo = P_kkmo, P_kk = P_kk, 
-           ytilde_k = ytilde_k, S = S)
+           ytilde_k = ytilde_k, S = S, z = z)
     } else {
       nll
     }
@@ -304,8 +302,8 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 500
 
-a_tau <- 1e-5
-b_tau <- 50
+a_tau <- 0.1
+b_tau <- 3
 
 a_tau2 <- 0
 b_tau2 <- 20
