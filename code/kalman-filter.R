@@ -287,7 +287,7 @@ scaled_logit <- function(x, a, b){
   log((x - a) / (b - x))
 }
 a_beta_mu <- 5
-b_beta_mu <- 1000
+b_beta_mu <- 1100
 a_S0 <- 0
 b_S0 <- 118e3
 a_I0 <- 0
@@ -304,7 +304,7 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 500
 
-a_tau <- 0.5
+a_tau <- 0.25
 b_tau <- 3
 
 a_tau2 <- 0
@@ -314,19 +314,19 @@ pvec2 <- pvec
 Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
-           start = list(logit_beta_mu = scaled_logit(925, a_beta_mu, b_beta_mu), 
+           start = list(logit_beta_mu = scaled_logit(999, a_beta_mu, b_beta_mu), 
                         logit_S0 = scaled_logit(118e3 * .064, a_S0, b_S0),
-                        logit_I0 = scaled_logit(3, a_I0, b_I0),
-                        logit_E0 = scaled_logit(10, a_E0, b_E0),
-                        logit_b1 = scaled_logit(-0.96, a_bpar, b_bpar),
-                        logit_b2 = scaled_logit(0.813, a_bpar, b_bpar),
-                        logit_b3 = scaled_logit(0.0568, a_bpar, b_bpar),
-                        logit_b4 = scaled_logit(-3.84, a_bpar, b_bpar),
-                        logit_b5 = scaled_logit(-0.573, a_bpar, b_bpar),
-                        logit_b6 = scaled_logit(-0.69, a_bpar, b_bpar),
+                        logit_I0 = scaled_logit(5, a_I0, b_I0),
+                        logit_E0 = scaled_logit(1, a_E0, b_E0),
+                        logit_b1 = scaled_logit(-3.15, a_bpar, b_bpar),
+                        logit_b2 = scaled_logit(1.13, a_bpar, b_bpar),
+                        logit_b3 = scaled_logit(-0.99, a_bpar, b_bpar),
+                        logit_b4 = scaled_logit(-8.02, a_bpar, b_bpar),
+                        logit_b5 = scaled_logit(-1.41, a_bpar, b_bpar),
+                        logit_b6 = scaled_logit(-0.177, a_bpar, b_bpar),
                         logit_rho = scaled_logit(0.09, a_rho, b_rho),
-                        logit_iota = scaled_logit(51.8, a_iota, b_iota),
-                        logit_tau = scaled_logit(0.9, a_tau, b_tau)),
+                        logit_iota = scaled_logit(49.32, a_iota, b_iota),
+                        logit_tau = scaled_logit(0.5, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
