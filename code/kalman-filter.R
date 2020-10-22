@@ -29,17 +29,18 @@ PsystemSEIR <- function(pvec, covf,
       S <- exp(lS)
       E <- exp(lE)
       I <- exp(lI)
+      itof <- exp(-Ct)
       F <- rbind(c(-beta_t * I / N_t,    0, -beta_t * S / N_t, 0),
                  c( beta_t * I / N_t, -eta,  beta_t * S / N_t, 0),
                  c(                0,  eta,            -gamma, 0),
-                 c(                0,    0,             gamma, 0))
-      
+                 c(                0,    0, itof * gamma - 1 / 2 * gamma / N_t * itof ^ 2, 
+                                   - itof * gamma * I + gamma * I / N_t * itof ^ 2))
       
       f <- c(mu_t * 0.3, beta_t * (S / N_t) * (I / N_t), eta * E / N_t, gamma * I / N_t)
       Q <- rbind(c(f[1] + f[2],       -f[2],           0,     0),
                  c(      -f[2], f[2] + f[3],       -f[3],     0),
-                 c(          0,       -f[3], f[3] + f[4], -f[4]),
-                 c(          0,           0,       -f[4],  f[4]))
+                 c(          0,       -f[3], f[3] + f[4], -f[4] * itof),
+                 c(          0,           0,       -f[4] * itof,  f[4] * itof ^ 2))
       
       P <- rbind(c(Pss, Pse, Psi, Psc),
                  c(Pse, Pee, Pei, Pec),
@@ -49,10 +50,10 @@ PsystemSEIR <- function(pvec, covf,
       dlS <- (N_t * mu_t * 0.3 - beta_t * S * I / N_t) / S
       dlE <- (beta_t * S * I / N_t - eta * E) / E
       dlI <- (iota + eta * E -  gamma * I) / I
-      dC <- (gamma * I)
+      dCt <- itof * (gamma * I) - 1 / 2  * gamma * I / N_t * itof ^ 2
       dP <-  F %*% P + P %*% t(F) + Q
       
-      list(c(dlS = dlS, dlE = dlE, dlI = dlI, dC = dC, dPss = dP[1,1], dPse = dP[1,2], 
+      list(c(dlS = dlS, dlE = dlE, dlI = dlI, dCt = dCt, dPss = dP[1,1], dPse = dP[1,2], 
              dPsi = dP[1,3], dPsc = dP[1,4], dPee = dP[2,2], dPei = dP[2,3], 
              dPec = dP[2,4], dPii = dP[3,3], dPic = dP[3,4], dPcc = dP[4,4]))
     })
@@ -65,24 +66,24 @@ genfun <- function(y) {
 }
 covf <- apply(cov_data, 2, genfun)
 pvec <- coef(pob)
-init.vars <- c(lS=log(3e-2 * 6.2e5), lE=log(1.6e-4 * 6.2e5), lI=log(1.6e-4 * 6.2e5), C = 0,
+init.vars <- c(lS=log(3e-2 * 6.2e5), lE=log(1.6e-4 * 6.2e5), lI=log(1.6e-4 * 6.2e5), Ct = 0,
                Pss = 1, Pse = 0, Psi = 0, Psc = 0, Pee = 1, Pei = 0, Pec = 0, Pii = 1, Pic = 0, Pcc = 1)
 
 out <- PsystemSEIR(pvec = pvec, covf = covf, init.vars = init.vars, time.steps = case_data$time)
 
 iterate_f_and_P <- function(xhat, PN, pvec, covf, time.steps){
   P <- PN / covf$N(time.steps[1])
-  xhat_trans <- c(log(xhat[c("S", "E", "I")]), xhat["C"])
+  xhat_trans <- c(log(xhat[c("S", "E", "I")]), xhat["Ct"])
   if(!all(is.finite(xhat_trans))) {
     browser()
   }
-  names(xhat_trans)[1:3] <- c("lS", "lE", "lI")
+  names(xhat_trans)[1:4] <- c("lS", "lE", "lI", "Ct")
   init.vars <- c(xhat_trans, Pss = P[1,1], Pse = P[1,2], 
   Psi = P[1,3], Psc = P[1,4], Pee = P[2,2], Pei = P[2,3], Pec = P[2,4], 
   Pii = P[3,3], Pic = P[3,4], Pcc = P[4,4])
   ret <- PsystemSEIR(pvec = pvec, init.vars = init.vars, covf, time.steps)[2, ]
-  xhat_new <- c(exp(ret[c("lS", "lE", "lI")]), ret["C"])
-  names(xhat_new)[1:3] <- c("S", "E", "I")
+  xhat_new <- c(exp(ret[c("lS", "lE", "lI")]), ret["Ct"])
+  names(xhat_new)[1:4] <- c("S", "E", "I", "Ct")
   P_new  <- with(as.list(ret),        
             rbind(c(Pss, Pse, Psi, Psc),
                   c(Pse, Pee, Pei, Pec),
@@ -92,7 +93,7 @@ iterate_f_and_P <- function(xhat, PN, pvec, covf, time.steps){
   list(xhat = xhat_new, PN = PN_new)
 }
 
-xhat <-  c(S=(3e-2 * 6.2e5), E=(1.6e-4 * 6.2e5), I=(1.6e-4 * 6.2e5), C = 0)
+xhat <-  c(S=(3e-2 * 6.2e5), E=(1.6e-4 * 6.2e5), I=(1.6e-4 * 6.2e5), Ct = 0)
 P <- with(as.list(init.vars[-c(1:4)]),        
           rbind(c(Pss, Pse, Psi, Psc),
                 c(Pse, Pee, Pei, Pec),
@@ -211,7 +212,7 @@ kfnll <-
     z_1 <-  cdata$reports[-1][1]
     H <- matrix(c(0, 0, 0, pvec["rho"]), ncol = 4)
     #R <- max(5, z[1] * pvec["tau"])
-    R <- max(tau2, z_1 + z_1 ^ 2 /  pvec["tau"]) 
+    R <- max(tau2, z_1 + z_1 ^ 2 *  pvec["tau"]) 
     
     
     # Predict
@@ -256,7 +257,7 @@ kfnll <-
       P_kkmo[, , i] <- XP$PN
       #R <- max(5, z[i - 1] * pvec["tau"])
       #R <- max(.5, z[i - 1] * (1 - pvec["rho"]))
-      R <- max(tau2, xhat_kkmo["C", i] * pvec["rho"] + (xhat_kkmo["C", i] * pvec["rho"]) ^ 2 / pvec["tau"])
+      R <- max(tau2, xhat_kkmo["C", i] * pvec["rho"] + (xhat_kkmo["C", i] * pvec["rho"]) ^ 2 * pvec["tau"])
       S[, i] <- H %*% P_kkmo[, , i] %*% t(H) + R
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
@@ -285,7 +286,7 @@ scaled_expit <- function(y, a, b){
 scaled_logit <- function(x, a, b){
   log((x - a) / (b - x))
 }
-a_beta_mu <- 1
+a_beta_mu <- 5
 b_beta_mu <- 1000
 a_S0 <- 0
 b_S0 <- 267e3
@@ -294,32 +295,23 @@ b_I0 <- 100
 a_E0 <- 0
 b_E0 <- 200
 
-a_bpar <- -5
-b_bpar <- 5
+a_bpar <- -10
+b_bpar <- 10
 
 a_rho <- 0
 b_rho <- 1
 
 a_iota <- 0
-b_iota <- 100
+b_iota <- 500
 
-a_tau <- 0.001
-b_tau <- 1000
+a_tau <- 1e-5
+b_tau <- 50
 
 a_tau2 <- 0
 b_tau2 <- 20
 
 pvec2 <- pvec
-pvec2["rho"] <- 0.1
-pvec2["b1"] <- 0.3
-pvec2["b2"] <- 0.3
-pvec2["b3"] <- 0.6
-pvec2["b4"] <- 0.5
-pvec2["b5"] <- 0.2
-pvec2["b6"] <- 0
-
 Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
-
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
            start = list(logit_beta_mu = scaled_logit(304, a_beta_mu, b_beta_mu), 
@@ -334,7 +326,7 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_b6 = scaled_logit(0.866, a_bpar, b_bpar),
                         logit_rho = scaled_logit(0.324, a_rho, b_rho),
                         logit_iota = scaled_logit(21, a_iota, b_iota),
-                        logit_tau = scaled_logit(6, a_tau, b_tau),
+                        logit_tau = scaled_logit( 1 / 6, a_tau, b_tau),
                         logit_tau2 = scaled_logit(0.15, a_tau2, b_tau2)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
