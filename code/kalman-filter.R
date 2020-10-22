@@ -304,7 +304,7 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 500
 
-a_tau <- 1.1
+a_tau <- 0.5
 b_tau <- 3
 
 a_tau2 <- 0
@@ -314,19 +314,19 @@ pvec2 <- pvec
 Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
-           start = list(logit_beta_mu = scaled_logit(763, a_beta_mu, b_beta_mu), 
-                        logit_S0 = scaled_logit(118e3 * .09, a_S0, b_S0),
-                        logit_I0 = scaled_logit(10, a_I0, b_I0),
+           start = list(logit_beta_mu = scaled_logit(925, a_beta_mu, b_beta_mu), 
+                        logit_S0 = scaled_logit(118e3 * .064, a_S0, b_S0),
+                        logit_I0 = scaled_logit(3, a_I0, b_I0),
                         logit_E0 = scaled_logit(10, a_E0, b_E0),
-                        logit_b1 = scaled_logit(-9.5, a_bpar, b_bpar),
-                        logit_b2 = scaled_logit(4.7, a_bpar, b_bpar),
-                        logit_b3 = scaled_logit(-8.1, a_bpar, b_bpar),
-                        logit_b4 = scaled_logit(-9.9, a_bpar, b_bpar),
-                        logit_b5 = scaled_logit(-0.4, a_bpar, b_bpar),
-                        logit_b6 = scaled_logit(-2.7, a_bpar, b_bpar),
-                        logit_rho = scaled_logit(0.067, a_rho, b_rho),
-                        logit_iota = scaled_logit(21, a_iota, b_iota),
-                        logit_tau = scaled_logit(1.5, a_tau, b_tau)),
+                        logit_b1 = scaled_logit(-0.96, a_bpar, b_bpar),
+                        logit_b2 = scaled_logit(0.813, a_bpar, b_bpar),
+                        logit_b3 = scaled_logit(0.0568, a_bpar, b_bpar),
+                        logit_b4 = scaled_logit(-3.84, a_bpar, b_bpar),
+                        logit_b5 = scaled_logit(-0.573, a_bpar, b_bpar),
+                        logit_b6 = scaled_logit(-0.69, a_bpar, b_bpar),
+                        logit_rho = scaled_logit(0.09, a_rho, b_rho),
+                        logit_iota = scaled_logit(51.8, a_iota, b_iota),
+                        logit_tau = scaled_logit(0.9, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
@@ -343,7 +343,6 @@ scaled_expit(coef(m0)["logit_E0"], a_E0, b_E0)
 (rho_hat <- scaled_expit(coef(m0)["logit_rho"], a_rho, b_rho))
 scaled_expit(coef(m0)["logit_iota"], a_iota, b_iota)
 scaled_expit(coef(m0)["logit_tau"], a_tau, b_tau)
-scaled_expit(coef(m0)["logit_tau2"], a_tau2, b_tau2)
 
 kfret <- with(as.list(coef(m0)), 
               kfnll(cdata = case_data, pvec = pvec2, 
