@@ -238,17 +238,19 @@ kfnll <-
     K[, 1] <- K_1
     xhat_kkmo[, 1] <- xhat_1_0
     xhat_kk[, 1] <- xhat_1_1
+    xhat_kk[xhat_kk[, 1] < 0, 1] <- 1
     P_kk[, , 1] <- P_1_1
     P_kkmo[, , 1] <- P_1_0
     S[, 1] <- H %*% P_kkmo[, , 1] %*% t(H) + R
     ytilde_kk[, 1] <- z[1] - H %*% xhat_kk[, 1]
     ytilde_k[, 1] <- ytilde_1
-    
+    #browser()
     for (i in seq(2, T)){
       xhat_init <- xhat_kk[, i - 1]
       xhat_init["Ct"] <- 0
       PNinit <- P_kk[,,i - 1]
       PNinit[, 4] <- PNinit[4, ] <- 0
+      #print(xhat_init)
       XP <- iterate_f_and_P(xhat_init, PN = PNinit, pvec = pvec, covf = covf,
                             time.steps = cdata$time[c(i - 1, i)])
       xhat_kkmo[, i] <- XP$xhat
@@ -260,12 +262,12 @@ kfnll <-
       K[, i] <- P_kkmo[, , i] %*% t(H) %*% solve(S[, i])
       ytilde_k[, i] <- z[i] - H %*% xhat_kkmo[, i, drop = FALSE]
       xhat_kk[, i] <- xhat_kkmo[, i, drop = FALSE] + K[, i, drop = FALSE] %*% ytilde_k[, i, drop = FALSE]
-      xhat_kk[xhat_kk[, i] < 0, i] <- 1e-4
+      xhat_kk[xhat_kk[, i] < 0, i] <- 1
       P_kk[, , i] <- (diag(4) - K[, i, drop = FALSE] %*% H) %*% P_kkmo[, , i]
       ytilde_kk[i] <- z[i] - H %*% xhat_kk[, i, drop = FALSE]
     }
     
-    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi)) - sum(z)
+    nll <- 0.5 * sum(ytilde_k ^ 2 / S + log(S) + log(2 * pi)) + sum(z)
     if (!just_nll){
       list(nll = nll, xhat_kkmo = xhat_kkmo, xhat_kk = xhat_kk, 
            P_kkmo = P_kkmo, P_kk = P_kk, 
@@ -287,7 +289,7 @@ scaled_logit <- function(x, a, b){
 a_beta_mu <- 5
 b_beta_mu <- 1000
 a_S0 <- 0
-b_S0 <- 267e3
+b_S0 <- 118e3
 a_I0 <- 0
 b_I0 <- 100
 a_E0 <- 0
@@ -302,7 +304,7 @@ b_rho <- 1
 a_iota <- 0
 b_iota <- 500
 
-a_tau <- 0.1
+a_tau <- 1.1
 b_tau <- 3
 
 a_tau2 <- 0
@@ -312,20 +314,19 @@ pvec2 <- pvec
 Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
-           start = list(logit_beta_mu = scaled_logit(304, a_beta_mu, b_beta_mu), 
-                        logit_S0 = scaled_logit(267e2, a_S0, b_S0),
+           start = list(logit_beta_mu = scaled_logit(763, a_beta_mu, b_beta_mu), 
+                        logit_S0 = scaled_logit(118e3 * .09, a_S0, b_S0),
                         logit_I0 = scaled_logit(10, a_I0, b_I0),
                         logit_E0 = scaled_logit(10, a_E0, b_E0),
-                        logit_b1 = scaled_logit(1.82, a_bpar, b_bpar),
-                        logit_b2 = scaled_logit(1.22, a_bpar, b_bpar),
-                        logit_b3 = scaled_logit(0.821, a_bpar, b_bpar),
-                        logit_b4 = scaled_logit(0.326, a_bpar, b_bpar),
-                        logit_b5 = scaled_logit(0.941, a_bpar, b_bpar),
-                        logit_b6 = scaled_logit(0.866, a_bpar, b_bpar),
-                        logit_rho = scaled_logit(0.324, a_rho, b_rho),
+                        logit_b1 = scaled_logit(-9.5, a_bpar, b_bpar),
+                        logit_b2 = scaled_logit(4.7, a_bpar, b_bpar),
+                        logit_b3 = scaled_logit(-8.1, a_bpar, b_bpar),
+                        logit_b4 = scaled_logit(-9.9, a_bpar, b_bpar),
+                        logit_b5 = scaled_logit(-0.4, a_bpar, b_bpar),
+                        logit_b6 = scaled_logit(-2.7, a_bpar, b_bpar),
+                        logit_rho = scaled_logit(0.067, a_rho, b_rho),
                         logit_iota = scaled_logit(21, a_iota, b_iota),
-                        logit_tau = scaled_logit( 1 / 6, a_tau, b_tau),
-                        logit_tau2 = scaled_logit(0.15, a_tau2, b_tau2)),
+                        logit_tau = scaled_logit(1.5, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
@@ -359,7 +360,6 @@ kfret <- with(as.list(coef(m0)),
                logit_rho = logit_rho,
                logit_iota = logit_iota,
                logit_tau = logit_tau,
-               logit_tau2 = logit_tau2,
                just_nll = FALSE))
 
 par(mfrow = c(1, 1))
@@ -368,9 +368,9 @@ qqnorm(kfret$ytilde_k[test]/ kfret$S[test]) # evalutate departure from normality
 abline(0, 1)
 
 par(mfrow = c(4, 1))
-plot(case_data$time[-1], kfret$xhat_kkmo["C",] * rho_hat)
-points(case_data$time[-1], kfret$xhat_kk["C",] * rho_hat, col = 2, pch = 2)
-lines(case_data$time[-1], case_data$reports[-1])
+plot(case_data$time[-1], kfret$xhat_kkmo["Ct",])
+points(case_data$time[-1], kfret$xhat_kk["Ct",], col = 2, pch = 2)
+lines(case_data$time[-1], log(case_data$reports[-1] + 1))
 plot(case_data$time[-1], kfret$S, log = "y")
 plot(case_data$time[-1], kfret$ytilde_k)
 plot(case_data$time[-1], kfret$ytilde_k / kfret$S)
@@ -399,16 +399,15 @@ beta_mu_hat <- scaled_expit(coef(m0)["logit_beta_mu"], a_beta_mu, b_beta_mu)
 R0grid <- beta_mu_hat * seasgrid / (365 / 5)
 plot(tgrid, R0grid)
 
-plot(log(case_data$reports[-1] + 1), log(rho_hat * kfret$xhat_kkmo["C",] + 1))
-cor(case_data$reports[-1], rho_hat * kfret$xhat_kkmo["C",]) ^ 2
+plot(log(case_data$reports[-1] + 1), kfret$xhat_kkmo["Ct",])
+cor(log(case_data$reports[-1] + 1), kfret$xhat_kkmo["Ct",]) ^ 2
+cor(case_data$reports[-1], exp(kfret$xhat_kkmo["Ct", ]) - 1) ^ 2
 
-1 - sum((case_data$reports[-1] - rho_hat * kfret$xhat_kkmo["C", ])^2) / sum((case_data$reports[-1] - mean(case_data$reports[-1])) ^ 2)
-
-upper95 <- kfret$xhat_kkmo["C",] + sqrt(kfret$P_kkmo[4, 4, ]) * 1.96
-lower95 <- kfret$xhat_kkmo["C",] - sqrt(kfret$P_kkmo[4, 4, ]) * 1.96
+upper95 <- kfret$xhat_kkmo["Ct",] + sqrt(kfret$P_kkmo[4, 4, ]) * 1.96
+lower95 <- kfret$xhat_kkmo["Ct",] - sqrt(kfret$P_kkmo[4, 4, ]) * 1.96
 lower95 <- ifelse(lower95 < 0, 0, lower95)
 
-plot(case_data$time[-1], (rho_hat * upper95) ^ .5, type = 'l')
-lines(case_data$time[-1], (rho_hat * lower95) ^ .5, type = 'l')
-lines(case_data$time[-1], case_data$reports[-1] ^ .5, col = 2)
-mean(case_data$reports[-1] >= rho_hat * lower95 & case_data$reports[-1] < rho_hat * upper95)
+plot(case_data$time[-1], upper95, type = 'l')
+lines(case_data$time[-1], lower95, type = 'l')
+lines(case_data$time[-1], log(case_data$reports[-1] + 1), col = 2)
+mean(log(case_data$reports[-1] + 1) >  lower95 & log(case_data$reports[-1] + 1) < upper95)
