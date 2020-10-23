@@ -314,7 +314,7 @@ pvec2 <- pvec
 Phat0 <- diag(c(1e4, 1e2, 1e2, 0))
 
 system.time(m0 <- mle2(minuslogl = kfnll, 
-           start = list(logit_beta_mu = scaled_logit(999, a_beta_mu, b_beta_mu), 
+           start = list(logit_beta_mu = scaled_logit(1091, a_beta_mu, b_beta_mu), 
                         logit_S0 = scaled_logit(118e3 * .061, a_S0, b_S0),
                         logit_I0 = scaled_logit(6, a_I0, b_I0),
                         logit_E0 = scaled_logit(2, a_E0, b_E0),
@@ -326,7 +326,7 @@ system.time(m0 <- mle2(minuslogl = kfnll,
                         logit_b6 = scaled_logit(-1.07, a_bpar, b_bpar),
                         logit_rho = scaled_logit(0.1, a_rho, b_rho),
                         logit_iota = scaled_logit(43.94, a_iota, b_iota),
-                        logit_tau = scaled_logit(0.17, a_tau, b_tau)),
+                        logit_tau = scaled_logit(0.27, a_tau, b_tau)),
            method = "Nelder-Mead",
            skip.hessian = TRUE,
            control = list(reltol = 1e-4, trace = 1, maxit = 1000),
