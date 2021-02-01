@@ -22,7 +22,6 @@ library(doParallel)  # functions for parallel computing
 registerDoParallel()
 source("make-pomp-simulator-function.R")
 
-
 all_sims <- tibble()
 
 for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
