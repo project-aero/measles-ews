@@ -26,3 +26,158 @@ construct-fitting-pomps:
     md5: 42549232956a5ca0bda19689dfd2dc1a
   - path: code/measles-pomp-object-Zinder.RDS
     md5: 59c8b5ece0f8df5a0a9f42a45934a81a
+simulate-for-emergence-ews:
+  cmd: podman run -w /root/code --rm --mount type=bind,src=$PWD,dst=/root docker.io/eamon/2019measles:v20200928
+    Rscript simulate-emergence-grid.R
+  deps:
+  - path: code/make-pomp-simulator-function.R
+    md5: cd2c275e5926ad5f13a953b89007212c
+    size: 6725
+  - path: code/simulate-emergence-grid.R
+    md5: 2395096f48fda44eb4c5c242d19bbe2f
+    size: 2245
+  - path: results/initial-mif-lls-Agadez.csv
+    md5: 1a64767c028f0f61468f4d99c46ed598
+    size: 1476645
+  - path: results/initial-mif-lls-Maradi.csv
+    md5: 691fad9c806950df8c19edbeb17219d6
+    size: 1486550
+  - path: results/initial-mif-lls-Niamey.csv
+    md5: 39a1f64e292920f8140294ef7642bd0c
+    size: 1475680
+  - path: results/initial-mif-lls-Zinder.csv
+    md5: 33d4808ce88a542fa0b322dde3504318
+    size: 1485056
+  outs:
+  - path: simulations/emergence-simulations-grid-Agadez-0.1.RDS
+    md5: ec8bbf1985ed432b47fd98a0f0ead1ed
+    size: 8226878
+  - path: simulations/emergence-simulations-grid-Agadez-0.2.RDS
+    md5: 1bbe55adb48194a37efa6aa1a45fb9eb
+    size: 8235612
+  - path: simulations/emergence-simulations-grid-Agadez-0.3.RDS
+    md5: 883b6cfc39093b31e5983396909c3802
+    size: 8247052
+  - path: simulations/emergence-simulations-grid-Agadez-0.4.RDS
+    md5: d125e364b4e58021764609b9f69e0e49
+    size: 8263222
+  - path: simulations/emergence-simulations-grid-Agadez-0.5.RDS
+    md5: 4eab007dcbf7228b0a3d658d459a93e4
+    size: 8279436
+  - path: simulations/emergence-simulations-grid-Agadez-0.6.RDS
+    md5: 4344041a0244646126030a78785efc3b
+    size: 8293909
+  - path: simulations/emergence-simulations-grid-Agadez-0.7.RDS
+    md5: 7a02da0397b606996bbf81e8b2208f54
+    size: 8319366
+  - path: simulations/emergence-simulations-grid-Agadez-0.8.RDS
+    md5: 3c8d59606c6af3d19040ef9153cd960e
+    size: 8339760
+  - path: simulations/emergence-simulations-grid-Agadez-0.9.RDS
+    md5: c0d3b7c94cc67bccdfb40662ca43e3a7
+    size: 8356902
+  - path: simulations/emergence-simulations-grid-Agadez-1.RDS
+    md5: 439c7033fd7f6f95b944430260813b7e
+    size: 8389280
+  - path: simulations/emergence-simulations-grid-Agadez-1e-04.RDS
+    md5: 60044b1f1bf774dd92057fa3732f0e80
+    size: 8212971
+  - path: simulations/emergence-simulations-grid-Maradi-0.1.RDS
+    md5: b982e23c389959da64464e3490044c53
+    size: 8877617
+  - path: simulations/emergence-simulations-grid-Maradi-0.2.RDS
+    md5: 8bfd158b989325b85daab497bf0ca53f
+    size: 8895494
+  - path: simulations/emergence-simulations-grid-Maradi-0.3.RDS
+    md5: ac653dc8e79ff72b45b0822cf23180d5
+    size: 8909047
+  - path: simulations/emergence-simulations-grid-Maradi-0.4.RDS
+    md5: 38e47abf472741a47de45179e161accf
+    size: 8918432
+  - path: simulations/emergence-simulations-grid-Maradi-0.5.RDS
+    md5: 26cf2b5699015a769d5fc2c8f662075d
+    size: 8933830
+  - path: simulations/emergence-simulations-grid-Maradi-0.6.RDS
+    md5: f6d979babfddc5882f276f1c21e876c1
+    size: 8945219
+  - path: simulations/emergence-simulations-grid-Maradi-0.7.RDS
+    md5: 0e30787a5704224460bda69471ffdc07
+    size: 8960876
+  - path: simulations/emergence-simulations-grid-Maradi-0.8.RDS
+    md5: 72085ad758c6b023554d4901863dd1cf
+    size: 8969130
+  - path: simulations/emergence-simulations-grid-Maradi-0.9.RDS
+    md5: 8b5e4eb2fb622fd23fda35b077304b9c
+    size: 8984356
+  - path: simulations/emergence-simulations-grid-Maradi-1.RDS
+    md5: d2f5ffb1226ac4fb5820dad860e7c641
+    size: 8984902
+  - path: simulations/emergence-simulations-grid-Maradi-1e-04.RDS
+    md5: 0cda3ccf7e5ec6a4e77cc8da97115e27
+    size: 8872333
+  - path: simulations/emergence-simulations-grid-Niamey-0.1.RDS
+    md5: 3e18592b746a009cc90dd6c6a39c5276
+    size: 8818286
+  - path: simulations/emergence-simulations-grid-Niamey-0.2.RDS
+    md5: bb51f0a0d879c0574516604dcca8dd65
+    size: 8834742
+  - path: simulations/emergence-simulations-grid-Niamey-0.3.RDS
+    md5: d8eac540ba3f7637ca53c8cbb2656592
+    size: 8843488
+  - path: simulations/emergence-simulations-grid-Niamey-0.4.RDS
+    md5: 5da425cbfbb516180710cb148a1da023
+    size: 8854089
+  - path: simulations/emergence-simulations-grid-Niamey-0.5.RDS
+    md5: 38e0d3e7222cb169de73d2e13eacf4fe
+    size: 8866335
+  - path: simulations/emergence-simulations-grid-Niamey-0.6.RDS
+    md5: 73cfe76d64e48c01ac69b1bea045cf53
+    size: 8874273
+  - path: simulations/emergence-simulations-grid-Niamey-0.7.RDS
+    md5: f85ba1cadd22710a78135d4f57e435a8
+    size: 8875508
+  - path: simulations/emergence-simulations-grid-Niamey-0.8.RDS
+    md5: bfd3ff4a82e94ca689688daad21fb749
+    size: 8863515
+  - path: simulations/emergence-simulations-grid-Niamey-0.9.RDS
+    md5: 7fab87f7e25fffb77bcdd5aef1f212fb
+    size: 8857828
+  - path: simulations/emergence-simulations-grid-Niamey-1.RDS
+    md5: 98decb701fab90991e18c303946a8eea
+    size: 8854482
+  - path: simulations/emergence-simulations-grid-Niamey-1e-04.RDS
+    md5: 36136fb33852b39365ffb0afa53cd6de
+    size: 8808436
+  - path: simulations/emergence-simulations-grid-Zinder-0.1.RDS
+    md5: e3d3040111d33d6d181124dfd0df259f
+    size: 8443253
+  - path: simulations/emergence-simulations-grid-Zinder-0.2.RDS
+    md5: 4dbed4b31207fdbd1be01db22ad4c4f5
+    size: 8464182
+  - path: simulations/emergence-simulations-grid-Zinder-0.3.RDS
+    md5: 33bc136f1a2bec8de9b50f9c6f231498
+    size: 8487817
+  - path: simulations/emergence-simulations-grid-Zinder-0.4.RDS
+    md5: 7216f95e54b558da2c003b12be4c623d
+    size: 8504424
+  - path: simulations/emergence-simulations-grid-Zinder-0.5.RDS
+    md5: 82f949d276b6654bdb76f69624c70001
+    size: 8538732
+  - path: simulations/emergence-simulations-grid-Zinder-0.6.RDS
+    md5: 7bf953e4d3fea2d535bf541f71fbed51
+    size: 8555940
+  - path: simulations/emergence-simulations-grid-Zinder-0.7.RDS
+    md5: f92c5fae127f7333fa83d7ff95a550bb
+    size: 8589579
+  - path: simulations/emergence-simulations-grid-Zinder-0.8.RDS
+    md5: 2026a9f2266be76faf1bbe01d640b991
+    size: 8612173
+  - path: simulations/emergence-simulations-grid-Zinder-0.9.RDS
+    md5: cdeee5c9f1c9519627d3557439c024ed
+    size: 8618686
+  - path: simulations/emergence-simulations-grid-Zinder-1.RDS
+    md5: 96fd721f6614b52f49ad7ee35c06b3e8
+    size: 8627671
+  - path: simulations/emergence-simulations-grid-Zinder-1e-04.RDS
+    md5: dc43a337f7ca72ec01dd321a10905cbe
+    size: 8427373
