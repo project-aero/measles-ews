@@ -282,3 +282,110 @@ analyze-emergence-ews:
   - path: results/ews-emergence.csv
     md5: d4aedda1c7cf0f9b95137852052b8d30
     size: 15679000
+simulate-for-elimination-ews:
+  cmd: podman run -w /root/code --rm --mount type=bind,src=$PWD,dst=/root docker.io/eamon/2019measles:v20200928
+    Rscript simulate-elimination-grid.R
+  deps:
+  - path: code/make-pomp-simulator-function.R
+    md5: cd2c275e5926ad5f13a953b89007212c
+    size: 6725
+  - path: code/measles-pomp-object-Agadez.RDS
+    md5: 3913cbeee426f300a15723310b9dfcf2
+    size: 94089
+  - path: code/measles-pomp-object-Maradi.RDS
+    md5: de0317c0846d6f35269fab79ec7cb2da
+    size: 94641
+  - path: code/measles-pomp-object-Niamey.RDS
+    md5: 42549232956a5ca0bda19689dfd2dc1a
+    size: 94361
+  - path: code/measles-pomp-object-Zinder.RDS
+    md5: 59c8b5ece0f8df5a0a9f42a45934a81a
+    size: 94142
+  - path: code/simulate-elimination-grid.R
+    md5: 0ff71994157dcaaf3af6e6d7c5669900
+    size: 6700
+  - path: results/initial-mif-lls-Agadez.csv
+    md5: 1a64767c028f0f61468f4d99c46ed598
+    size: 1476645
+  - path: results/initial-mif-lls-Maradi.csv
+    md5: 691fad9c806950df8c19edbeb17219d6
+    size: 1486550
+  - path: results/initial-mif-lls-Niamey.csv
+    md5: 39a1f64e292920f8140294ef7642bd0c
+    size: 1475680
+  - path: results/initial-mif-lls-Zinder.csv
+    md5: 33d4808ce88a542fa0b322dde3504318
+    size: 1485056
+  outs:
+  - path: simulations/elimination-simulations-grid-Agadez-1.5e-05.RDS
+    md5: dae1f6dfc6ff6a99df4c8f0afd2d30b0
+    size: 35496012
+  - path: simulations/elimination-simulations-grid-Agadez-1e-04.RDS
+    md5: efc4069098b26676ec650be3d8393dc5
+    size: 29596920
+  - path: simulations/elimination-simulations-grid-Agadez-3.2e-05.RDS
+    md5: 66e6b68dabc5ab29c450acc0b93c73bc
+    size: 33260574
+  - path: simulations/elimination-simulations-grid-Agadez-4.9e-05.RDS
+    md5: 0db990abf6c8fde5e182032cb2668adf
+    size: 31590657
+  - path: simulations/elimination-simulations-grid-Agadez-6.6e-05.RDS
+    md5: ec392525a27e902f339862d04c8dba5f
+    size: 30822679
+  - path: simulations/elimination-simulations-grid-Agadez-8.3e-05.RDS
+    md5: a82c44d1183fb753d9a3cf6b9cf657c5
+    size: 30322630
+  - path: simulations/elimination-simulations-grid-Maradi-1.5e-05.RDS
+    md5: d10fc942f2fb33d244e497d1c2851483
+    size: 36844889
+  - path: simulations/elimination-simulations-grid-Maradi-1e-04.RDS
+    md5: e2d3bd035ebb736a5079b103c2c8404f
+    size: 30562983
+  - path: simulations/elimination-simulations-grid-Maradi-3.2e-05.RDS
+    md5: f0e3165078eefb7bfce31e07961257bb
+    size: 34383060
+  - path: simulations/elimination-simulations-grid-Maradi-4.9e-05.RDS
+    md5: ade020e91484b719f88f7cf3ec672213
+    size: 32635351
+  - path: simulations/elimination-simulations-grid-Maradi-6.6e-05.RDS
+    md5: 051c4eb9a550587c3bbf132a223e1259
+    size: 31823878
+  - path: simulations/elimination-simulations-grid-Maradi-8.3e-05.RDS
+    md5: 447071e67fc7ef016f31031f160a4dd6
+    size: 31296372
+  - path: simulations/elimination-simulations-grid-Niamey-1.5e-05.RDS
+    md5: b327d4a4360d7082973c9abe5c4c415a
+    size: 36630524
+  - path: simulations/elimination-simulations-grid-Niamey-1e-04.RDS
+    md5: 49321c87fc3475a82af13eec5f2b503e
+    size: 30315723
+  - path: simulations/elimination-simulations-grid-Niamey-3.2e-05.RDS
+    md5: 9be24d302ea9952992aaf369d029d557
+    size: 34149332
+  - path: simulations/elimination-simulations-grid-Niamey-4.9e-05.RDS
+    md5: 97b99ec3e3ba256d1368a2fe03b67800
+    size: 32390752
+  - path: simulations/elimination-simulations-grid-Niamey-6.6e-05.RDS
+    md5: defbab7acce0a033c5f16d5cfc86e180
+    size: 31584939
+  - path: simulations/elimination-simulations-grid-Niamey-8.3e-05.RDS
+    md5: 031c717a113fb5c3654f4b08abf14841
+    size: 31048646
+  - path: simulations/elimination-simulations-grid-Zinder-1.5e-05.RDS
+    md5: 3a435e215b7a2dfb491f24916b4e3a9f
+    size: 35929653
+  - path: simulations/elimination-simulations-grid-Zinder-1e-04.RDS
+    md5: f83ec465332980b66d5b5f72c4b5aee2
+    size: 29890519
+  - path: simulations/elimination-simulations-grid-Zinder-3.2e-05.RDS
+    md5: 8b31c4927655de0f260750dc6cf8ef4d
+    size: 33608939
+  - path: simulations/elimination-simulations-grid-Zinder-4.9e-05.RDS
+    md5: b2d4d1a7b323aaf65a4241514b0d6ca1
+    size: 31910636
+  - path: simulations/elimination-simulations-grid-Zinder-6.6e-05.RDS
+    md5: a97017b6ba58c7acaf144aedf6674fad
+    size: 31128779
+  - path: simulations/elimination-simulations-grid-Zinder-8.3e-05.RDS
+    md5: f36adb8f618f1d874efaa0701f98d885
+    size: 30618745

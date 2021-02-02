@@ -110,3 +110,42 @@ stages:
     - results/emergence-bandwidths.csv
     - results/emergence-grid-aucs.csv
     - results/ews-emergence.csv
+  simulate-for-elimination-ews:
+    cmd: podman run -w /root/code --rm --mount type=bind,src=$PWD,dst=/root docker.io/eamon/2019measles:v20200928
+      Rscript simulate-elimination-grid.R
+    deps:
+    - code/make-pomp-simulator-function.R
+    - code/measles-pomp-object-Agadez.RDS
+    - code/measles-pomp-object-Maradi.RDS
+    - code/measles-pomp-object-Niamey.RDS
+    - code/measles-pomp-object-Zinder.RDS
+    - code/simulate-elimination-grid.R
+    - results/initial-mif-lls-Agadez.csv
+    - results/initial-mif-lls-Maradi.csv
+    - results/initial-mif-lls-Niamey.csv
+    - results/initial-mif-lls-Zinder.csv
+    outs:
+    - simulations/elimination-simulations-grid-Agadez-1.5e-05.RDS
+    - simulations/elimination-simulations-grid-Agadez-1e-04.RDS
+    - simulations/elimination-simulations-grid-Agadez-3.2e-05.RDS
+    - simulations/elimination-simulations-grid-Agadez-4.9e-05.RDS
+    - simulations/elimination-simulations-grid-Agadez-6.6e-05.RDS
+    - simulations/elimination-simulations-grid-Agadez-8.3e-05.RDS
+    - simulations/elimination-simulations-grid-Maradi-1.5e-05.RDS
+    - simulations/elimination-simulations-grid-Maradi-1e-04.RDS
+    - simulations/elimination-simulations-grid-Maradi-3.2e-05.RDS
+    - simulations/elimination-simulations-grid-Maradi-4.9e-05.RDS
+    - simulations/elimination-simulations-grid-Maradi-6.6e-05.RDS
+    - simulations/elimination-simulations-grid-Maradi-8.3e-05.RDS
+    - simulations/elimination-simulations-grid-Niamey-1.5e-05.RDS
+    - simulations/elimination-simulations-grid-Niamey-1e-04.RDS
+    - simulations/elimination-simulations-grid-Niamey-3.2e-05.RDS
+    - simulations/elimination-simulations-grid-Niamey-4.9e-05.RDS
+    - simulations/elimination-simulations-grid-Niamey-6.6e-05.RDS
+    - simulations/elimination-simulations-grid-Niamey-8.3e-05.RDS
+    - simulations/elimination-simulations-grid-Zinder-1.5e-05.RDS
+    - simulations/elimination-simulations-grid-Zinder-1e-04.RDS
+    - simulations/elimination-simulations-grid-Zinder-3.2e-05.RDS
+    - simulations/elimination-simulations-grid-Zinder-4.9e-05.RDS
+    - simulations/elimination-simulations-grid-Zinder-6.6e-05.RDS
+    - simulations/elimination-simulations-grid-Zinder-8.3e-05.RDS
