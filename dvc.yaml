@@ -73,3 +73,36 @@ stages:
     - simulations/emergence-simulations-grid-Zinder-0.9.RDS
     - simulations/emergence-simulations-grid-Zinder-1.RDS
     - simulations/emergence-simulations-grid-Zinder-1e-04.RDS
+  analyze-emergence-ews:
+    cmd: podman run -w /root/code --rm --mount type=bind,src=$PWD,dst=/root docker.io/eamon/2019measles:v20200928
+      Rscript analyze-emergence-grid-sims.R
+    deps:
+    - code/analyze-emergence-grid-sims.R
+    - simulations/emergence-simulations-grid-Agadez-0.1.RDS
+    - simulations/emergence-simulations-grid-Agadez-0.2.RDS
+    - simulations/emergence-simulations-grid-Agadez-0.3.RDS
+    - simulations/emergence-simulations-grid-Agadez-0.4.RDS
+    - simulations/emergence-simulations-grid-Agadez-0.5.RDS
+    - simulations/emergence-simulations-grid-Agadez-1e-04.RDS
+    - simulations/emergence-simulations-grid-Maradi-0.1.RDS
+    - simulations/emergence-simulations-grid-Maradi-0.2.RDS
+    - simulations/emergence-simulations-grid-Maradi-0.3.RDS
+    - simulations/emergence-simulations-grid-Maradi-0.4.RDS
+    - simulations/emergence-simulations-grid-Maradi-0.5.RDS
+    - simulations/emergence-simulations-grid-Maradi-1e-04.RDS
+    - simulations/emergence-simulations-grid-Niamey-0.1.RDS
+    - simulations/emergence-simulations-grid-Niamey-0.2.RDS
+    - simulations/emergence-simulations-grid-Niamey-0.3.RDS
+    - simulations/emergence-simulations-grid-Niamey-0.4.RDS
+    - simulations/emergence-simulations-grid-Niamey-0.5.RDS
+    - simulations/emergence-simulations-grid-Niamey-1e-04.RDS
+    - simulations/emergence-simulations-grid-Zinder-0.1.RDS
+    - simulations/emergence-simulations-grid-Zinder-0.2.RDS
+    - simulations/emergence-simulations-grid-Zinder-0.3.RDS
+    - simulations/emergence-simulations-grid-Zinder-0.4.RDS
+    - simulations/emergence-simulations-grid-Zinder-0.5.RDS
+    - simulations/emergence-simulations-grid-Zinder-1e-04.RDS
+    outs:
+    - results/emergence-bandwidths.csv
+    - results/emergence-grid-aucs.csv
+    - results/ews-emergence.csv
