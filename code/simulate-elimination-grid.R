@@ -41,7 +41,7 @@ if(parallel::detectCores() <= length(speed_grid)){
 
 source("make-pomp-simulator-function.R")
 
-for(do_city in c("Niamey")){
+for(do_city in c("Agadez", "Maradi", "Niamey", "Zinder")){
   
   # Load fitted parameters and pomp model -----------------------------------
   
@@ -82,7 +82,7 @@ for(do_city in c("Niamey")){
   
   outsims <- foreach(i = speed_grid,
                      .packages = c("pomp", "tidyverse", "dplyr"), 
-                     .combine = "rbind") %do%
+                     .combine = "rbind") %dopar%
   {
     years <- 100
     weeks <- years*52
@@ -120,128 +120,11 @@ for(do_city in c("Niamey")){
 
     outfile <- paste0("../simulations/elimination-simulations-grid-",
                       do_city, "-", i, ".RDS")
-    #saveRDS(object = tmp_re_sims, file = outfile)
+    saveRDS(object = tmp_re_sims, file = outfile)
   }
   
 }
 
-
-# Make maps of skips to S
-
-prevacc <- model_sims %>% filter(time >= 20 & time < 50)
-postvac <- model_sims %>% filter(time >= 50 & time < 80)
-
-presplit_sim <- split(prevacc, prevacc$sim)
-postsplit_sim <- split(postvac, postvac$sim)
-
-simsum <- function(sm){
-  Slo <- loess(S~time, data = sm, span = 52 / (nrow(sm) * 2))
-  sm$Ssmooth <- predict(Slo)
-  sdrop <- diff(sm$Ssmooth) < 0
-  is_epi <- c(FALSE, sdrop)
-  epirle <- rle(is_epi)
-  is_scrap <- epirle$lengths[!epirle$values] < 5
-  epirle$values[!epirle$values][is_scrap] <- TRUE 
-  epirle$values[!epirle$values] <- 1 + seq(1, sum(!epirle$values))
-  iepids <- inverse.rle(epirle)
-  
-  miep <- max(iepids)
-  splt <- split(sm$S, iepids)
-  splt_time <- split(sm$time, iepids)
-  trimsplt <- splt[-miep][-1]
-  trimsplt_time <- splt_time[-miep][-1]
-  
-  iep_lens <- sapply(trimsplt, length)
-  iep_s0 <- sapply(trimsplt, "[", 1)
-  iep_sfin <- mapply(function(x, y) x[y], x = trimsplt, y = iep_lens)
-  iep_tfin <- mapply(function(x, y) x[y], x = trimsplt_time, y = iep_lens)
-  epi_sizes <- c(iep_sfin[-length(iep_lens)] - iep_s0[-1], NA)
-  data.frame(s0 = iep_s0, sfin = iep_sfin, tfin = iep_tfin, 
-             iep_weeks = iep_lens, epi_sizes = epi_sizes)
-}
-
-
-presimsums <- lapply(presplit_sim, simsum)  
-postsimsums <- lapply(postsplit_sim, simsum)
-
-premapdata <- do.call(rbind, presimsums)
-postmapdata <- do.call(rbind, postsimsums)
-
-plot(iep_weeks ~ s0, data = premapdata)
-points(iep_weeks ~s0, data = postmapdata, col = 2)
-
-premapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% density %>% plot
-postmapdata %>% filter(s0 < 25000 & s0 > 20000) %>% pull("iep_weeks") %>% density %>% plot
-
-# Make map of epi size to S and Time of start
-
-plot(epi_sizes ~ sfin, data = premapdata, xlim = c(2e4, 8e4), ylim = c(0, 7e4))
-plot(epi_sizes ~ sfin, data = postmapdata, xlim = c(2e4, 8e4), ylim = c(0, 7e4))
-
-premapdata$season <- premapdata$tfin + 0.5 - trunc(premapdata$tfin + 0.5)
-postmapdata$season <- postmapdata$tfin + 0.5 - trunc(postmapdata$tfin + 0.5)
-
-plot(epi_sizes ~ season, data = postmapdata)
-plot(epi_sizes ~ season, data = premapdata)
-
-# Compare relationship of epi size and time of year by vaccination program
-
-premapdata$vacc <- 0
-postmapdata$vacc <- 1
-
-mapdata <- rbind(premapdata, postmapdata)
-
-mapgam <- mgcv::gam(epi_sizes ~ s(sfin) + s(season) + vacc, data = mapdata)
-anova(mapgam)
-
-### The increasing vaccination rates reduce epidemic sizes but this effect is 
-### much smaller than S0 and seasonality. Leaving it out reduces the deviance negligably (<1% change).
-
-library(ggplot2)
-
-g <- ggplot(data = mapdata, aes(x = season, y = sfin)) + geom_point() + 
-  geom_density2d() + facet_wrap(~vacc)
-plot(g)
-
-## The distribution of Sfin is shifted up a few thousand in the initial vaccinatino program.
-
-g <- ggplot(data = mapdata, aes(x = iep_weeks)) + geom_histogram() + facet_grid(vacc~.)
-g
-
-mapdata %>% group_by(vacc) %>% summarise(meaniep = mean(iep_weeks))
-
-## There are more 1-year ieps in the initial vaccination regime and the mean iep is acctualy slightly larger.
-
-simsplt <- split(model_sims, model_sims$sim)
-
-filtcalc <- function(df, filter_len = 10){
-  df$year <- round(df$time)
-  splt <- split(df, df$year)
-  yrd <- sapply(splt, function(x) sum(x$cases))
-  yf <- stats::filter(yrd, filter = filter_len:1, sides = 1,
-                      method = "convolution")
-  yr <- as.integer(names(splt))
-  data.frame(year = yr[-1], tot_cases = yrd[-1], max_cases = yrd[1],
-             filt = as.numeric(yf[-length(yf)]))
-}
-
-simproc <- lapply(simsplt, filtcalc)
-simyr <- bind_rows(simproc, .id = "sim")
-
-simyr$camp <- 1
-simyr$camp[simyr$year < 50] <- 0
-simyrwin <- simyr %>% filter(year > 20 & year < 80)
-
-filtstat <- function(df){
-  m <- lm(I(tot_cases - max_cases) ~ 0 + filt + filt:camp, data = df)
-  m2 <- lm(tot_cases ~ camp, data = df)
-  c(coef(m)["filt:camp"], coef(m2)["camp"])
-}
-
-splityr <- split(simyrwin, simyrwin$sim)
-inhibs <- sapply(splityr, filtstat)
-
-rowMeans(inhibs < 0)
 
 # Extra code --------
 
