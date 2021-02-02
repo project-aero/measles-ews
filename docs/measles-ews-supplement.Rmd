@@ -738,9 +738,9 @@ param_summaries <- mle_and_boots %>%
     parameter = ifelse(parameter == "beta_sd", "$\\sigma$", parameter),
     parameter = ifelse(parameter == "rho", "$\\rho$", parameter),
     parameter = ifelse(parameter == "iota", "$\\psi$", parameter),
-    parameter = ifelse(parameter == "S_0", "$S_{t=0}$", parameter),
-    parameter = ifelse(parameter == "E_0", "$E_{t=0}$", parameter),
-    parameter = ifelse(parameter == "I_0", "$I_{t=0}$", parameter),
+    parameter = ifelse(parameter == "S_0", "$S_{t=0} / N_{t=0}$", parameter),
+    parameter = ifelse(parameter == "E_0", "$E_{t=0} / N_{t=0}$", parameter),
+    parameter = ifelse(parameter == "I_0", "$I_{t=0} / N_{t=0}$", parameter),
     parameter = ifelse(parameter == "tau", "$\\tau$", parameter)
   ) %>%
   select(parameter, mle, mean_value, median_value, std_dev, lower_95_ci, upper_95_ci, city) %>%

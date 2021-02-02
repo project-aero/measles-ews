@@ -1,0 +1,4 @@
+[core]
+    remote = rsync.net
+['remote "rsync.net"']
+    url = ssh://7121@usw-s007.rsync.net/data1/home/7121/measles-ews-dvc
