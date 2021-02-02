@@ -182,3 +182,4 @@ stages:
     - results/elimination-bandwidths.csv
     - results/elimination-grid-aucs.csv
     - results/ews-elimination.csv
+    - simulations/single-elimination-example.RDS

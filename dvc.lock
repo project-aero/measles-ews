@@ -478,3 +478,6 @@ analyze-elimination-ews:
   - path: results/ews-elimination.csv
     md5: 5b9ec48728a02ed7851328aaaefa99b2
     size: 16645017
+  - path: simulations/single-elimination-example.RDS
+    md5: 482ccf95a23f8ef80dd74a6771e2b40e
+    size: 41644
