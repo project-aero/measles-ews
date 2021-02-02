@@ -23,6 +23,10 @@ stages:
       Rscript simulate-emergence-grid.R
     deps:
     - code/make-pomp-simulator-function.R
+    - code/measles-pomp-object-Agadez.RDS
+    - code/measles-pomp-object-Maradi.RDS
+    - code/measles-pomp-object-Niamey.RDS
+    - code/measles-pomp-object-Zinder.RDS
     - code/simulate-emergence-grid.R
     - results/initial-mif-lls-Agadez.csv
     - results/initial-mif-lls-Maradi.csv

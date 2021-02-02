@@ -7,6 +7,10 @@ dvc run \
     -d results/initial-mif-lls-Maradi.csv \
     -d results/initial-mif-lls-Niamey.csv \
     -d results/initial-mif-lls-Zinder.csv \
+    -d code/measles-pomp-object-Agadez.RDS \
+    -d code/measles-pomp-object-Maradi.RDS \
+    -d code/measles-pomp-object-Niamey.RDS \
+    -d code/measles-pomp-object-Zinder.RDS \
     -o simulations/emergence-simulations-grid-Agadez-1e-04.RDS \
     -o simulations/emergence-simulations-grid-Agadez-0.1.RDS \
     -o simulations/emergence-simulations-grid-Agadez-0.2.RDS \

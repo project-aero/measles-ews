@@ -33,6 +33,18 @@ simulate-for-emergence-ews:
   - path: code/make-pomp-simulator-function.R
     md5: cd2c275e5926ad5f13a953b89007212c
     size: 6725
+  - path: code/measles-pomp-object-Agadez.RDS
+    md5: 3913cbeee426f300a15723310b9dfcf2
+    size: 94089
+  - path: code/measles-pomp-object-Maradi.RDS
+    md5: de0317c0846d6f35269fab79ec7cb2da
+    size: 94641
+  - path: code/measles-pomp-object-Niamey.RDS
+    md5: 42549232956a5ca0bda19689dfd2dc1a
+    size: 94361
+  - path: code/measles-pomp-object-Zinder.RDS
+    md5: 59c8b5ece0f8df5a0a9f42a45934a81a
+    size: 94142
   - path: code/simulate-emergence-grid.R
     md5: 2395096f48fda44eb4c5c242d19bbe2f
     size: 2245
