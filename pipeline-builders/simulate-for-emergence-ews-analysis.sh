@@ -57,3 +57,39 @@ dvc run \
     --mount type=bind,src='$PWD',dst=/root \
     docker.io/eamon/2019measles:v20200928 \
     Rscript simulate-emergence-grid.R
+    
+dvc run \
+    -d code/analyze-emergence-grid-sims.R \
+    -d simulations/emergence-simulations-grid-Agadez-1e-04.RDS \
+    -d simulations/emergence-simulations-grid-Agadez-0.1.RDS \
+    -d simulations/emergence-simulations-grid-Agadez-0.2.RDS \
+    -d simulations/emergence-simulations-grid-Agadez-0.3.RDS \
+    -d simulations/emergence-simulations-grid-Agadez-0.4.RDS \
+    -d simulations/emergence-simulations-grid-Agadez-0.5.RDS \
+    -d simulations/emergence-simulations-grid-Maradi-1e-04.RDS \
+    -d simulations/emergence-simulations-grid-Maradi-0.1.RDS \
+    -d simulations/emergence-simulations-grid-Maradi-0.2.RDS \
+    -d simulations/emergence-simulations-grid-Maradi-0.3.RDS \
+    -d simulations/emergence-simulations-grid-Maradi-0.4.RDS \
+    -d simulations/emergence-simulations-grid-Maradi-0.5.RDS \
+    -d simulations/emergence-simulations-grid-Zinder-1e-04.RDS \
+    -d simulations/emergence-simulations-grid-Zinder-0.1.RDS \
+    -d simulations/emergence-simulations-grid-Zinder-0.2.RDS \
+    -d simulations/emergence-simulations-grid-Zinder-0.3.RDS \
+    -d simulations/emergence-simulations-grid-Zinder-0.4.RDS \
+    -d simulations/emergence-simulations-grid-Zinder-0.5.RDS \
+    -d simulations/emergence-simulations-grid-Niamey-1e-04.RDS \
+    -d simulations/emergence-simulations-grid-Niamey-0.1.RDS \
+    -d simulations/emergence-simulations-grid-Niamey-0.2.RDS \
+    -d simulations/emergence-simulations-grid-Niamey-0.3.RDS \
+    -d simulations/emergence-simulations-grid-Niamey-0.4.RDS \
+    -d simulations/emergence-simulations-grid-Niamey-0.5.RDS \
+    -o results/emergence-bandwidths.csv \
+    -o results/ews-emergence.csv \
+    -o results/emergence-grid-aucs.csv \
+    --force \
+    -n analyze-emergence-ews \
+    podman run -w /root/code --rm \
+    --mount type=bind,src='$PWD',dst=/root \
+    docker.io/eamon/2019measles:v20200928 \
+    Rscript analyze-emergence-grid-sims.R
