@@ -773,7 +773,7 @@ var_auc <- round(calc_auc(variance_cats$variance, variance_cats$cat),2)
 
 ggplot(data = all_variances, aes(x = log(variance + 1), fill = interval)) +
   geom_density(size = 0.5, alpha = 0.65, color = "white") +
-  annotate(geom = "text", x = 10, y = 0.4, size = 3, family = "Times",
+  annotate(geom = "text", x = 9.5, y = 0.4, size = 3, family = "Times",
            label = paste("area under the curve:", var_auc)) +
   scale_fill_manual(values = mycols, name = "interval",
                     labels = c("null", "test")) +
