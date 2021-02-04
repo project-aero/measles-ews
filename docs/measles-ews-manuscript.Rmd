@@ -915,7 +915,7 @@ The funders had no role in study design, data collection and analysis, decision 
 This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
 
 # Authors' contributions
-ATT concieved of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
+ATT conceived of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
 All authors gave final approval for publication and agree to be held accountable for the work performed therein.
 
 # References
