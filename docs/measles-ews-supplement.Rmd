@@ -1,7 +1,13 @@
 ---
 title: "Supporting Information for:"
 subtitle: "Anticipating disease emergence and elimination: a test of early warning signals using empirically based models"
-author: "Andrew T. Tredennick, Eamon O'Dea, TBD, Pejman Rohani, John M. Drake"
+author: 
+ - Andrew T. Tredennick
+ - Eamon B. O'Dea
+ - Matthew J. Ferrari
+ - Andrew W. Park
+ - Pejman Rohani
+ - John M. Drake
 output: 
   pdf_document:
     number_sections: true

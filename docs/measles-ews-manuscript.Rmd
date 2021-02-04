@@ -1,14 +1,17 @@
 ---
 title: "Anticipating disease emergence and elimination: a test of early warning signals using empirically based models"
 author:
-  - name: "Andrew T. Tredennick"
+  - name: "Andrew T. Tredennick*"
     affiliation: UGA,CEID
     footnote: "Current address: Western EcoSystems Technology, Inc., 200 S. Second Street, Laramie, WY 82070, USA"
     email: atredenn@gmail.com
-  - name: "Eamon B. O'Dea"
+  - name: "Eamon B. O'Dea*"
     affiliation: UGA,CEID
-  - name: "TBD"
-    affiliation: other
+    email: ebodea@uga.edu
+  - name: "Matthew J. Ferrari"
+    affiliation: CIDDBIO
+  - name: "Andrew W. Park"
+    affiliation: UGA,CEID,ID
   - name: "Pejman Rohani"
     affiliation: UGA,CEID,ID
   - name: "John M. Drake"
@@ -17,10 +20,10 @@ author:
 address:
   - code: UGA
     address: "Odum School of Ecology, University of Georgia, Athens, GA 30602, USA"
+  - code: CIDDBIO
+    address: "The Center for Infectious Disease Dynamics and Department of Biology, The Pennsylvania State University, University Park, PA 16802, USA"
   - code: CEID
     address: "Center for the Ecology of Infectious Diseases, University of Georgia, Athens, GA 30602, USA"
-  - code: other
-    address: "A University of Somewhere"
   - code: ID
     address: "Department of Infectious Diseases, University of Georgia, Athens, GA 30602, USA"
 abstract: |
@@ -903,7 +906,8 @@ But there will always be a role for expert judgment.
 Early warning signals, though powerful and now accompanied with additional support, will likely be just one part of a decision-support toolkit.
 
 # Acknowledgements
-We thank Tobias Brett and Andrew Park for comments on the modeling approach, and Paige Miller and Éric Marty for helpful comments on early versions of this work.
+We thank Tobias Brett for comments on the modeling approach and Paige Miller and Éric Marty for helpful comments on early versions of this work.
+We thank Epicentre/MSF-OCP and the Niger Ministry of Health for making the data available.
 
 # Funding
 This research was funded by the National Institute of General Medical Sciences of the National Institutes of Health (Award Number U01GM110744).
