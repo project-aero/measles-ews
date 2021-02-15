@@ -297,8 +297,8 @@ Last, we calculated summary statistics (mean, median, quantiles) from the distri
 We used the MLE parameter sets to make one-week-ahead predictions and compared observed and expected case counts.
 To make one-week-ahead predictions, we used particle filtering with 50,000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
-In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarking models: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model (electronic supplement).
-We fit the benchmarking models to the observed data and then compared models using Akaike's Information Criterion (AIC) to account for differences in the number of model parameters [@Akaike1973].
+In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarks: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model (electronic supplement).
+We fit the benchmark models to the observed data and then compared models using Akaike's Information Criterion (AIC) to account for differences in the number of model parameters [@Akaike1973].
 
 ## Simulating re-emergence
 To simulate re-emergence of measles, we manipulated the initial size of the susceptible pool to simulate an increase from low $R_E(t)$ to high $R_E(t)$.
@@ -328,7 +328,7 @@ We ran simulations across six vaccination ``speeds'' (the rate at which $p \righ
 As in the re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant equilibrium population size. 
 
 We then split each time series into null and test intervals for calculating EWS.
-We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which vaccination coverage reached the vaccination threshold of $1 - 1/\max(R_0 (t))$ (figure \ref{elim-aucs}*a*).
+We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which vaccination coverage reached the vaccination threshold of $1 - 1/\max(R_0 (t))$ (figure \ref{elim-aucs}*a*);
 $\max(R_0(t))$ was approximated for each city using the MLE parameters as: $\max(R_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
 We define the null interval as the window of time that ends at the start of the vaccination campaign (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
 EWS were then calculated for each interval.
@@ -564,7 +564,7 @@ Stochastic simulations of the models displayed dynamics typical of each city (fi
 Our model for Agadez performs poorly relative to the other cities, but still better than non-mechanistic models (table S1).
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables S4-S7).
 
-The EWS generally perform as expected by theory on the approach to re-emergence.
+The EWS generally performed as expected by theory on the approach to re-emergence.
 Most EWS increased as the critical transition is approached, resulting in AUC values above 0.5 and near 1 (figure \ref{emerge-aucs}).
 Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities.
 Thus, these metrics are unreliable.
@@ -888,7 +888,7 @@ fracs_less_than_half <- outbreak_years %>%
 percs <- fracs_less_than_half$frac_less*100
 ```
 
-A potential limitation of our findings is that the susceptible discount factors in our simulations study (figure \ref{emerge-aucs}*c*) might be smaller than the factors that occur in reality.
+A potential limitation of our findings is that the susceptible discount factors in our simulation study (figure \ref{emerge-aucs}*c*) might be smaller than the factors that occur in reality.
 A smaller discount factor corresponds to a larger level of susceptible depletion.
 To check the relevance of this limitation, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (electronic supplement).
 We found that susceptible depletion was less than 0.5, the smallest susceptible depletion level we tested, for `r round(percs[1], 1)`% of outbreaks in Agadez, `r round(percs[2])`% of outbreaks in Maradi, `r round(percs[3])`% of outbreaks in Niamey, and `r round(percs[4])`% of outbreaks in Zinder.
@@ -896,7 +896,7 @@ These statistics do not detract from our main findings of CSD in measles dynamic
 For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{emerge-aucs}*c*).
 Thus, our analysis methods are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
-Our results should encourage efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
+Our results support efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
 We have shown that critical slowing down precedes tipping points in stochastic models that were fit to data with state-of-the-art methods, but how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
 Emerging technologies like artificial intelligence might offer new ways to find optimal detection thresholds for early warning signals.
 But there will always be a role for expert judgment.
