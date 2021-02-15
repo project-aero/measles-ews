@@ -900,11 +900,12 @@ These statistics do not detract from our main findings of CSD in measles dynamic
 For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{emerge-aucs}*c*).
 Thus, our analysis methods are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
-Our results support efforts to develop model-independent early warning systems for infectious diseases [@Han2016].
-We have shown that critical slowing down precedes tipping points in stochastic models that were fit to data with state-of-the-art methods, but how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
+Unpredictable, recurring outbreaks with seasonality in transmission such as those observed for measles in Niger during 1995--2005 are challenging settings for the application of EWS in part because theoretical predictions of EWS behavior [@ORegan2018;@Brett2017] are typically restricted to models with simpler dynamics. 
+Consequently, the development of robust, model-independent early warning systems for infectious diseases [@Han2016] likely will benefit from study of the behavior of EWS in more complex models.
+Also, although we have shown that critical slowing down precedes tipping points in stochastic models that were fit to data with state-of-the-art methods, how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
 Emerging technologies like artificial intelligence might offer new ways to find optimal detection thresholds for early warning signals.
 But there will always be a role for expert judgment.
-Early warning signals, though powerful and now accompanied with additional support, will likely be just one part of a decision-support toolkit.
+Early warning signals, although powerful and now accompanied with additional support, will likely be just one part of a decision-support toolkit.
 
 # Acknowledgements
 We thank Tobias Brett for comments on the modeling approach and Paige Miller and Éric Marty for helpful comments on early versions of this work.
