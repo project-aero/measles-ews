@@ -221,15 +221,15 @@ E_{t+\Delta t} - E_t &= n_{E,t} - n_{I,t} \\
 I_{t+\Delta t} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
-\noindent{}where $dt$ is a time step of $\text{year} / 365$, and $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
+\noindent{}where $\Delta t$ is a time step of $\text{year} / 365$, and $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+\Delta t$.
 $n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious indiviuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
-The stochastic random variables are specified as follows:
+The stochastic random variables are distributed as:
 
 \begin{align}
-n_{S,t} &\sim \text{Poisson}(\mu_t (1 - p) N_t \times dt) \\
+n_{S,t} &\sim \text{Poisson}(\mu_t (1 - p) N_t \times \Delta t) \\
 n_{E,t} &\sim \text{Binomial}( S_{t}, \lambda_{E,t}) \\
 n_{I,t} &\sim \text{Binomial}( E_{t}, \lambda_{I,t}) \\
-n_{O,t} &\sim \text{Poisson}(\psi \times dt) \\
+n_{O,t} &\sim \text{Poisson}(\psi \times \Delta t) \\
 n_{R,t} &\sim \text{Binomial}( I_{t}, \lambda_{R,t}),
 \end{align}
 
@@ -237,9 +237,9 @@ n_{R,t} &\sim \text{Binomial}( I_{t}, \lambda_{R,t}),
 These probabilities reflect the processes of transmission, transition from the latent period to the infectious period, and recovery, which we model as:
 
 \begin{align}
-\lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t dt}{N_t}} \\
-\lambda_{I,t} &= 1 - e^{-\eta E_{t} dt} \\
-\lambda_{R,t} &= 1 - e^{-\gamma I_{t} dt},
+\lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t \Delta t}{N_t}} \\
+\lambda_{I,t} &= 1 - e^{-\eta E_{t} \Delta t} \\
+\lambda_{R,t} &= 1 - e^{-\gamma I_{t} \delta t},
 \end{align}
 
 \noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of progression from the exposed class to the infectious class, and $\gamma$ is a time-invariant recovery rate.
@@ -249,12 +249,11 @@ We model the rate of transmission as,
 \beta_t = \beta \left(1 + \exp \left( \sum^6_{i=1} q_i \xi_{i_{t}} \right) \right) \Gamma_t,
 \end{equation}
 
-\comment{I have corrected the above equation to match code/make-pomp-filtering-functions.R and code/make-pomp-simulation-functions.R}
 \noindent{} where $\beta$ is the minimum transmission rate over the season, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
 
-We do not include death events in the model because the rate of infection is much faster than the rate of death.
+We do not include death in the model because the rate of infection is much faster than the rate of death.
 Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
 We model demographic stochasticity in births and imported infections by drawing time-specific values from Poisson distributions.
 In this model, the effective reproduction number at time $t$ may be approximated as: $R_E(t) \approx \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$.
@@ -269,17 +268,17 @@ y_t \sim \text{Negative Binomial} \left( \rho x_t, \tau \right),
 
 ##  Model fitting and inference
 
-We fit the SEIR model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF).
+We fit the model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF) [@Ionides2015].
 We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), mean transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the number of imported infections ($\psi$), reporting fraction ($\rho$), one parameter accounting for process noise ($\sigma$), and one parameter accounting for measurement noise ($\tau$).
-To ensure identifiability, and to make the model easier to fit, we assumed the incubation period was fixed at $1/\eta = 8$ days and the infectious period was fixed at $1/\gamma = 5$ days.
+To ensure identifiability, we assumed the incubation period was fixed at $1/\eta = 8$ days and the infectious period was fixed at $1/\gamma = 5$ days.
 The vaccination rate ($p$) was set to 70\%, consistent with reported vaccination coverage [@Ferrari2008].
 
 MIF relies on particle filtering, which estimates the likelihood of fixed parameters by integrating state variables of a stochastic system.
-To narrow in on the maximum likelihood estimates, MIF lets parameters take a random walk during the filtering process and selectively propagates forward parameter sets (i.e., particles) with the highest likelihood.
+To identify the maximum likelihood estimates, MIF lets parameters take a random walk during the filtering process and selectively propagates forward parameter sets (i.e., particles) with the highest likelihood.
 The variance of the random walk decreases at each iteration of MIF, where a MIF iteration means one filtering pass through the time series.
 This procedure converges toward the maximimum likelihood estimates (MLEs), in theory.
 
-We used the IF2 algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` version 1.18 [@King2016; @King2018] to conduct the MIF procedure.
+We used the IF2 algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` version 1.18 [@King2016; @King2018] to conduct MIF.
 To initialize MIF, we generated 5000 parameter sets using Latin Hypercube Sampling over large ranges of the parameter values.
 We then performed two rounds of MIF, each for 100 iterations, with 10,000 particles, and geometric cooling.
 For the first round of MIF we set `cooling.factor = 1`.
@@ -287,8 +286,7 @@ For the second round, which was initialized using the collection of parameter se
 We computed the log likelihood of 5000 final MIF parameter sets (i.e., parameter sets collected after 200 MIF iterations) as the log of the mean likelihoods of 50 replicate particle filters with 10,000 particles each.
 At this stage, we assume the parameter set with highest log likelihood is the MLE.
 
-We used a bootstrapping approach to estimate approximate 95\% confidence intervals for all parameters.
-The procedure, which was conducted for each city independently, is as follows.
+We used bootstrapping to estimate approximate 95\% confidence intervals for all parameters, conducted for each city independently, as follows.
 First, we simulated 100 realizations from the fitted model using the MLE parameters.
 Second, we fitted the SEIR model to each of the 100 bootstrap simulations using the same MIF procedure described above, except we initiated the parameter search from 50 parameter sets rather then 5000.
 We reduced the number of parameter sets due to the computational constraints of fitting 100 simulated data sets for each of the four cities.

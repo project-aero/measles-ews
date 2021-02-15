@@ -46,7 +46,7 @@ library(cowplot)
 We used two sources of demographic data to help constrain model fitting: total population size (*N*) and birth rate ($\mu$).
 Both sets of data are reported on an annual basis.
 To incorporate the data in our model, we fit splines through the annual observations to interpolate daily values (figure \ref{demog-plot}).
-Note that the daily interpolated birth rate is still in units of "per year," which is why births are modeled as $\mu N \times dt$ to include the effect of the daily time step *dt*.
+Note that the daily interpolated birth rate is still in units of "per year," which is why births are modeled as $\mu N \times \Delta t$ to include the effect of the daily time step $\Delta t$.
 
 ```{r demo-data, fig.width=8.5, fig.height=3, fig.cap="Plots of the demographic data used for model fitting. The points are the actual data and the lines are the interpolated spline fits. Population data is at the disrict level, meaning we have different data for each focal city. Birth rate data is national, meaning each city shares the same birth rates. \\label{demog-plot}"}
 
@@ -273,13 +273,13 @@ Our *simulating model* (in contrast to the *fitting model* in the main text) is 
 As in the main text, the SEIR model is specified as a set of difference equations,
 
 \begin{align}
-S_{t+dt} - S_{t} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
-E_{t+dt} - E_{t} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
-I_{t+dt} - I_{t} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
-R_{t+dt} - R_{t} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
+S_{t+ \Delta t} - S_{t} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
+E_{t+ \Delta t} - E_{t} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
+I_{t+\Delta t} - I_{t} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
+R_{t+\Delta t} - R_{t} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
 \end{align}
 
-\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each update $t \rightarrow t+dt$.
+\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each update $t \rightarrow t+\Delta t$.
 Transition definitions are in table \ref{tab:transitions}.
 
 | Random variable | Transition | $\left(\Delta S, \Delta E, \Delta I, \Delta R\right)$ |
@@ -300,18 +300,18 @@ Table: Transitions in the simulating model. \label{tab:transitions}
 The stochastic random variables are specified as follows:
 
 \begin{align}
-n_{0S,t} &\sim \text{Poisson}((1-p)\mu N \times dt) \\
-(n_{SE,t}, n_{S0,t}) &\sim \text{EulerMultinomial}(S_{t}, (\beta_t I_t / N, \nu), dt) \\
-(n_{EI,t}, n_{E0,t}) &\sim \text{EulerMultinomial}(E_{t}, (\eta, \nu), dt)  \label{eq:emulti} \\
-(n_{IR,t}, n_{I0,t}) &\sim \text{EulerMultinomial}(I_{t}, (\gamma, \nu), dt) \\
-n_{I0,t} &\sim \text{Poisson}(\psi \times dt) \\
-n_{0R,t} &\sim \text{Poisson}(p \mu N \times dt) \\
-n_{R0,t} &\sim \text{EulerMultinomial}(R_t, (\nu), dt),
+n_{0S,t} &\sim \text{Poisson}((1-p)\mu N \times \Delta t) \\
+(n_{SE,t}, n_{S0,t}) &\sim \text{EulerMultinomial}(S_{t}, (\beta_t I_t / N, \nu), \Delta t) \\
+(n_{EI,t}, n_{E0,t}) &\sim \text{EulerMultinomial}(E_{t}, (\eta, \nu), \Delta t)  \label{eq:emulti} \\
+(n_{IR,t}, n_{I0,t}) &\sim \text{EulerMultinomial}(I_{t}, (\gamma, \nu), \Delta t) \\
+n_{I0,t} &\sim \text{Poisson}(\psi \times \Delta t) \\
+n_{0R,t} &\sim \text{Poisson}(p \mu N \times \Delta t) \\
+n_{R0,t} &\sim \text{EulerMultinomial}(R_t, (\nu), \Delta t),
 \end{align}
-\noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $N$ is the equilibrium population size, $\sim \text{EulerMultinomial}(T, r_i, dt)$ specifies that the variables on the left of $\sim$ follow an Euler Multinomial distribution for $T$ individuals with hazard rates $r_i$ and step size $dt$, $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of transfer from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, $\nu$ is the constant death rate, and $\psi$ is the rate of imported infections (estimated by the model). 
-The Euler Multinomial distribution corresponds to a multinomial distribution where the event probabilities $p_i$ are determined by the Euler time step $dt$ and the hazard rates $r_i$, according to 
+\noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $N$ is the equilibrium population size, $\sim \text{EulerMultinomial}(T, r_i, \Delta t)$ specifies that the variables on the left of $\sim$ follow an Euler Multinomial distribution for $T$ individuals with hazard rates $r_i$ and step size $\Delta t$, $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of transfer from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, $\nu$ is the constant death rate, and $\psi$ is the rate of imported infections (estimated by the model). 
+The Euler Multinomial distribution corresponds to a multinomial distribution where the event probabilities $p_i$ are determined by the Euler time step $\Delta t$ and the hazard rates $r_i$, according to 
 \begin{align}
-p_0 &= \exp( -\sum_i r_i dt), \\
+p_0 &= \exp( -\sum_i r_i \Delta t), \\
 p_i &= (1 - p_0) r_i / (\sum_i r_i)\qquad \text{for} \qquad i > 0.
 \end{align}
 Event zero is the event that an individual stays in its initial compartment and does not contribute to the vector $\textbf{n}_t$.
@@ -319,9 +319,9 @@ To provide a specific example, equation \eqref{eq:emulti} corresponds to
 \begin{equation}
 (E_{t} - n_{EI,t} - n_{E0,t}, \,n_{EI,t},\, n_{E0,t}) \sim \text{Multinomial}(E_{t}; p_0, (1 - p_0) \eta /(\eta + \nu), (1 - p_0) \nu / (\eta + \nu)),
 \end{equation}
-where $p_0 =  \exp(-(\eta + \nu) dt)$.
+where $p_0 =  \exp(-(\eta + \nu) \Delta t)$.
 We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = 0.05$ per year. 
-We used a daily time step of $dt = \text{year} / 365$.
+We used a daily time step of $\Delta t = \text{year} / 365$.
 Setting the birth rate equal to $\mu N$ and the *per capita* death rate equal to $\nu = \mu$ makes $N$ a stable equilibrium population size.
 We modeled the rate of transmission as:
 \begin{equation}
