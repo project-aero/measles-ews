@@ -124,12 +124,11 @@ for(do_file in pred_files){
 
 Forecasts of the emergence and re-emergence of infectious diseases have the potential to save lives, money, and human productivity by allowing for proactive, rather than reactive, preparedness measures [@Han2016].
 Similarly, indicators of the elimination of infectious diseases can signal the effectiveness of ``end game'' strategies aimed at disease eradication [@Drake2017].
-Predicting (re)emergence and elimination is possible with complex mathematical models of disease transmission, but their success relies on detailed understanding of the underlying transmission dynamics and adequate data [@Metcalf2017].
+Predicting (re)emergence and elimination is possible with parametric mathematical models of disease transmission, but their success relies on detailed understanding of the underlying transmission dynamics and adequate data [@Metcalf2017].
 We often do not have enough information (or time) to parameterize such models.
 An alternative approach is to use model-independent statistical signals that portend infectious disease (re)emergence and elimination by detecting critical slowing down as the system approaches a critical transition [@ORegan2013].
 
-Emergence and elimination of an infectious disease both involve a critical transition (technically, a *transcritical bifurcation*).
-The transition typically occurs at the critical point where the basic reproduction number ($R_0$, the number of secondary cases that arise from a single infected case in a fully susceptible population) is equal to one [@Heffernan2005].
+Emergence and elimination of an infectious disease both involve a critical transition, reflected in deterministic models by a *transcritical bifurcation*, that occurs at the critical point where the basic reproduction number ($R_0$, the number of secondary cases that arise from a single infected case in a fully susceptible population) is equal to one [@Heffernan2005].
 Thus, subcritical ($R_0 < 1$) and supercritical ($R_0 > 1$) systems represent alternative modes of fluctuation [@Scheffer2009; @Scheffer2012; @ORegan2013].
 
 Critical transitions in stochastic systems, such as systems of disease transmission, are often associated with critical slowing down, a reduction in the resilience of a system to perturbations [@Wissel1984; @VanNes2007].
@@ -140,17 +139,17 @@ These findings suggest that early warning signals could be operationalized to de
 However, operationalizing EWS, and deploying early warning systems based on them, faces many challenges [@Boettiger2013; @Han2016].
 For example, using EWS in an "online mode" requires choosing temporal windows over which EWS are calculated.
 These moving windows should be long enough to provide reliable statistics, but short enough to forget the past so as to not overwhelm information contained in new observations.
-This will be especially important for diseases that fluctuate seasonally, where EWS might always increase and then decrease over the course of the year, requiring the end-user to reset computations each season.
+This will be especially important for diseases that fluctuate seasonally, where EWS might always increase and then decrease over the course of the year, requiring the end-user to reset computations each season [@Miller2017].
 Another challenge is defining thresholds for detection of an upcoming tipping point.
 Detection thresholds can be based on the absolute value of an EWS (e.g., warning if variance exceeds some value), the trend in an EWS over time (e.g., warning if the correlation of variance with time exceeds some value), or an algorithmic combination of many factors (e.g., variance and autocorrelation increases above some value three observation periods in a row).
-Developing (semi)objective algorithms for combining EWS, their values, and their trends to best detect disease emergence and elimination is a surmountable task, but one that will take considerable research effort.
+Developing algorithms for combining EWS, their values, and their trends to best detect disease emergence and elimination is a surmountable task, but one that will take considerable research effort.
 
 Given the amount of research still required to operationalize EWS, it is imperative that we stress test the hypothesis that EWS anticipate critical transitions before we allocate time and resources to the task of deploying early warning systems.
-One way to stress test EWS is through empirical case studies: Can EWS anticipate emergence and elimination in real disease time series?
+One way to stress test EWS is through empirical case studies: Can EWS anticipate emergence and elimination in real disease time series [@Harris2020]?
 However, uncritical application of EWS to observed data could lead to researchers getting the right answer for the wrong reasons.
 EWS might perform well for a given time series, but for reasons having nothing to do with critical slowing down.
 Likewise, critical transitions may occur in the absence of early warning signals [@Boettiger2012a].
-Indeed, without known the critical point (i.e., when $R_0(t) = 1$) it is impossible to know if EWS are in fact sending us the signal we think they are.
+Indeed, without knowing the critical point (i.e., when $R_0(t) = 1$) it is impossible to know if EWS are in fact sending us the signal we think they are.
 
 Another option is to use empirically based models of disease transmission to test EWS.
 This offers several advantages.
@@ -181,9 +180,9 @@ Moreover, we find that EWS perform better at detecting CSD before re-emergence t
 ## Data
 We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}*a*).
 The data were collected over an 11 year period from 1995-2005 (figure \ref{data-plot}*b*).
-These data are ideal for testing theory on CSD in disease dynamics because each city has different population sizes, has different dynamics in terms of outbreak sizes and length of inter-epidemic periods, and each time series has different amounts of demographic stochasticity due to differences in population size.
+These data are ideal for testing theory on CSD in disease dynamics because each city has a different population size, different dynamics in terms of outbreak sizes and length of inter-epidemic periods, and has different amounts of demographic stochasticity due to differences in population size.
 Such differences provide a natural gradient of "noise" that may influence CSD [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
-The data are provided by the Niger Ministry of Health [@NigerMinistryofHealth2008].
+The data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].
 
 ```{r data-plot, fig.width=6.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (*a*) Locations and population sizes (in parantheses) of our four focal cities in Niger. (*b*) Time series of weekly reported cases (yellow solid lines) and the 95% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
 
@@ -217,9 +216,9 @@ plot_grid(the_map, the_series, ncol = 2, labels = c("(a)", "(b)"),
 The model is a discrete-time approximation of a continuous-time SEIR model with limited demography, specified as a set of difference equations,
 
 \begin{align}
-S_{t+dt} - S_t &= n_{S,t} - n_{E,t} \\
-E_{t+dt} - E_t &= n_{E,t} - n_{I,t} \\
-I_{t+dt} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
+S_{t+\Delta t} - S_t &= n_{S,t} - n_{E,t} \\
+E_{t+\Delta t} - E_t &= n_{E,t} - n_{I,t} \\
+I_{t+\Delta t} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
 \noindent{}where $dt$ is a time step of $\text{year} / 365$, and $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+dt$.
