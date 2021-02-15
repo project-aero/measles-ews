@@ -129,7 +129,7 @@ We often do not have enough information (or time) to parameterize such models.
 An alternative approach is to use model-independent statistical signals that portend infectious disease (re)emergence and elimination by detecting critical slowing down as the system approaches a critical transition [@ORegan2013].
 
 Emergence and elimination of an infectious disease both involve a critical transition, reflected in deterministic models by a *transcritical bifurcation*, that occurs at the critical point where the basic reproduction number ($R_0$, the number of secondary cases that arise from a single infected case in a fully susceptible population) is equal to one [@Heffernan2005].
-Thus, subcritical ($R_0 < 1$) and supercritical ($R_0 > 1$) systems represent alternative modes of fluctuation [@Scheffer2009; @Scheffer2012; @ORegan2013].
+Thus, subcritical ($R_0 < 1$) and supercritical ($R_0 > 1$) systems represent alternative dynamical regimes [@Scheffer2009; @Scheffer2012; @ORegan2013].
 
 Critical transitions in stochastic systems, such as systems of disease transmission, are often associated with critical slowing down, a reduction in the resilience of a system to perturbations [@Wissel1984; @VanNes2007].
 Critical slowing down (CSD), in turn, is associated with changes in the dynamical features of the system: early warning signals (EWS) such as an increase in the variance and autocorrelation [@Carpenter2006; @Scheffer2009].
@@ -166,7 +166,7 @@ We focus on two scenarios: the re-emergence of measles following a large outbrea
 We seek to answer two related questions.
 First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
 If so, then CSD can anticipate disease re-emergence and elimination.
-Second, how does the distance to and the rate of approaching the threshold impact the anticipatory skill of CSD?
+Second, how does the distance to and the rate of approaching the threshold impact the anticipatory accuracy of CSD?
 
 To answer these questions, we fit mechanistic models of disease transmission to time series of measles incidence in four Nigerien cities [@Ferrari2008; @Bharti2011].
 We then use the fitted models to perform model experiments designed to test the performance of several EWS, which quantify CSD, at anticipating re-emergence and elimination.
@@ -180,7 +180,8 @@ Moreover, we find that EWS perform better at detecting CSD before re-emergence t
 ## Data
 We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}*a*).
 The data were collected over an 11 year period from 1995-2005 (figure \ref{data-plot}*b*).
-These data are ideal for testing theory on CSD in disease dynamics because each city has a different population size, different dynamics in terms of outbreak sizes and length of inter-epidemic periods, and has different amounts of demographic stochasticity due to differences in population size.
+
+These data are ideal for testing theory on CSD in disease dynamics because each city has a different population size (spanning means of about 15 to 75 thousand during this time period), different dynamics in terms of outbreak sizes (maximum weekly incidence from 60 to 1845 cases) and length of inter-epidemic periods (2-5 years), and has different amounts of demographic stochasticity due to differences in population size.
 Such differences provide a natural gradient of "noise" that may influence CSD [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
 The data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].
 
@@ -816,6 +817,9 @@ But, all EWS performed worse when predicting the approach to emergence over the 
 
 # Discussion
 
+The ability to detect early warnings of outbreaks of potentially fatal diseases such as measles during non-epidemic periods of unpredictable duration may facilitate planning such as enhanced surveillance to expedite outbreak detection, implementation of serological surveys to identify immunity gaps, and initiation of targeted supplemental vaccination [@Grais2008;@Weldegebriel2011]. 
+Further, it has been argued that measles eradication requires consideration of local demographic factors [@Ferrari2013] and that regional outbreak response vaccination (ORV) can be effective when initiated early, even if coverage is suboptimal [@Grais2008]. 
+Consequently indicators that a region is on a path to outbreak or elimination can help to prioritize the timing and distribution of limited resources.
 Using empirically-based disease transmission models, we found that generic indicators of critical slowing down were informative of simulated re-emergence and elimination of measles.
 
 The generic indicators performed better in scenarios of re-emergence, and moreover these indicators behaved as expected based on a simple one-dimensional model of fluctuations around an equilibrium with gradually declining stability --- the prototypical model of critical slowing down.
@@ -912,7 +916,7 @@ The funders had no role in study design, data collection and analysis, decision 
 This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
 
 # Authors' contributions
-ATT conceived of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
+ATT conceived of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; AWP helped revise the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
 All authors gave final approval for publication and agree to be held accountable for the work performed therein.
 
 # References
