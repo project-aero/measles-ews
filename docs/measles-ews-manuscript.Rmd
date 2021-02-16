@@ -81,7 +81,7 @@ my_cities <- tibble(
   city = c("Agadez", "Maradi", "Niamey", "Zinder"),
   lat = c(16.9, 13.5, 13.5, 13.8),
   lon = c(8.0, 7.1, 2.1, 8.98),
-  population = c("(118,244)", "(267,249)", "(1,027,000)", "(322,935)")
+  population = c("(117,435 -\n 171,528)", "(314,277 -\n 459,019)", "(628,276 -\n 917,671)", "(260,997 -\n 381,216)")
 ) %>%
   mutate(
     label = paste(city, population, sep = "\n")
@@ -185,7 +185,7 @@ These data are ideal for testing theory on CSD in disease dynamics because each 
 Such differences provide a natural gradient of "noise" that may influence CSD [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
 The data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].
 
-```{r data-plot, fig.width=6.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (*a*) Locations and population sizes (in parantheses) of our four focal cities in Niger. (*b*) Time series of weekly reported cases (yellow solid lines) and the 95% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
+```{r data-plot, fig.width=6.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (*a*) Locations and 1995--2005 population-size--ranges (in parantheses) of our four focal cities in Niger. (*b*) Time series of weekly reported cases (yellow solid lines) and the 95% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
 
 the_map <- ggplot(region_boundaries)+
   geom_sf(fill = "grey90", col = "grey80", size = 0.3) +
@@ -193,8 +193,8 @@ the_map <- ggplot(region_boundaries)+
   geom_label_repel(
     data = my_cities,
     aes(x = lon, y = lat, label = label),
-    box.padding   = 0.35, 
-    point.padding = 0.3,
+    box.padding   = 0.5, 
+    point.padding = 0.75,
     size = 2,
     family = "Times"
   ) + 
