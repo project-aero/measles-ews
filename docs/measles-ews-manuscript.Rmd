@@ -151,7 +151,7 @@ EWS might perform well for a given time series, but for reasons having nothing t
 Likewise, critical transitions may occur in the absence of early warning signals [@Boettiger2012a].
 Indeed, without knowing the critical point (i.e., when $\mathcal{R}_e(t) = 1$) it is impossible to know if EWS are in fact sending us the signal we think they are.
 
-Another option is to use empirically based models of disease transmission to test EWS.
+Another option is to use fitted models of disease transmission to test EWS.
 This offers several advantages.
 First, using a model to simulate time series of cases means we also have access to a time series of $\mathcal{R}_e(t)$, which allows us to know precisely when the critical transition occurs.
 This means we know whether we are getting the right answer for the right reason.
@@ -161,12 +161,12 @@ Third, we can specifically simulate emergence and elimination events.
 This means we can separate the stress testing of EWS from the research necessary to operationalize EWS.
 Thus, we have all the flexibility of a theoretical model, but we remain tethered to reality because the model parameters are fitted to real data.
 
-Here, we use empirically based model simulations of measles dynamics to test whether CSD anticipates critical transitions in real disease dynamics.
+Here, we use fitted model simulations of measles dynamics to test whether CSD anticipates critical transitions in real disease dynamics.
 We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa [@Ferrari2008], and the elimination of measles by a vaccination campaign.
 We seek to answer two related questions.
 First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
-If so, then CSD can anticipate disease re-emergence and elimination.
-Second, how does the distance to and the rate of approaching the threshold impact the anticipatory accuracy of CSD?
+Second, CSD can anticipate disease re-emergence and elimination?
+More precisely, how does the distance to and the rate of approaching the threshold impact the anticipatory accuracy of CSD?
 
 To answer these questions, we fit mechanistic models of disease transmission to time series of measles incidence in four Nigerien cities [@Ferrari2008; @Bharti2011].
 We then use the fitted models to perform model experiments designed to test the performance of several EWS, which quantify CSD, at anticipating re-emergence and elimination.
@@ -222,19 +222,19 @@ E_{t+\Delta t} - E_t &= n_{E,t} - n_{I,t} \\
 I_{t+\Delta t} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
-\noindent{}where $\Delta t$ is a time step of $\text{year} / 365$, and $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each timestep $t \rightarrow t+\Delta t$.
+\noindent{}where $\Delta t$ is a time step of one day, and $\textbf{n}_t$ are the number of times different transition events occur in the time interval of $t \rightarrow t+\Delta t$.
 $n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious indiviuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
 The stochastic random variables are distributed as:
 
 \begin{align}
-n_{S,t} &\sim \text{Poisson}(\mu_t (1 - p) N_t \times \Delta t) \\
+n_{S,t} &\sim \text{Poisson}(\mu_t (1 - p_t) N_t \times \Delta t) \\
 n_{E,t} &\sim \text{Binomial}( S_{t}, \lambda_{E,t}) \\
 n_{I,t} &\sim \text{Binomial}( E_{t}, \lambda_{I,t}) \\
 n_{O,t} &\sim \text{Poisson}(\psi \times \Delta t) \\
 n_{R,t} &\sim \text{Binomial}( I_{t}, \lambda_{R,t}),
 \end{align}
 
-\noindent{}where $\mu_t$ is the birth rate at time *t*, $p$ is the vaccination rate, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
+\noindent{}where $\mu_t$ is the **per capita** birth rate at time *t*, $p$ is the vaccination probability, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
 These probabilities reflect the processes of transmission, transition from the latent period to the infectious period, and recovery, which we model as:
 
 \begin{align}
@@ -272,7 +272,7 @@ y_t \sim \text{Negative Binomial} \left( \rho x_t, \tau \right),
 We fit the model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF) [@Ionides2015].
 We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), mean transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the number of imported infections ($\psi$), reporting fraction ($\rho$), one parameter accounting for process noise ($\sigma$), and one parameter accounting for measurement noise ($\tau$).
 To ensure identifiability, we assumed the incubation period was fixed at $1/\eta = 8$ days and the infectious period was fixed at $1/\gamma = 5$ days.
-The vaccination rate ($p$) was set to 70\%, consistent with reported vaccination coverage [@Ferrari2008].
+The vaccination probability ($p$) was set to 70\%, consistent with reported vaccination coverage [@Ferrari2008].
 
 MIF relies on particle filtering, which estimates the likelihood of fixed parameters by integrating state variables of a stochastic system.
 To identify the maximum likelihood estimates, MIF lets parameters take a random walk during the filtering process and selectively propagates forward parameter sets (i.e., particles) with the highest likelihood.

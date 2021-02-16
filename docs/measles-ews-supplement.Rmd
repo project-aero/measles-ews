@@ -311,15 +311,15 @@ n_{R0,t} &\sim \text{EulerMultinomial}(R_t, (\nu), \Delta t),
 \noindent{}where *p* is the vaccination coverage (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $N$ is the equilibrium population size, $\sim \text{EulerMultinomial}(T, r_i, \Delta t)$ specifies that the variables on the left of $\sim$ follow an Euler Multinomial distribution for $T$ individuals with hazard rates $r_i$ and step size $\Delta t$, $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of transfer from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, $\nu$ is the constant death rate, and $\psi$ is the rate of imported infections (estimated by the model). 
 The Euler Multinomial distribution corresponds to a multinomial distribution where the event probabilities $p_i$ are determined by the Euler time step $\Delta t$ and the hazard rates $r_i$, according to 
 \begin{align}
-p_0 &= \exp( -\sum_i r_i \Delta t), \\
-p_i &= (1 - p_0) r_i / (\sum_i r_i)\qquad \text{for} \qquad i > 0.
+P_0 &= \exp( -\sum_i r_i \Delta t), \\
+P_i &= (1 - P_0) r_i / (\sum_i r_i)\qquad \text{for} \qquad i > 0.
 \end{align}
 Event zero is the event that an individual stays in its initial compartment and does not contribute to the vector $\textbf{n}_t$.
 To provide a specific example, equation \eqref{eq:emulti} corresponds to 
 \begin{equation}
-(E_{t} - n_{EI,t} - n_{E0,t}, \,n_{EI,t},\, n_{E0,t}) \sim \text{Multinomial}(E_{t}; p_0, (1 - p_0) \eta /(\eta + \nu), (1 - p_0) \nu / (\eta + \nu)),
+(E_{t} - n_{EI,t} - n_{E0,t}, \,n_{EI,t},\, n_{E0,t}) \sim \text{Multinomial}(E_{t}; P_0, (1 - P_0) \eta /(\eta + \nu), (1 - P_0) \nu / (\eta + \nu)),
 \end{equation}
-where $p_0 =  \exp(-(\eta + \nu) \Delta t)$.
+where $P_0 =  \exp(-(\eta + \nu) \Delta t)$.
 We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = 0.05$ per year. 
 We used a daily time step of $\Delta t = \text{year} / 365$.
 Setting the birth rate equal to $\mu N$ and the *per capita* death rate equal to $\nu = \mu$ makes $N$ a stable equilibrium population size.
