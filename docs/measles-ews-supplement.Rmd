@@ -336,22 +336,22 @@ Finally, observations were simulated from the model on a weekly time step by dra
 In this model, the effective reproduction number can be approximated as:
 
 $$
-R_E(t) \approx \frac{S_t}{N_t} \frac{\eta \beta_t}{(\eta + \nu)(\gamma + \nu)}.
+\mathcal{R}_e(t) \approx \frac{S_t}{N_t} \frac{\eta \beta_t}{(\eta + \nu)(\gamma + \nu)}.
 $$
 
 The model described above was implemented in the `R` package `pomp` [@King2016; @King2018] to simulate the re-emergence and elimination scenarios.
 
 # Computing the time of critical transitions
 To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.
-For re-emergence, we defined the year of the critical transition as the year just after the effective reproduction number ($R_E$) reaches or exceeds the critical value of 1.  
-For example, if $R_E$ reaches or exceeds 1 at some point during the fifth year of the simulation, then the critical transition year is defined as the sixth year of the simulation. 
+For re-emergence, we defined the year of the critical transition as the year just after the effective reproduction number ($\mathcal{R}_e$) reaches or exceeds the critical value of 1.  
+For example, if $\mathcal{R}_e$ reaches or exceeds 1 at some point during the fifth year of the simulation, then the critical transition year is defined as the sixth year of the simulation. 
 Thus, the simulated data for calculating early warning signals ends at the end of the fifth year.
 We call this year the ``critical year.''
-When determining the critical year, we eliminate the variation in $R_E$ that arises from the gamma white noise factor and thus calculate the expected value of $R_E(t)$ over the set of all simulation replicates at time $t$.
-From the full window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $R_E = 1$) and the test interval as the second half of the full window (near $R_E = 1$).
+When determining the critical year, we eliminate the variation in $\mathcal{R}_e$ that arises from the gamma white noise factor and thus calculate the expected value of $\mathcal{R}_e(t)$ over the set of all simulation replicates at time $t$.
+From the full window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $\mathcal{R}_e = 1$) and the test interval as the second half of the full window (near $\mathcal{R}_e = 1$).
 Figure \ref{emerge-sim} shows a typical example.
 
-```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the susceptible discount factor was 1e-04. (*a*) The simulated trajectory of $R_E$ and the year in which $R_E$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
+```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the susceptible discount factor was 1e-04. (*a*) The simulated trajectory of $\\mathcal{R}_e$ and the year in which $\\mathcal{R}_e$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
 
@@ -406,12 +406,12 @@ plot_grid(re_series, cases_series, nrow = 2, align = "v",
 ```
 
 For simulations of disease elimination by increasing the vaccination coverage of the population, we define the critical time as the time at which vaccination coverage reaches the threshold needed for herd immunity.
-This vaccination threshold is defined as $p = 1 - 1/R_0$.
-Because our transmission function is seasonal, we first approximated time-specific $R_0$ as: $R_0(t) = \frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, and $\nu$ is the death rate. 
+This vaccination threshold is defined as $p = 1 - 1/\mathcal{R}_0$.
+Because our transmission function is seasonal, we first approximated time-specific $\mathcal{R}_0$ as: $\mathcal{R}_0(t) = \frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, and $\nu$ is the death rate. 
 Only $\beta_t$ is estimated by our model. 
 We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\nu$ = 0.05 per year.
-Figure 2 in the main text shows our estimates of $R_0$ over the course of a year using this approximation.
-We took a conservative approach for calculating the vaccination threshold by using the maximum value of $R_0(t)$ out of the range of values in its seasonal variation. That is, we set $p = 1 - 1/\text{max}(R_0(t))$.
+Figure 2 in the main text shows our estimates of $\mathcal{R}_0$ over the course of a year using this approximation.
+We took a conservative approach for calculating the vaccination threshold by using the maximum value of $\mathcal{R}_0(t)$ out of the range of values in its seasonal variation. That is, we set $p = 1 - 1/\text{max}(\mathcal{R}_0(t))$.
 We set the time at which vaccination coverage is equal to *p* as the endpoint for the EWS analysis.
 All elimination simulations had vaccination campaigns that started at year 50.
 So, we define the test interval as the times between the beginning of year 50 and the year at which vaccination coverage is equal to *p*.
@@ -481,7 +481,7 @@ plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
 We calculated nine early warning signals using the ```spaero::get_stats()``` function.
 Formulas for the early warning signals are in table \ref{tab:ews}.
 
-| EWS | Estimator | Theoretical Correlation with $R_E(t)$ in an emergence scenario |
+| EWS | Estimator | Theoretical Correlation with $\mathcal{R}_e(t)$ in an emergence scenario |
 | -------------------- | ----------------------------------- | ------------------------ |
 | Mean | \( \bar{y} = \sum_{i=1}^n \frac{y_i}{n} \) | Positive |
 | Variance | \( s^2 = \sum_{i=1}^n \frac{(y_i - \bar{y})^2}{n} \) | Positive |
