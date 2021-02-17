@@ -165,7 +165,7 @@ Here, we use fitted model simulations of measles dynamics to test whether CSD an
 We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa [@Ferrari2008], and the elimination of measles by a vaccination campaign.
 We seek to answer two related questions.
 First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
-Second, CSD can anticipate disease re-emergence and elimination?
+Second, can CSD anticipate disease re-emergence and elimination?
 More precisely, how does the distance to and the rate of approaching the threshold impact the anticipatory accuracy of CSD?
 
 To answer these questions, we fit mechanistic models of disease transmission to time series of measles incidence in four Nigerien cities [@Ferrari2008; @Bharti2011].
@@ -181,7 +181,7 @@ Moreover, we find that EWS perform better at detecting CSD before re-emergence t
 We used weekly measles case report data from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}*a*).
 The data were collected over an 11 year period from 1995-2005 (figure \ref{data-plot}*b*).
 
-These data are ideal for testing theory on CSD in disease dynamics because each city has a different population size (spanning means of about 15 to 75 thousand during this time period), different dynamics in terms of outbreak sizes (maximum weekly incidence from 60 to 1845 cases) and length of inter-epidemic periods (2-5 years), and has different amounts of demographic stochasticity due to differences in population size.
+These data are ideal for testing theory on CSD in disease dynamics because each city has a different population size (spanning means of about 150 to 750 thousand during this time period), different dynamics in terms of outbreak sizes (maximum weekly incidence from 60 to 1845 cases) and length of inter-epidemic periods (2-5 years), and has different amounts of demographic stochasticity due to differences in population size.
 Such differences provide a natural gradient of "noise" that may influence CSD [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
 The data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].
 
