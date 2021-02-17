@@ -239,8 +239,8 @@ These probabilities reflect the processes of transmission, transition from the l
 
 \begin{align}
 \lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t \Delta t}{N_t}} \\
-\lambda_{I,t} &= 1 - e^{-\eta E_{t} \Delta t} \\
-\lambda_{R,t} &= 1 - e^{-\gamma I_{t} \delta t},
+\lambda_{I,t} &= 1 - e^{-\eta \Delta t} \\
+\lambda_{R,t} &= 1 - e^{-\gamma \Delta t},
 \end{align}
 
 \noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of progression from the exposed class to the infectious class, and $\gamma$ is a time-invariant recovery rate.
@@ -271,8 +271,8 @@ In this parameterization of the negative binomial, the mean is equal to $\rho x_
 ##  Model fitting and inference
 
 We fit the model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF) [@Ionides2015].
-We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), mean transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the number of imported infections ($\psi$), reporting fraction ($\rho$), one parameter accounting for process noise ($\sigma$), and one parameter accounting for measurement noise ($\tau$).
-To ensure identifiability, we assumed the incubation period was fixed at $1/\eta = 8$ days and the infectious period was fixed at $1/\gamma = 5$ days.
+We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), minimum transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the importation rate ($\psi$), reporting fraction ($\rho$), one parameter accounting for process noise ($\sigma$), and one parameter accounting for measurement noise ($\tau$).
+To ensure identifiability, we assumed that the mean incubation period was known to be $1/\eta = 8$ days and that the mean infectious period was known to be $1/\gamma = 5$ days.
 The vaccination probability ($p_t$) was set to 70\% for all $t$, consistent with reported vaccination coverage [@Ferrari2008].
 
 MIF relies on particle filtering, which estimates the likelihood of fixed parameters by integrating state variables of a stochastic system.
@@ -563,16 +563,16 @@ The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}
 The fitted models also had lower AIC values than two benchmarking models (table S1).
 Stochastic simulations of the models displayed dynamics typical of each city (figure S2), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
 
-Our model for Agadez performs poorly relative to the other cities, but still better than non-mechanistic models (table S1).
+Our model for Agadez performed poorly relative to the other cities, but still did better than non-mechanistic models (table S1).
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables S4-S7).
 
-The EWS generally performed as expected by theory on the approach to re-emergence.
+The EWS generally performed as expected from theory on the approach to re-emergence.
 Most EWS increased as the critical transition is approached, resulting in AUC values above 0.5 and near 1 (figure \ref{emerge-aucs}).
 Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities.
-Thus, these metrics are unreliable.
+Thus, these metrics were unreliable.
 
-Variance, mean, index of dispersion, autocovariance, and autocorrelation all perform equally well at predicting re-emergence (figure \ref{emerge-aucs}*c*).
-Their performance declines as the amount of susceptible depletion decreases.
+Variance, mean, index of dispersion, autocovariance, and autocorrelation all performed equally well at predicting re-emergence (figure \ref{emerge-aucs}*c*).
+Their performance declined as the amount of susceptible depletion decreases.
 This is expected because more rapid returns to $\mathcal{R}_e(t)=1$ result in shorter null and test intervals, making estimates of EWS less precise [@Brett2017].
 Thus, re-emergence may prove difficult to anticipate in "fast" transmission systems, as demonstrated theoretically by @Brett2017 and seen here when susceptible depletion was relatively small (figure \ref{emerge-aucs}*c*).
 
@@ -707,7 +707,7 @@ print(final)
 ```
 
 
-The EWS did not perform as well when anticipating elimination, relative to emergence (figure \ref{elim-aucs}).
+The EWS performed less well when anticipating elimination, relative to emergence (figure \ref{elim-aucs}).
 Only three metrics were reliable: mean, autocovariance, and variance.
 All three metrics decreased as $\mathcal{R}_e(t)$ approached the critical transition (figure S6).
 As in the case of anticipating elimination, AUC values moved closer to 0.5 as the speed of the vaccine campaign increased (figure \ref{elim-aucs}*c*).
@@ -812,7 +812,7 @@ final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
 print(final)
 ```
 
-In all, the suite of EWS suggest that indicators of critical slowing down have some predictive value for emergence and elimination events.
+In all, the suite of EWS suggested that indicators of critical slowing down have some predictive value for emergence and elimination events.
 We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (figure S9b).
 But, all EWS performed worse when predicting the approach to emergence over the moving window (figure S9).
 
@@ -821,7 +821,7 @@ But, all EWS performed worse when predicting the approach to emergence over the 
 The ability to detect early warnings of outbreaks of potentially fatal diseases such as measles during non-epidemic periods of unpredictable duration may facilitate planning such as enhanced surveillance to expedite outbreak detection, implementation of serological surveys to identify immunity gaps, and initiation of targeted supplemental vaccination [@Grais2008;@Weldegebriel2011]. 
 Further, it has been argued that measles eradication requires consideration of local demographic factors [@Ferrari2013] and that regional outbreak response vaccination (ORV) can be effective when initiated early, even if coverage is suboptimal [@Grais2008]. 
 Consequently indicators that a region is on a path to outbreak or elimination can help to prioritize the timing and distribution of limited resources.
-Using empirically-based disease transmission models, we found that generic indicators of critical slowing down were informative of simulated re-emergence and elimination of measles.
+Using empirically-based disease transmission models, we found that generic indicators of critical slowing down were informative regarding simulated re-emergence and elimination of measles.
 
 The generic indicators performed better in scenarios of re-emergence, and moreover these indicators behaved as expected based on a simple one-dimensional model of fluctuations around an equilibrium with gradually declining stability --- the prototypical model of critical slowing down.
 This is because the autocorrelation and variance increased on the approach to $\mathcal{R}_e = 1$ (figure \ref{emerge-aucs}*c*).
