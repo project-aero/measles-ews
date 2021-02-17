@@ -223,7 +223,7 @@ I_{t+\Delta t} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
 \noindent{}where $\Delta t$ is a time step of one day, and $\textbf{n}_t$ are the number of times different transition events occur in the time interval of $t \rightarrow t+\Delta t$.
-$n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious indiviuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
+$n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious individuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
 The stochastic random variables are distributed as:
 
 \begin{align}
@@ -234,7 +234,7 @@ n_{O,t} &\sim \text{Poisson}(\psi \times \Delta t) \\
 n_{R,t} &\sim \text{Binomial}( I_{t}, \lambda_{R,t}),
 \end{align}
 
-\noindent{}where $\mu_t$ is the **per capita** birth rate at time *t*, $p$ is the vaccination probability, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
+\noindent{}where $\mu_t$ is the **per capita** birth rate at time *t*, $p_t$ is the vaccination probability, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
 These probabilities reflect the processes of transmission, transition from the latent period to the infectious period, and recovery, which we model as:
 
 \begin{align}
@@ -265,14 +265,15 @@ We assume observed case reports ($y_t$) are drawn from a negative binomial distr
 y_t \sim \text{Negative Binomial} \left( \rho x_t, \tau \right),
 \end{align}
 
-\noindent{}where $x_t$ are the accumulated cases that transition from the infected class to the recovered class in a one week period. In this parameterization of the negative binomial, the mean is equal to $\rho x_t$ and the the variance is equal to $\rho x_t + (\rho x_t) ^ 2 \tau$. 
+\noindent{}where $x_t$ are the accumulated cases that transition from the infected class to the recovered class in a one week period. 
+In this parameterization of the negative binomial, the mean is equal to $\rho x_t$ and the the variance is equal to $\rho x_t + (\rho x_t) ^ 2 \tau$. 
 
 ##  Model fitting and inference
 
 We fit the model to time series of case reports from each of our focal cities using Maximization by Iterated particle Filtering (MIF) [@Ionides2015].
 We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), mean transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the number of imported infections ($\psi$), reporting fraction ($\rho$), one parameter accounting for process noise ($\sigma$), and one parameter accounting for measurement noise ($\tau$).
 To ensure identifiability, we assumed the incubation period was fixed at $1/\eta = 8$ days and the infectious period was fixed at $1/\gamma = 5$ days.
-The vaccination probability ($p$) was set to 70\%, consistent with reported vaccination coverage [@Ferrari2008].
+The vaccination probability ($p_t$) was set to 70\% for all $t$, consistent with reported vaccination coverage [@Ferrari2008].
 
 MIF relies on particle filtering, which estimates the likelihood of fixed parameters by integrating state variables of a stochastic system.
 To identify the maximum likelihood estimates, MIF lets parameters take a random walk during the filtering process and selectively propagates forward parameter sets (i.e., particles) with the highest likelihood.
@@ -321,15 +322,15 @@ We did this for each city and for each level of susceptible depletion.
 We calculated EWS over null and test intervals separately.
 
 ## Simulating elimination
-To simulate elimination, we simulated a vaccine campaign in which vaccination coverage linearly increased over time to eventually reach 100\%, i.e. eradication (figure S3).
-We ran simulations for 100 years, starting with 50 years of dynamics at the baseline vaccine coverage reported for Niger of 70\%, $p = 0.7$ [@Ferrari2008].
-Note that vaccination coverage is included in our model by multiplying the birth rate of susceptibles by $1-p$.
+To simulate elimination, we simulated a vaccine campaign in which the vaccination probability linearly increased over time to eventually reach 100\%, i.e. eradication (figure S3).
+We ran simulations for 100 years, starting with 50 years of dynamics at the baseline vaccine coverage reported for Niger of 70\%, $p_t = 0.7$ [@Ferrari2008].
+Note that vaccination is included in our model by multiplying the birth rate of susceptibles by $1-p_t$.
 At year 50, we initiated the vaccination campaign and let the model run for another 50 years.
-We ran simulations across six vaccination ``speeds'' (the rate at which $p \rightarrow 1$; electronic supplement), simulating situations of slow and fast approaches to elimination.
+We ran simulations across six vaccination ``speeds'' (the rate at which $p_t \rightarrow 1$; electronic supplement), simulating situations of slow and fast approaches to elimination.
 As in the re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant equilibrium population size. 
 
 We then split each time series into null and test intervals for calculating EWS.
-We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which vaccination coverage reached the vaccination threshold of $1 - 1/\max(\mathcal{R}_0 (t))$ (figure \ref{elim-aucs}*a*);
+We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which the vaccination probability reached the vaccination threshold of $1 - 1/\max(\mathcal{R}_0 (t))$ (figure \ref{elim-aucs}*a*);
 $\max(\mathcal{R}_0(t))$ was approximated for each city using the MLE parameters as: $\max(\mathcal{R}_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
 We define the null interval as the window of time that ends at the start of the vaccination campaign (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
 EWS were then calculated for each interval.
