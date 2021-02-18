@@ -378,7 +378,7 @@ re_series <- ggplot(one_sim, aes(x = time, y = mean_re)) +
   geom_line(color = "tan", aes(alpha = used)) +
   geom_hline(aes(yintercept = 1), color = "grey35", linetype = 3) +
   geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
-  annotate(geom = "text", x = 10, y = 0.3, label = "end\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
+  annotate(geom = "text", x = 10, y = 0.3, label = "End\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
   scale_alpha_manual(values = c(0.5, 1)) +
   guides(alpha = FALSE) +
   labs(x = "Simulation time (year)", y = expression(R[e])) +
@@ -393,7 +393,7 @@ cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports))
   annotate(geom = "text", x = 5.25, y = 250, label = "Test window") +
   scale_alpha_manual(values = c(0.4, 1)) +
   guides(alpha = FALSE) +
-  annotate(geom = "text", x = 7.35, y = 150, label = "end\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
+  annotate(geom = "text", x = 7.35, y = 150, label = "End\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
   labs(x = "Simulation time (year)", y = "Reported cases") +
   theme_classic(base_size = 12)
 
@@ -411,12 +411,12 @@ Figure 2 in the main text shows our estimates of $\mathcal{R}_0$ over the course
 We took a conservative approach for calculating the vaccination threshold by using the maximum value of $\mathcal{R}_0(t)$ out of the range of values in its seasonal variation. 
 That is, we used $p^* = 1 - 1/\text{max}(\mathcal{R}_0(t))$ as the threshold value.
 We set the time at which the vaccination probability is equal to this threshold value as the endpoint for the EWS analysis.
-All elimination simulations had vaccination campaigns that started at year 50.
+All elimination simulations had vaccination improvements that started at year 50.
 So, we define the test interval as the times between the beginning of year 50 and the time at which the vaccination probability is equal to $p^*$.
 We then defined the null interval as a window with length equal to the test interval and ending at the end of year 49.
 Figure \ref{elimin-sim} shows a typical example.
 
-```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate of change in vaccination probability is 1.5e-05 per day. The null and test intervals are defined based on the time at which the vaccination campaign begins (year 50, black line) and the year at which the vaccination probability reaches the threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of reaching the immunity threshold: the null interval ends at time 50 (when the vaccination campaign begins) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
+```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate of change in vaccination probability is 1.5e-05 per day. The null and test intervals are defined based on the time at which the vaccination improvements begin (year 50, black line) and the year at which the vaccination probability reaches the threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of reaching the immunity threshold: the null interval ends at time 50 (when the vaccination improvements begin) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
 
 example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
 ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
@@ -465,8 +465,8 @@ ts_plot <- ggplot() +
   geom_line(data = ews_data_example, aes(x = time, y = reports), color = "tan", size = 0.3) +
   annotate(geom = "text", x = 28, y = 1450, label = "Null window") +
   annotate(geom = "text", x = 70, y = 1450, label = "Test window") +
-  annotate(geom = "text", x = 36, y = 900, label = "start of\nvaccination campaign", size = 3, color = "grey25") +
-  annotate(geom = "text", x = 71.5, y = 900, label = "vaccination probability reaches\nherd immunity threshold", size = 3, color = "dodgerblue4") +
+  annotate(geom = "text", x = 41, y = 900, label = "Improvement\nin routine\nvaccination\nbegins", size = 3, color = "grey25") +
+  annotate(geom = "text", x = 81, y = 900, label = "Vaccination\nprobability\nreaches\nherd immunity\nthreshold", size = 3, color = "dodgerblue4") +
   labs(x = "Simulation time (year)", y = "Reported cases") +
   theme_classic(base_size = 14)
 
@@ -790,7 +790,7 @@ ggplot(seasonal_functions, aes(x = date, y = beta, group = boot)) +
 
 # Length of null and test intervals
 
-In the main text we show EWS performance across the range of susceptible discounting factors and vaccination campaign speeds we modeled.
+In the main text we show EWS performance across the range of susceptible discounting factors and vaccination improvement speeds we modeled.
 To put these values into context, here we show the corresponding window sizes for each simulation.
 These window sizes are the number of weeks that occur in the null and test intervals (Figure \ref{bws}).
 
@@ -822,7 +822,7 @@ read_csv("../results/elimination-bandwidths-colnames.csv",
   ggplot(aes(x = vacc_speed, y = bandwidth, color = city)) +
   geom_line() +
   geom_point(size = 3) +
-  labs(x = "Rate of increase in vaccination probability (per day)", 
+  labs(x = "Rate of change in vaccination probability (per day)", 
        y = "Number of weeks in interval",
        title = "Length of elimination intervals") +
   scale_color_colorblind(name = NULL) +
@@ -864,7 +864,7 @@ eliminate_plot <- ggplot() +
   geom_tile(data = elimination_aucs, aes(x = as.factor(vacc_speed*10000), y = metric, fill = AUC)) +
   scale_fill_viridis(limits = c(0,1), direction = -1, option = "E", name = "AUC") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = expression(paste("Rate of change in vaccine coverage (", phantom()%*%phantom(), 10^{-4}, phantom(0), d^{-1}, ")")), y = NULL) +
+  labs(x = expression(paste("Rate of change in vaccination probability (", phantom()%*%phantom(), 10^{-4}, phantom(0), d^{-1}, ")")), y = NULL) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"),

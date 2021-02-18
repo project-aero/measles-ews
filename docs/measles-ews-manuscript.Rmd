@@ -162,7 +162,7 @@ This means we can separate the stress testing of EWS from the research necessary
 Thus, we have all the flexibility of a theoretical model, but we remain tethered to reality because the model parameters are fitted to real data.
 
 Here, we use fitted model simulations of measles dynamics to test whether CSD anticipates critical transitions in real disease dynamics.
-We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa [@Ferrari2008], and the elimination of measles by a vaccination campaign.
+We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa [@Ferrari2008], and the elimination of measles by gradual improvement of routine vaccination.
 We seek to answer two related questions.
 First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
 Second, can CSD anticipate disease re-emergence and elimination?
@@ -186,7 +186,7 @@ Such differences provide a natural gradient of "noise" that may influence CSD [@
 The data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].
 
 ```{r data-plot, fig.width=6.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (*a*) Locations and 1995--2005 population-size--ranges (in parantheses) of our four focal cities in Niger. (*b*) Time series of weekly reported cases (yellow solid lines) and the 95% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
-
+set.seed(1) # affects placement of geom_label_repel
 the_map <- ggplot(region_boundaries)+
   geom_sf(fill = "grey90", col = "grey80", size = 0.3) +
   geom_point(data = my_cities, aes(x = lon, y = lat), size = 2) +
@@ -322,17 +322,17 @@ We did this for each city and for each level of susceptible depletion.
 We calculated EWS over null and test intervals separately.
 
 ## Simulating elimination
-To simulate elimination, we simulated a vaccine campaign in which the vaccination probability linearly increased over time to eventually reach 100\%, i.e. eradication (figure S3).
+To simulate elimination, we simulated an improvement in routine vaccination in which the vaccination probability linearly increased over time to eventually reach 100\%, i.e. eradication (figure S3).
 We ran simulations for 100 years, starting with 50 years of dynamics at the baseline vaccine coverage reported for Niger of 70\%, $p_t = 0.7$ [@Ferrari2008].
 Note that vaccination is included in our model by multiplying the birth rate of susceptibles by $1-p_t$.
-At year 50, we initiated the vaccination campaign and let the model run for another 50 years.
+At year 50, we initiated the improvement in routine vaccination and let the model run for another 50 years.
 We ran simulations across six vaccination ``speeds'' (the rate at which $p_t \rightarrow 1$; electronic supplement), simulating situations of slow and fast approaches to elimination.
 As in the re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant equilibrium population size. 
 
 We then split each time series into null and test intervals for calculating EWS.
-We define the test interval as the window of time between the start of the vaccination campaign (year 50) and the time at which the vaccination probability reached the vaccination threshold of $1 - 1/\max(\mathcal{R}_0 (t))$ (figure \ref{elim-aucs}*a*);
+We define the test interval as the window of time between the start of the vaccination improvements (year 50) and the time at which the vaccination probability reached the vaccination threshold of $1 - 1/\max(\mathcal{R}_0 (t))$ (figure \ref{elim-aucs}*a*);
 $\max(\mathcal{R}_0(t))$ was approximated for each city using the MLE parameters as: $\max(\mathcal{R}_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
-We define the null interval as the window of time that ends at the start of the vaccination campaign (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
+We define the null interval as the window of time that ends at the start of the vaccination improvements (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
 EWS were then calculated for each interval.
 
 ## Calculating early warning signals
@@ -547,6 +547,7 @@ rnaughts <- ggplot(all_R_0s, aes(x = date)) +
   scale_x_date(date_labels = "%b", date_breaks = "2 months") +
   scale_y_continuous(limits = c(0,35))+
   theme_classic(base_size = 10, base_family = "Times") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"), strip.background = element_blank(),
         strip.text = element_text(face = "bold"),
        plot.title = element_text(face = "bold")) 
@@ -561,7 +562,7 @@ plot_grid(scatters, rnaughts, scale = 0.9, labels = c("(a)", "(b)"),
 
 The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}*b*), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.55 for Agadez to 0.89 for Maradi (figure \ref{scatters}*a*).
 The fitted models also had lower AIC values than two benchmarking models (table S1).
-Stochastic simulations of the models displayed dynamics typical of each city (figure S2), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
+The estimated seasonality is consistent with previously estimated patterns (figure S2), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
 
 Our model for Agadez performed poorly relative to the other cities, but still did better than non-mechanistic models (table S1).
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables S4-S7).
@@ -655,7 +656,7 @@ ggplot(filter(one_sim, time < 11.5 & time > 0.6), aes(x = time, y = reports)) +
                            pull(variance))) +
   scale_alpha_manual(values = c(0.4, 1)) +
   guides(alpha = FALSE) +
-  annotate(geom = "text", x = 7.3, y = 25, label = "critical\nyear", 
+  annotate(geom = "text", x = 7.3, y = 25, label = "end of\ncritical\nyear", 
            size = 3, color = "dodgerblue4", family = "Times") +
   labs(x = "simulation time (year)", y = "reported cases") +
   theme_classic(base_size = 11, base_family = "Times") -> cases_series
@@ -710,7 +711,7 @@ print(final)
 The EWS performed less well when anticipating elimination, relative to emergence (figure \ref{elim-aucs}).
 Only three metrics were reliable: mean, autocovariance, and variance.
 All three metrics decreased as $\mathcal{R}_e(t)$ approached the critical transition (figure S6).
-As in the case of anticipating elimination, AUC values moved closer to 0.5 as the speed of the vaccine campaign increased (figure \ref{elim-aucs}*c*).
+As in the case of anticipating elimination, AUC values moved closer to 0.5 as the rate of improvement in routine vaccination increased (figure \ref{elim-aucs}*c*).
 Again, this is because of shorter null and test intervals.
 
 ```{r elimination, fig.width=6.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to elimination. (*a*) A typical example of an elimination simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each speed of approach to herd immunity. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See figure S8 for a visualization of how vaccination speed maps to number of weeks in the null and test intervals.  \\label{elim-aucs}"}
@@ -737,12 +738,12 @@ ggplot() +
   annotate(geom = "text", x = 70, y = 1450, size = 3, family = "Times",
            label = "test interval", fontface = "bold") +
   annotate(geom = "text", x = 36, y = 900, family = "Times",
-           label = "start of\nvaccination campaign", 
+           label = "improvements \nin routine\nvaccination\nbegin", 
            size = 2.5, color = "grey25") +
-  annotate(geom = "text", x = 79, y = 900, family = "Times",
-           label = "coverage reaches\nherd immunity",
+  annotate(geom = "text", x = 76, y = 900, family = "Times",
+           label = "vaccination\nprobability\nreaches\nherd immunity\nthreshold",
            size = 2.5, color = "dodgerblue4") +
-  annotate(geom = "text", x = 28, y = 1300, size = 3, family = "Times",
+  annotate(geom = "text", x = 28.5, y = 1300, size = 3, family = "Times",
            label = paste("variance =", 
                          filter(variance_example, half == "first") %>% 
                            pull(variance))) +
@@ -795,7 +796,7 @@ ggplot() +
   scale_fill_viridis(limits = c(0,1), direction = -1, option = "E",
                      name = "AUC") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = expression(paste("rate to full vaccine coverage (", 
+  labs(x = expression(paste("rate of change in vaccination probability (", 
                             phantom()%*%phantom(), 10^{-4}, phantom(0), d^{-1}, ")")), 
        y = NULL) +
   theme_minimal(base_size = 11, base_family = "Times") +
@@ -918,7 +919,7 @@ The funders had no role in study design, data collection and analysis, decision 
 This work was done on the Olympus High Performance Compute Cluster located at the Pittsburgh Supercomputing Center at Carnegie Mellon University, which is supported by National Institute of General Medical Sciences Modeling Infectious Disease Agent Study (MIDAS) Informatics Services Group grant 1U24GM110707.
 
 # Authors' contributions
-ATT conceived of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; AWP helped revise the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
+ATT conceived of the study, designed the study, carried out the statistical and modeling analysis, and drafted the manuscript; EBO participated in the design of the study, participated in statistical and modeling analysis, and critically revised the manuscript; MJF and AWP helped revise the manuscript; PR participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript; JMD coordinated the study, participated in the conception and design of the study, guided the statistical and modeling analysis, and helped draft and revise the manuscript.
 All authors gave final approval for publication and agree to be held accountable for the work performed therein.
 
 # References
