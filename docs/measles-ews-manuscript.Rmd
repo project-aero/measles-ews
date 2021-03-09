@@ -162,7 +162,7 @@ This means we can separate the stress testing of EWS from the research necessary
 Thus, we have all the flexibility of a theoretical model, but we remain tethered to reality because the model parameters are fitted to real data.
 
 Here, we use fitted model simulations of measles dynamics to test whether CSD anticipates critical transitions in real disease dynamics.
-We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in sub-Saharan Africa [@Ferrari2008], and the elimination of measles by gradual improvement of routine vaccination.
+We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in the Sahel [@Ferrari2008], and the elimination of measles by gradual improvement of routine vaccination.
 We seek to answer two related questions.
 First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
 Second, can CSD anticipate disease re-emergence and elimination?
