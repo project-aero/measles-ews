@@ -37,7 +37,7 @@ keywords:
 bibliography: ./measles-ews.bib
 date: "`r Sys.Date()`"
 csl: proceedings-of-the-royal-society-b.csl
-output: rticles::elsevier_article
+output: word_document
 layout: 3p # review # review = doublespace, 3p = singlespace, 5p = two-column
 preamble: |
   \journal{Proceedings of the Royal Society B}
