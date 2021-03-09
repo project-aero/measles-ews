@@ -1,6 +1,9 @@
 # measles-ews
 Data and code for project aimed at detecting critical slowing down in measles dynamics from four cities in Niger.
 
+
+**NOTE**: This README is outdated as of 2021-03-09, but still informative. We plan to fully update the README before publication of the article.
+
 **NOTE**: The code in this repository relies on `pomp` version 1.18. 
 You may get errors if using other versions. 
 To download this specific version, use `devtools`:
