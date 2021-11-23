@@ -1,0 +1,424 @@
+---
+title: "Recovering known states and parameters"
+author: "Andrew Tredennick"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Purpose
+
+The purpose of this document and code is to simulate a stochastic, discrete time SIR model that mimics the dynamics of measles, in particular the measles dynamics observed in some of the regional-level Niger data from 1995-2005. 
+After simulating the model, we use JAGS to fit a state-space model to the simulated case report "data." 
+This is a test to make sure our model can recover known parameters and states.
+
+## Preliminaries
+
+We need to load a few packages.
+
+```{r load-libs}
+library(tidyverse)
+library(lubridate)
+library(MASS)
+library(splines2)
+library(rjags)
+library(coda)
+library(ggmcmc)
+library(cowplot)
+
+theme_set(theme_minimal())  # set ggplot2 theme for all plots
+```
+
+## The simulation model
+The first step is to simulate a time series from a stochastic SIR model that mimics the behavior observed in our focal time series, measles dynamics at the regional level in Niger.
+For context, the observed time seris of interest is shown below.
+
+```{r obs-ts}
+file_name <- "../../niger_measles/niger_regional_1995_2005.csv"
+niger_measles_raw <- read_csv(file_name, col_types = cols())
+
+num_regions <- nrow(niger_measles_raw)
+num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because first column are regions
+weeks_per_year <- num_weeks/11
+weeks <- rep(1:52, times = 11)
+
+# Create a vector of years for all num_weeks
+years <- rep(1995:2005, each = weeks_per_year)
+
+# Function for calculating start of week based on week number and year
+calculate_start_of_week = function(week, year) {
+  date <- ymd(paste(year, 1, 1, sep="-"))
+  week(date) = week
+  return(date)
+}
+
+# Clean up the data frame
+measles_data <- niger_measles_raw %>%
+  gather(key = week, value = cases, -X1) %>%
+  mutate(
+    week_num = rep(1:num_weeks, each = num_regions),
+    year = rep(years, each  = num_regions),
+    week = rep(weeks, each = num_regions),
+    date = calculate_start_of_week(week, year)
+  ) %>%
+  dplyr::rename(region = X1) %>%
+  filter(region == "Niamey (City)")
+
+# Plot the time series
+ggplot(measles_data, aes(x = date, y = cases)) +
+  geom_line() +
+  labs(x = "Date", y = "Reported cases") +
+  ggtitle("Reported cases of measles", subtitle = "Niamey, Niger")
+```
+
+We simulated measles dynamics based on the following stochastic, discrete time SIR model:
+
+$$
+y_t \sim \text{Negative Binomial}(\rho I_t, \eta) \\
+\lambda_t = e^{-\beta_t (I_t + \psi)} \\
+\Delta_t \sim \text{Binomial}(\lambda_t, S_t) \\
+I_{t+1} = S_t - \Delta_t, \\
+S_{t+1} = b_t + \Delta_t,\\
+\beta_t = \gamma_t \left[1 + \nu\;\text{sin}\left(\frac{2 \pi t}{26} + \theta \right) \right] , \\
+\gamma_t = \gamma_0 + t\;\text{log}(1-r) + \varepsilon_t, \\
+\varepsilon_t \sim \text{Normal}(0,\sigma^2).
+$$
+
+Descriptions of the parameters are in the table below.
+Seasonality is modeled as a sin wave function that is imposed on a time-varying transmission rate ($\beta_t$).
+
+| Parameter | Definition | 
+| --------- | ----------------------------------|
+| $I_t$ | Number of infected individuals at time *t* (latent). |
+| $S_t$ | Number of susceptible individuals at time *t* (latent). |
+| $y_t$ | Number of reported cases at time *t* (observed). |
+| $\rho$ | Reporting fraction. |
+| $b_t$ | Number of births at time *t*. |
+| $\lambda_t$ | Probability of escaping infection at time *t*. |
+| $\Delta_t$ | Number of susceptibles that escape infection at *t*. |
+| $\beta_t$ | Seasonally forced transmission rate at time *t*. |
+| $\gamma_t$ | Transmission rate at time *t*. |
+| $\gamma_0$ | Initial T transmission rate at time 0. |
+| $\nu$ | Amplitude of sin wave. |
+| $\theta$ | Phase of sin wave. |
+| $\varepsilon_t$ | Noise on transmission rate at time *t*. |
+| $\sigma^2$ | Variance of noise term for transmission rate. |
+
+### Simulator function
+
+Here we present the function we used to simulate dynamics from the model specified above.
+
+```{r sim-function}
+simulate_measles <- function(S0, I0, b, psi, rho, gamma0, r, nu, theta, peps, dispersion, years){
+  # Function to simulate disease dynamics similar to measles
+  #
+  # Args:
+  #  S0: initial susceptible pool
+  #  I0: initial infected pool
+  #  b: biweekly number of births
+  #  psi: per individual immigration of infection rate
+  #  rho: reporting fraction (between 0 and 1)
+  #  gamma0: inital rate of transmission on log scale
+  #  r: growth/decay rate of tranmission rate through time
+  #  nu: amplitude of sin wave for seasonality
+  #  theta: phase of sin wave
+  #  sigma: standard deviation of environmental noise on transmission rate
+  #  dispersion: dispersion parameter for the negative binomial observation process
+  #  years: number of years to simulate
+  #
+  # Returns:
+  #  A tibble (dataframe) with the following columns:
+  #   time: timestep of the simulation
+  #   susceptible: number of persons in the susceptible class
+  #   infected: number of persons in the infected class
+  #   case_reports: number of reported infections
+  #   beta: time-varying transmission rate
+  #   beta_season: time-varying transmission rate with seasonality
+  
+  # Define state and parameter vectors
+  timesteps <- years*26
+  I <- numeric(timesteps)
+  I[1] <- I0
+  S <- numeric(timesteps)
+  S[1] <- S0
+  beta <- numeric(timesteps)
+  beta_season <- numeric(timesteps)
+  vareps <- rnorm(timesteps, 0, 1)  # generate errors outside of loop
+  
+  # Define seasonality
+  season <- function(nu, phi, t){
+    nu * sin( (2*pi*t)/26 + phi )
+  }
+  
+  # Iterate the process
+  for(t in 1:(timesteps-1)){
+    beta[t] <- gamma0 + t * log(1-r) + peps*vareps[t]
+    beta_season[t] <- exp(beta[t]) * (1 + season(nu, theta, t))
+    lambda <- exp(-beta_season[t] * (I[t] + psi))
+    Delta <- rbinom(n = 1, size = S[t], prob = lambda)  # stochastic transmission
+    I[t+1] <-  S[t] - Delta
+    S[t+1] <-  b[t] + Delta
+  }
+  
+  # reported_cases <- rnegbin(n = timesteps, mu = rho*I, theta = dispersion)
+  reported_cases <- rpois(n = timesteps, rho*I)
+  
+  out_tbl <- tibble(
+    year = rep(1:years, each = 26),
+    time = 1:timesteps,
+    susceptible = S,
+    infected = I,
+    case_reports = reported_cases,
+    beta = beta,
+    beta_season = beta_season
+  )
+}
+```
+
+### Simulation results
+Here we present the results from a single simulation.
+
+```{r sim-example, fig.width = 10}
+set.seed(1234)
+# Set parameter values and initial conditions 
+years <- 10
+S0 <- 30000 
+I0 <- 10
+b <- rep(600,years*26) #rpois(20*26, 600) 
+psi <- 0.25
+rho <- 0.5
+gamma0 <- log(0.00002) 
+r <- 0
+nu <- 0.5 
+theta <- 13
+peps <- 0
+dispersion <- 10000
+
+# Call the function
+sim_out <- simulate_measles(S0, I0, b, psi, rho, gamma0, r, nu, theta, peps, dispersion, years)
+
+# Plot the results
+infected <- ggplot(sim_out, aes(x = time, y = infected)) +
+  geom_line()
+
+susceptible <- ggplot(sim_out, aes(x = time, y = susceptible)) +
+  geom_line()
+
+reports <- ggplot(sim_out, aes(x = time, y = case_reports)) +
+  geom_line()
+
+cowplot::plot_grid(infected, susceptible, reports, nrow = 1)
+```
+
+## Fit the model to the simulated data
+
+Now we attempt to fit a Bayesian state-space model to the case report data simulated above (`sim_out$case_reports`).
+We fit the model in JAGS using the `rjags` package to connect R to JAGS.
+The model we fit is exactly as specified for the simulation process, except that we substitute a sin wave for seasonality with B-spline approach, which is more flexible, especially when estimating an unknown seasonality function.
+
+### Define the JAGS model
+```{r jags-model}
+measles_model <- "
+model{
+  # Priors
+  gamma0 ~ dunif(-12, -8)
+  rho ~ dbeta(3.6, 6.3)
+  eta ~ dunif(0, 50)
+  psi ~ dunif(0, 100)
+  taub <- pow(sigmab, -2)
+  sigmab ~ dunif(0.1, 10)
+
+  for(i in 1:biweeks){
+    season[i] <- inprod(bases[i,], alpha[])
+  }
+
+  for(i in 1:knots){
+    alpha[i] ~ dnorm(0, taub)
+  }
+  
+  # Likelihood
+  for(i in 1:epiyears){
+    I0[i] ~ dunif(0, 100)
+    S0[i] ~ dunif(0, 80000)
+    I[1, i] <- trunc(I0[i])
+    S[1, i] <- trunc(S0[i])
+    p[1, i] <- eta/(eta + (rho*I[1, i]))
+    Y[1, i] ~ dnegbin(p[1, i], eta)
+
+    for(j in 1:(biweeks-1)){
+      epsilon[j, i] ~ dnorm(0, 1)
+      gamma[j, i] <- gamma0 + epsilon[j, i]
+      beta[j, i] <- exp(gamma[j, i]) * (1 + season[j])
+      lambda[j, i] <- exp(-beta[j, i] * (I[j, i] + psi))
+      Delta[j, i] ~ dbin(lambda[j, i], S[j, i])
+      I[j+1, i] <- S[j, i] - Delta[j, i]
+      S[j+1, i] <- b + Delta[j, i]
+      p[j+1, i] <- eta/(eta + (rho*I[j+1, i]))
+      Y[j+1, i] ~ dnegbin(p[j+1, i], eta)
+    }
+  }
+
+  # Derived quantities
+  for(i in 1:epiyears){
+    for(j in 1:biweeks){
+      Iobs[j, i] = I[j, i]*rho
+    }
+  }
+
+}  # end of model
+"
+```
+
+### Collate data for JAGS and define basis functions
+```{r jags-data}
+sim_out <- sim_out %>%
+  mutate(
+    biweek = rep(1:26, times = max(year))
+  )
+
+Y <- sim_out %>%
+  dplyr::select(year, biweek, case_reports) %>%
+  spread(year, case_reports) %>%
+  dplyr::select(-biweek) %>%
+  as.matrix()
+
+epiyears <- length(unique(sim_out$year))
+biweeks <- length(unique(sim_out$biweek))
+knots <- 5
+bases <- bSpline(1:biweeks, df = knots, degree = 2, intercept = TRUE)
+births <- unique(b)
+```
+
+### Fit the model in JAGS
+```{r jags-fit}
+# List up data for JAGS
+jags_data <- list(
+  Y = Y,
+  b = births,
+  bases = bases,
+  knots = knots,
+  epiyears = epiyears,
+  biweeks = biweeks
+)
+
+# Initialize model in JAGS
+model <- jags.model(
+  textConnection(measles_model),
+  data = jags_data,
+  n.chains = 1,
+  n.adapt = 20000
+)
+
+update(model, n.iter = 50000)
+
+vars_to_collect <- c(
+      "Iobs", "I", "S", "gamma", "beta", "rho", "lambda", 
+      "psi", "alpha", "eta", "S0", "I0", "gamma0"
+    )
+    
+mcmc_results <- coda.samples(
+  model, 
+  variable.names = vars_to_collect, 
+  n.iter = 50000, 
+  n.thin = 1
+)
+
+mcmcdf <- as.data.frame(mcmc_results[[1]])
+
+mcmc_summ <- summary(mcmc_results)$quantiles
+Ipreds <- mcmc_summ[grep("Iobs", rownames(mcmc_summ)), 3]
+Ilow <- mcmc_summ[grep("Iobs", rownames(mcmc_summ)), 1]
+Ihi <- mcmc_summ[grep("Iobs", rownames(mcmc_summ)), 5]
+plot(Ihi,type = "l",lty=2)
+lines(Ilow, lty = 2)
+lines(Ipreds, lty=1)
+points(sim_out$case_reports)
+
+Ipreds <- mcmc_summ[grep("I", rownames(mcmc_summ)), 3]
+Ipreds <- Ipreds[-grep("Iobs", names(Ipreds))]
+Ipreds <- Ipreds[-grep("I0", names(Ipreds))]
+
+# 
+# fitdf <- mcmcdf[, grep("Iobs", colnames(mcmcdf))]
+# 
+# mcmc_tbl <- ggs(mcmc_results) %>%
+#   group_by(Parameter) %>%
+#   summarise(
+#     mean_value = mean(value),
+#     median_value = median(value),
+#     upper_95 = quantile(value, 0.975),
+#     lower_95 = quantile(value, 0.025),
+#     upper_50 = quantile(value, 0.75),
+#     lower_50 = quantile(value, 0.25)
+#   ) 
+# 
+# time_invariants <- mcmc_tbl %>%
+#   filter(!grepl("\\[", Parameter))
+# knitr::kable(time_invariants)
+# 
+# alphas <- mcmc_tbl %>%
+#   filter(grepl("alpha\\[", Parameter))
+# 
+# seasonal_betas <- mcmc_tbl %>%
+#   filter(grepl("beta_season", Parameter))
+# 
+# model_observations <- mcmc_tbl %>%
+#   filter(grepl("Iobs\\[", Parameter)) %>%
+#   mutate(
+#     observed_cases = sim_out$case_reports,
+#     time = sim_out$time
+#   )
+# 
+# mycolors <- c("coral","steelblue")
+# ggplot(model_observations, aes(x = time)) +
+#   geom_point(aes(y = observed_cases), shape = 1, color = "grey45", size = 0.75) +
+#   geom_ribbon(aes(ymin = lower_95, ymax = upper_95), alpha = 0.3, fill = mycolors[1]) +
+#   # geom_ribbon(aes(ymin = lower_50, ymax = upper_50), alpha = 0.35, fill = mycolors[1]) +
+#   geom_line(aes(y = median_value), color = mycolors[1], linetype = 2) +
+#   labs(x = "Date", y = "Number of reported cases") +
+#   # scale_y_continuous(trans = "log") +
+#   NULL
+# 
+# model_latents <- mcmc_tbl %>%
+#   filter(grepl("I\\[", Parameter) | grepl("S\\[", Parameter)) %>%
+#   mutate(
+#     time = rep(sim_out$time, times = 2)
+#   ) %>%
+#   separate(Parameter, into = c("param_family", "trash"), sep ="\\[") %>%
+#   dplyr::select(-trash) %>%
+#   mutate(
+#     param_name = ifelse(param_family == "S", "Susceptible", "Infectious")
+#   )
+# 
+# ggplot(model_latents, aes(x = time, y = median_value)) +
+#   geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = param_name), alpha = 0.15) +
+#   geom_ribbon(aes(ymin = lower_50, ymax = upper_50, fill = param_name), alpha = 0.35) +
+#   geom_line(aes(color = param_name), linetype = 2) +
+#   facet_wrap(~param_name, scales = "free_y", ncol = 1) +
+#   scale_color_manual(values = mycolors) +
+#   scale_fill_manual(values = mycolors) +
+#   guides(color = FALSE, fill = FALSE) +
+#   labs(x = "Date", y = "Number of persons") +
+#   # scale_y_continuous(trans = "log") +
+#   NULL
+```
+
+
+### Compare parameter estimates to known values
+```{r param-comps}
+static_params <- time_invariants %>%
+  filter(!grepl("pvalue", Parameter)) %>%
+  filter(!grepl("fit", Parameter)) %>%
+  mutate(
+    real_value = c(dispersion, gamma0, I0, psi, r, rho, S0, sigma)
+  )
+
+ggplot(static_params, aes(x = Parameter)) +
+  geom_errorbar(aes(ymin = lower_95, ymax = upper_95), width = 0.1) +
+  geom_point(aes(y = median_value)) +
+  geom_point(aes(y = real_value), color = "red") +
+  facet_wrap(~Parameter, scales = "free")
+```
