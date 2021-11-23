@@ -1,0 +1,60 @@
+# calculate-ews.R:
+#  Script to calculate 10 early warning signals for time series incidence
+#  data from four cities in Niger.
+#
+# Author:
+#  Andrew Tredennick (atredenn@gmail.com)
+
+
+# Load libraries ----------------------------------------------------------
+
+library(tidyverse)
+library(spaero)
+
+
+# Load data ---------------------------------------------------------------
+
+file_name <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+measles_data <- readRDS(file_name) %>%
+  filter(year > 1994) %>%
+  dplyr::select(-year, -week_of_year, -obs_week, -time)
+
+
+# Calculate early warning signals -----------------------------------------
+
+window_bandwidth <- 26  # half of the window size
+all_stats <- {}
+for(do_city in unique(measles_data$region)){
+  city_data <- measles_data %>%
+    filter(region == do_city)
+  
+  city_stats <- spaero::get_stats(
+    x = city_data$cases,
+    center_trend = "local_constant", 
+    center_kernel = "uniform", 
+    center_bandwidth = window_bandwidth, 
+    stat_trend = "local_constant", 
+    stat_kernel = "uniform", 
+    stat_bandwidth = window_bandwidth, 
+    lag = 1, 
+    backward_only = TRUE
+  )$stats
+  
+  city_stats_tb <- as_tibble(city_stats) %>%
+    mutate(
+      time_iter = 1:n(),
+      date = city_data$date
+    ) %>%
+    gather(key = ews, value = value, -time_iter, -date) %>%
+    mutate(city = do_city)
+  
+  all_stats <- bind_rows(all_stats, city_stats_tb)
+}
+
+
+# Save the results --------------------------------------------------------
+
+saveRDS(
+  object = all_stats, 
+  file = "../results/ews-niger-cities.RDS"
+)

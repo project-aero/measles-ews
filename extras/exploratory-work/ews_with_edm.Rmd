@@ -1,0 +1,305 @@
+---
+title: "Using empirical dynamic modeling to (re)generate disease dynamics for testing early warning signals"
+author: "Andrew Tredennick"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height = 4)
+
+library(tidyverse)  # data wrangling
+library(lubridate)  # time and date functions
+library(viridis)    # pleasing color palette
+library(spaero)     # project AERO code; EWS metrics, etc.
+library(rEDM)       # emprical dynamic modeling functions
+
+theme_set(theme_minimal())  # set ggplot2 theme globally
+```
+
+## Load data
+```{r load-data}
+file_name <- "../niger_measles/niger_regional_1995_2005.csv"
+niger_measles_raw <- read_csv(file_name, col_types = cols())
+
+num_regions <- nrow(niger_measles_raw)
+num_weeks <- ncol(niger_measles_raw) - 1  # subtract 1 from ncol() because first column are regions
+weeks_per_year <- num_weeks/11
+weeks <- rep(1:52, times = 11)
+
+# Create a vector of years for all num_weeks
+years <- rep(1995:2005, each = weeks_per_year)
+
+# Function for calculating start of week based on week number and year
+calculate_start_of_week = function(week, year) {
+  date <- ymd(paste(year, 1, 1, sep="-"))
+  week(date) = week
+  return(date)
+}
+
+# Clean up the data frame
+measles_data <- niger_measles_raw %>%
+  gather(key = week, value = cases, -X1) %>%
+  mutate(
+    week_num = rep(1:num_weeks, each = num_regions),
+    year = rep(years, each  = num_regions),
+    week = rep(weeks, each = num_regions),
+    date = calculate_start_of_week(week, year)
+  ) %>%
+  dplyr::rename(region = X1) %>%
+  filter(region == "Tannout") %>%
+  dplyr::select(date, cases)
+
+ggplot(measles_data, aes(x = date, y = cases)) +
+  geom_line()
+```
+
+## Determine optimal embedding dimension
+```{r embed-opt}
+n <- nrow(measles_data)
+lib <- c(1, floor(2/3 * n))  # indices for the first 2/3 of the time series
+pred <- c(floor(2/3 * n) + 1, n)  # indices for the final 1/3 of the time series
+
+simplex_output <- simplex(
+  measles_data$cases,  # input data (for data.frames, uses 2nd column)
+  lib = lib, 
+  pred = pred,  
+  E = 1:10 
+)
+
+ggplot(simplex_output, aes(x = E, y = rho)) +
+  geom_line() +
+  geom_point(size = 5, color = "white") +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = 1:10) +
+  labs(x = "Embedding dimension (E)", y = expression(rho))
+
+opt_E <- simplex_output %>%
+  filter(rho == max(rho)) %>%
+  pull(E)
+```
+
+
+
+## Make predictions from the model to serve as replicates of data
+```{r pred-sims}
+# Iteratively loop through and make one-step-ahead predictions
+pred_data <- measles_data$cases
+
+num_sims <- 500
+for(i in 1:num_sims){
+  lib_ids <- c(1, (length(pred_data)-52))
+  pred_ids <- c((length(pred_data)-51), (length(pred_data) + 1))
+  
+  pred_data <- c(pred_data, NA)  # tag on NA to forecast
+  
+  new_prediction <- simplex(
+    pred_data,
+    lib = lib_ids,
+    pred = pred_ids,
+    E = 2,
+    stats_only = FALSE
+  )
+  
+  this_pred <- new_prediction$model_output[[1]]
+  mean_pred <- this_pred[which(this_pred$time == pred_ids[2]), "pred"]
+  this_var <- this_pred[which(this_pred$time == pred_ids[2]), "pred_var"]
+  
+  pred_data[is.na(pred_data)] <- max(1e-07, rnorm(1, mean_pred, sqrt(this_var)))
+}
+
+real_and_simmed <- tibble(
+  iteration = 1:length(pred_data),
+  cases = pred_data
+) %>%
+  mutate(
+    set = ifelse(iteration < nrow(measles_data), "observed", "simulated")
+  )
+
+ggplot(real_and_simmed, aes(x = iteration, y = cases)) +
+  geom_line(aes(color = set)) +
+  scale_color_brewer(type = "qual", name = NULL)
+```
+
+## TODO: Add seasonality.
+
+## Calculate early warning signals and their correlation with time
+```{r ews-calcs, fig.width=10}
+bws <- seq(26, 200, by = 26)
+out_tbl <- {}
+for(dobw in bws){
+  tmp_stats <- get_stats(
+    measles_data$cases, 
+    center_kernel = "uniform",
+    center_trend = "local_constant", 
+    center_bandwidth = dobw,
+    stat_bandwidth = dobw,
+    backward_only = TRUE
+  )
+  
+  tmp_var <- tmp_stats$stats$variance
+  tmp_tbl <- tibble(
+    date = measles_data$date,
+    variance = tmp_stats$stats$variance,
+    bandwidth = dobw
+  ) %>%
+    mutate(
+      variance = ifelse(variance == 0, NA, variance)
+    )
+  
+  out_tbl <- bind_rows(out_tbl, tmp_tbl)
+}
+
+max_cases_date <- measles_data %>%
+  filter(cases == max(cases)) %>%
+  pull(date)
+
+varstats <- ggplot(out_tbl, aes(x = date, y = variance, color = factor(bandwidth))) +
+  geom_line() +
+  geom_vline(aes(xintercept = max_cases_date), linetype = 2) +
+  scale_color_brewer(palette = "Set1") +
+  guides(color = FALSE)
+
+cases <- ggplot(measles_data, aes(x = date, y = cases)) +
+  geom_line(color = "grey35") +
+  geom_vline(aes(xintercept = max_cases_date), linetype = 2)
+
+mainplot <- cowplot::plot_grid(cases, varstats, align = "v", ncol = 1)
+
+inset <- ggplot(filter(out_tbl, year(date)>2000 & year(date)<2003),
+                 aes(x = date, y = variance, color = factor(bandwidth))) +
+  geom_line() +
+  geom_vline(aes(xintercept = max_cases_date), linetype = 2) +
+  scale_color_brewer(palette = "Set1", name = "Bandwidth")
+
+cowplot::plot_grid(mainplot, inset, ncol = 2)
+
+```
+
+It looks like the variance is telling us something, but how do we turn this into an early warning? We'll try the appraoch of Drake and Griffen (2010, *Nature*), where we calculate time-varying standardized differences between variance at time *t* and the rolling mean of the variance.
+
+```{r ews-transform}
+do_bw <- 52
+all_dates <- unique(out_tbl$date)
+
+indicator_df <- {}
+
+for(i in 1:length(all_dates)){
+  do_time <- all_dates[i]
+  
+  tmp_df <- out_tbl %>%
+    filter(bandwidth == do_bw) %>%
+    filter(date <= do_time)
+  
+  xnow <- tmp_df %>%
+    filter(date == do_time) %>%
+    pull(variance)
+  
+  xmean <- mean(tmp_df$variance, na.rm = TRUE)
+  xsd <- sd(tmp_df$variance, na.rm = TRUE)
+  
+  if(do_time == min(all_dates))
+  outdf <- tibble(
+    date = do_time,
+    w = (xnow - xmean) / xsd,
+    rollmu = NA,
+    rollsigma = NA
+  )
+  
+  if(do_time > min(all_dates))
+  outdf <- tibble(
+    date = do_time,
+    w = (xnow - xmean) / xsd,
+    rollmu = mean(indicator_df$w, na.rm = TRUE),
+    rollsigma = sd(indicator_df$w, na.rm = TRUE)
+  )
+  
+  indicator_df <- rbind(indicator_df, outdf)
+}
+
+ggplot(indicator_df) +
+  geom_point(aes(x = date, y = w), size = 1, shape = 1, color = "steelblue") +
+  geom_line(aes(x = date, y = rollmu), color = "red") +
+  geom_line(aes(x = date, y = rollsigma+rollmu), linetype = 2, color = "red") +
+  geom_line(aes(x = date, y = 2*rollsigma+rollmu), linetype = 3, color = "red") +
+  geom_vline(aes(xintercept = max_cases_date), linetype = 3) +
+  labs(x = "Date", y = expression(paste("Early warning index (", italic(w),")"))) +
+  annotate(geom = "text", x = max(all_dates)+100, y = 1, label = expression(bar(italic(w)))) +
+  annotate(geom = "text", x = max(all_dates)+126, y = 2.8, label = expression(paste("+", sigma))) +
+  annotate(geom = "text", x = max(all_dates)+150, y = 4.9, label = expression(paste("+2", sigma))) +
+  theme_minimal(base_size = 13)
+
+```
+
+## Apply EWS to simulated series
+```{r sim-series}
+pred_data <- measles_data$cases
+
+num_sims <- 2000
+for(i in 1:num_sims){
+  lib_ids <- c(1, (length(pred_data)-52))
+  pred_ids <- c((length(pred_data)-51), (length(pred_data) + 1))
+  
+  pred_data <- c(pred_data, NA)  # tag on NA to forecast
+  
+  new_prediction <- simplex(
+    pred_data,
+    lib = lib_ids,
+    pred = pred_ids,
+    E = 2,
+    stats_only = FALSE
+  )
+  
+  this_pred <- new_prediction$model_output[[1]]
+  mean_pred <- this_pred[which(this_pred$time == pred_ids[2]), "pred"]
+  this_var <- this_pred[which(this_pred$time == pred_ids[2]), "pred_var"]
+  
+  pred_data[is.na(pred_data)] <- max(1e-07, rnorm(1, mean_pred, sqrt(this_var)))
+}
+
+real_and_simmed <- tibble(
+  iteration = 1:length(pred_data),
+  cases = pred_data
+) %>%
+  mutate(
+    set = ifelse(iteration < nrow(measles_data), "observed", "simulated")
+  )
+
+sim_cases <- filter(real_and_simmed, set == "simulated")
+plot(sim_cases$cases, type = "l")
+```
+
+```{r ews-on-sim}
+bws <- seq(26, 200, by = 26)
+out_tbl <- {}
+for(dobw in bws){
+  tmp_stats <- get_stats(
+    sim_cases$cases, 
+    center_kernel = "uniform",
+    center_trend = "local_constant", 
+    center_bandwidth = dobw,
+    stat_bandwidth = dobw,
+    backward_only = TRUE
+  )
+  
+  tmp_var <- tmp_stats$stats$variance
+  tmp_tbl <- tibble(
+    variance = tmp_stats$stats$variance,
+    bandwidth = dobw
+  ) %>%
+    mutate(
+      variance = ifelse(variance == 0, NA, variance)
+    )
+  
+  out_tbl <- bind_rows(out_tbl, tmp_tbl)
+}
+
+out_tbl <- out_tbl %>%
+  mutate(
+    iteration = rep(1:nrow(sim_cases), times = length(unique(bandwidth)))
+  )
+
+ggplot(out_tbl, aes(x = iteration, y = variance, color = factor(bandwidth))) +
+  geom_line()
+
+```
