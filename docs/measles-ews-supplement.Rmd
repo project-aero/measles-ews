@@ -31,7 +31,7 @@ header-includes:
 ---
 
 ```{r libraries, include=FALSE, message=FALSE, warning=TRUE}
-knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=TRUE, cache=FALSE)
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE)
 library(tidyverse)
 library(lubridate)
 library(stringr)
@@ -39,7 +39,7 @@ library(dplyr)
 library(pomp)
 library(ggthemes)
 library(cowplot)
-
+library(GGally)
 ```
 
 # Demographic data used in model fitting
@@ -50,21 +50,8 @@ Note that the daily interpolated birth rate is still in units of "per year," whi
 
 ```{r demo-data, fig.width=8.5, fig.height=3, fig.cap="Plots of the demographic data used for model fitting. The points are the actual data and the lines are the interpolated spline fits. Population data is at the disrict level, meaning we have different data for each focal city. Birth rate data is national, meaning each city shares the same birth rates. \\label{demog-plot}"}
 
-annual_pop <- read_csv("../data/raw-data/district_pops_colnames.csv",
-                       col_types = cols(
-  region = col_character(),
-  `1995` = col_double(),
-  `1996` = col_double(),
-  `1997` = col_double(),
-  `1998` = col_double(),
-  `1999` = col_double(),
-  `2000` = col_double(),
-  `2001` = col_double(),
-  `2002` = col_double(),
-  `2003` = col_double(),
-  `2004` = col_double(),
-  `2005` = col_double()
-))
+annual_pop <- read.csv("../data/raw-data/district_pops_colnames.csv")
+colnames(annual_pop) <- c("region", as.character(1995:2005))
 annual_births <- read_csv("../data/raw-data/niger_crude_birth_rates.csv",
                           col_types = cols(
   date = col_character(),
@@ -178,7 +165,7 @@ for(do_file in pomp_files){
 ggplot() +
   geom_line(data = filter(all_sims, sim != "data"), aes(x = time, y = reports, color = sim), alpha = 0.25) +
   geom_line(data = filter(all_sims, sim == "data"), aes(x = time, y = reports)) +
-  guides(color = FALSE) +
+  guides(color = "none") +
   facet_wrap(~city, scales = "free_y") +
   labs(x = "Date", y = expression(sqrt(Reports))) +
   scale_y_sqrt() +
@@ -348,7 +335,7 @@ When determining the critical year, we eliminate the variation in $\mathcal{R}_e
 From a window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $\mathcal{R}_e = 1$) and the test interval as the second half of the window (near $\mathcal{R}_e = 1$).
 Figure \ref{emerge-sim} shows a typical example.
 
-```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the susceptible discount factor was 1e-04. (*a*) The simulated trajectory of $\\mathcal{R}_e$ and the end of the year in which $\\mathcal{R}_e$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for end of critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
+```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the susceptible depletion factor was 1e-04. (*a*) The simulated trajectory of $\\mathcal{R}_e$ and the end of the year in which $\\mathcal{R}_e$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for end of critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
 ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
 emerge_sim <- readRDS(ex_file)
 
@@ -380,7 +367,7 @@ re_series <- ggplot(one_sim, aes(x = time, y = mean_re)) +
   geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
   annotate(geom = "text", x = 10, y = 0.3, label = "End\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
   scale_alpha_manual(values = c(0.5, 1)) +
-  guides(alpha = FALSE) +
+  guides(alpha = "none") +
   labs(x = "Simulation time (year)", y = expression(R[e])) +
   theme_classic(base_size = 12)
 
@@ -392,7 +379,7 @@ cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports))
   annotate(geom = "text", x = 1.75, y = 250, label = "Null window") +
   annotate(geom = "text", x = 5.25, y = 250, label = "Test window") +
   scale_alpha_manual(values = c(0.4, 1)) +
-  guides(alpha = FALSE) +
+  guides(alpha = "none") +
   annotate(geom = "text", x = 7.35, y = 150, label = "End\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
   labs(x = "Simulation time (year)", y = "Reported cases") +
   theme_classic(base_size = 12)
@@ -501,7 +488,7 @@ approaching the critical transition from above (elimination), we are not aware o
 
 To confirm that the EWS are behaving as expected, and to provide empirical results for cases in which we lack expectations, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
 
-```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where the susceptible discount factor was 1e-04.", fig.height=5}
+```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where the susceptible depletion factor was 1e-04.", fig.height=5}
 emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
   filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
   mutate(metric = as.character(metric)) %>%
@@ -527,7 +514,7 @@ for(do_city in sort(unique(emerge_ews$city))){
       scale_fill_manual(values = c("tan", "dodgerblue4")) +
       theme_minimal(base_size = 8) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      guides(fill = FALSE) +
+      guides(fill = "none") +
       labs(y = "Count", x = "") +
       ggtitle(do_city)
   }
@@ -582,7 +569,7 @@ for(do_city in sort(unique(emerge_ews$city))){
       scale_fill_manual(values = c("tan", "dodgerblue4")) +
       theme_minimal(base_size = 8) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      guides(fill = FALSE) +
+      guides(fill = "none") +
       labs(y = "Count", x = "") +
       ggtitle(do_city)
   }
@@ -788,9 +775,36 @@ ggplot(seasonal_functions, aes(x = date, y = beta, group = boot)) +
 
 ```
 
+# Correlations among parameters
+
+We computed parameter correlations using the 100 parametric bootstrapped samples.
+Correlations were generally weak (see plots below), suggesting parameter identifiability.
+The strongest correlation was between the minimum tranmission rate ($\beta$) and the initial susceptible population size ($S_{t=0}/N_{t_0}$).
+This correlation was negative for all cities, meaning that as the estimate of initial susceptible population size increased the estimate of minimum transmission rate decreased.
+
+```{r param-cors, fig.width=8.5, fig.height=3}
+column_names <- c("S", "E", "I", "beta", "sigma", "psi", "rho", "tau")
+all_params <- tibble()
+for(do_file in loglik_files){
+  do_city <- str_sub(do_file, 19, -5)
+  tmp_file <- read.csv(paste0("../results/", do_file)) %>%
+    slice(2:n()) %>%  # ignore first row of NAs
+    left_join(comp_grid, by = "do_grid") %>%  # merge in comp grid info
+    group_by(boot_series) %>%
+    filter(loglik == max(loglik)) %>%
+    ungroup() %>%
+    dplyr::select(-do_grid, -loglik, -loglik_se, -boot_series, -param_set,
+                  -b1, -b2, -b3, -b4, -b5, -b6) %>%
+    dplyr::select(S_0, E_0, I_0, everything())
+  colnames(tmp_file) <- column_names
+  print(ggcorr(tmp_file, parse = TRUE, label = TRUE) +
+          ggtitle(do_city))
+}
+```
+
 # Length of null and test intervals
 
-In the main text we show EWS performance across the range of susceptible discounting factors and vaccination improvement speeds we modeled.
+In the main text we show EWS performance across the range of susceptible depletion factors and vaccination improvement speeds we modeled.
 To put these values into context, here we show the corresponding window sizes for each simulation.
 These window sizes are the number of weeks that occur in the null and test intervals (Figure \ref{bws}).
 
@@ -805,11 +819,11 @@ read_csv("../results/emergence-bandwidths-colnames.csv",
   ggplot(aes(x = susc_discount, y = bandwidth, color = city)) +
   geom_line() +
   geom_point(size = 3) +
-  labs(x = "Susceptible discount factor", 
+  labs(x = "Susceptible depletion factor", 
        y = "Number of weeks in interval",
        title = "Length of emergence intervals") +
   scale_color_colorblind(name = NULL) +
-  guides(color = FALSE) +
+  guides(color = "none") +
   theme_minimal() -> emerge_ints
 
 read_csv("../results/elimination-bandwidths-colnames.csv",
@@ -853,7 +867,7 @@ emerge_plot <- ggplot() +
   geom_tile(data = emergence_aucs, aes(x = as.factor(susc_discount), y = metric, fill = AUC)) +
   scale_fill_viridis(limits = c(0,1), direction = -1, option = "E", name = "AUC") +
   facet_wrap(~city, nrow = 1) +
-  labs(x = "Susceptible discount factor", y = NULL) +
+  labs(x = "Susceptible depletion factor", y = NULL) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(panel.spacing = unit(1, "lines"),
@@ -887,13 +901,13 @@ These simulations adequately reproduce the general dynamics of measles in each c
 We used the simulations because the replicates gave us more outbreaks to work with than the observed data alone.
 
 For each of the 100 replicates for each city, we defined an "outbreak year" as any year in which the cumulative number of reported cases exceeded 80% of the maximum number of cumulative cases observed across all years.
-We then calculated susceptible depletion (i.e., the susceptible discounting fraction used in our modeling study) as the minimum number of susceptible individuals in the outbreak year divided by the maximum number of susceptible individuals in the previous year.
+We then calculated susceptible depletion (i.e., the susceptible depletion fraction used in our modeling study) as the minimum number of susceptible individuals in the outbreak year divided by the maximum number of susceptible individuals in the previous year.
 For example, let year *t* be an outbreak year where the cumulative number of cases exceeded 80% of the maximum cumulative cases observed.
 The level of susceptible depletion between year $t-1$ and year $t$ is then: $\min(\{S_i \text{ in year } t\})/\max(\{S_i \text{ in year } t-1\})$.
-Essentially, this metric tells us the discounting factor that would need to be applied to *S* at its peak in year *t - 1* to match the reduction in $S$ caused by the outbreak of the size in year *t*.
+Essentially, this metric tells us the depletion factor that would need to be applied to *S* at its peak in year *t - 1* to match the reduction in $S$ caused by the outbreak of the size in year *t*.
 Histograms for each city are in Figure \ref{susc-disc}.
 
-```{r, fig.width=4, fig.height=3, fig.cap="Histograms of susceptible depletion discounting factors for each city. Values were calculated by comparing the number of susceptible individuals before and after large outbreaks from 100 replicate simulations from the fitted models for each city.  \\label{susc-disc}"}
+```{r, fig.width=4, fig.height=3, fig.cap="Histograms of susceptible depletion factors for each city. Values were calculated by comparing the number of susceptible individuals before and after large outbreaks from 100 replicate simulations from the fitted models for each city.  \\label{susc-disc}"}
 # Define threshold for outbreak year --------------------------------------
 
 # Outbreaks defined as: an annual case count exceeding x% of the maximum
