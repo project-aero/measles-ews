@@ -28,7 +28,7 @@ address:
   - code: ID
     address: "Department of Infectious Diseases, University of Georgia, Athens, GA 30602, USA"
 abstract: |
-  Forecasts of the emergence, re-emergence, and elimination of human infectious diseases would allow for proactive, rather than reactive, decisions that could save lives. Recent theory suggests that a generic feature of dynamical systems approaching a tipping point -- critical slowing down -- can anticipate disease re-emergence and elimination. Empirical demonstrations of critical slowing down in real disease dynamics are scarce, but are essential before we can implement model-independent outbreak detection systems. Here, we use fitted, mechanistic models of measles transmission in four Nigerien cities to detect critical slowing down through statistical early warning signals. We find that several early warning signals accurately anticipate measles re-emergence and elimination, suggesting that critical slowing down can be detected before tipping points in real disease dynamics. Broadly, our findings suggest that early warning signals, coupled with decision-support algorithms and expert judgment, could provide the basis for outbreak early detection systems.
+  Timely forecasts of the emergence, re-emergence, and elimination of human infectious diseases allow for proactive, rather than reactive, decisions that save lives. Recent theory suggests that a generic feature of dynamical systems approaching a tipping point -- early warning signals due to critical slowing down -- can anticipate disease emergence and elimination. Empirical studies documenting critical slowing down in observed disease dynamics are scarce, but such demonistration of concept is essential to the further development of model-independent outbreak detection systems. Here, we use fitted, mechanistic models of measles transmission in four cities in Nigern to detect critical slowing down through statistical early warning signals. We find that several early warning signals accurately anticipate measles re-emergence and elimination, suggesting that critical slowing down should be detectable before disease transmission systems cross key tipping points. These findings support the idea that statistical signals based on critical slowing down, coupled with decision-support algorithms and expert judgment, could provide the basis for early warning systems of disease outbreaks.
 keywords:
   - critical slowing down,
   - early warning signals,
@@ -125,29 +125,29 @@ for(do_file in pred_files){
 # Introduction
 
 Forecasts of the emergence and re-emergence of infectious diseases have the potential to save lives, money, and human productivity by allowing for proactive, rather than reactive, preparedness measures [@Han2016].
-Similarly, indicators of the elimination of infectious diseases can signal the effectiveness of "end game" strategies aimed at disease eradication [@Drake2017].
+Similarly, indicators of the elimination of infectious diseases can measure the effectiveness of "end game" strategies aimed at disease eradication [@Drake2017].
 Predicting (re)emergence and elimination is possible with parametric mathematical models of disease transmission, but their success relies on detailed understanding of the underlying transmission dynamics and adequate data [@Metcalf2017].
 We often do not have enough information (or time) to parameterize such models.
 An alternative approach is to use model-independent statistical signals that portend infectious disease (re)emergence and elimination by detecting critical slowing down as the system approaches a critical transition [@ORegan2013;@Drake2019].
 
-Emergence and elimination of an infectious disease both involve a critical transition, reflected in deterministic models by a *transcritical bifurcation*, that occurs at the critical point where the effective reproduction number ($\mathcal{R}_e$, corresponding to the number of secondary cases that arise from a single infected case in a population) is equal to one [@Heffernan2005].
+Emergence and elimination of an infectious disease both involve a critical transition, often reflected in deterministic models by a *transcritical bifurcation*, that occurs at the critical point where the effective reproduction number ($\mathcal{R}_e$, corresponding to the number of secondary cases that arise from a single infected case in a population) is equal to one [@Heffernan2005].
 Thus, subcritical ($\mathcal{R}_e < 1$) and supercritical ($\mathcal{R}_e > 1$) systems represent alternative dynamical regimes [@Scheffer2009; @Scheffer2012; @ORegan2013].
 
 Critical transitions in stochastic systems, such as systems of disease transmission, are often accompanied by critical slowing down, a reduction in the resilience of a system to perturbations [@Wissel1984; @VanNes2007].
-Critical slowing down (CSD) can be measured by changes in the dynamical features of the system: early warning signals (EWS) such as an increase in the variance and autocorrelation [@Carpenter2006; @Scheffer2009].
+Critical slowing down (CSD) can be measured by changes in the statistical properties of the system, often referred to as early warning signals (EWS), such as an increase in the variance and autocorrelation [@Carpenter2006; @Scheffer2009].
 Recent theoretical work suggests that CSD occurs as disease dynamics approach $\mathcal{R}_e = 1$ from below (emergence) [@ORegan2013; @Dibble2016] and from above (elimination) [@ORegan2013; @ORegan2016; @Drake2017], and that several EWS can anticipate the critical transition [@Brett2017; @Brett2018; @Miller2017].
-These findings suggest that early warning signals could be operationalized to develop early warning systems of disease emergence and elimination, or re-emergence and outbreaks of endemic diseases.
+These findings suggest that such model-independent statistical signals could be operationalized as part of early warning systems for disease emergence and elimination, or re-emergence and outbreaks of endemic diseases.
 
-However, operationalizing EWS, and deploying early warning systems based on them, faces many challenges [@Boettiger2013; @Han2016].
+Operationalizing such EWS, however, and deploying early warning systems based on them, face many challenges [@Boettiger2013; @Han2016].
 For example, using EWS in an "online mode" requires choosing temporal windows over which EWS are calculated.
 These moving windows should be long enough to provide reliable statistics, but short enough to forget the past so as to not overwhelm information contained in new observations.
-This will be especially important for diseases that fluctuate seasonally, where EWS might always increase and then decrease over the course of the year, requiring the end-user to reset computations each season [@Miller2017].
+Such fine-tuning is especially important for diseases that fluctuate seasonally, where EWS might always increase and then decrease over the course of the year, requiring computations to be reset each season [@Miller2017].
 Another challenge is defining thresholds for detection of an upcoming tipping point.
 Detection thresholds can be based on the absolute value of an EWS (e.g., warning if variance exceeds some value), the trend in an EWS over time (e.g., warning if the correlation of variance with time exceeds some value), or an algorithmic combination of many factors (e.g., variance and autocorrelation increases above some value several observation periods in a row).
 Ref. [@Brett2020] has pioneered the approach of developing algorithms for combining EWS, their values, and their trends to best detect disease emergence and elimination, but much work remains to be done.  
 
-Given the amount of research still required to operationalize EWS, it is imperative that we stress test the hypothesis that EWS anticipate critical transitions before we allocate time and resources to the task of deploying early warning systems.
-One way to stress test EWS is through empirical case studies: can EWS anticipate re-emergence and elimination in observed time series of disease incidence [@Harris2020]?
+An important step in operationalize EWS based on critical slowing down is to stress test the performance of EWS in anticipating critical transitions.
+One way to stress test EWS is through empirical case studies: do EWS anticipate re-emergence and elimination in observed time series of disease incidence [@Harris2020]?
 However, uncritical application of EWS to observed data could lead to researchers getting the right answer for the wrong reasons.
 EWS might perform well for a given time series, but for reasons having nothing to do with critical slowing down [@Kefi2013; @Dakos2015; @Dutta2018].
 Critical transitions may also occur in the absence of early warning signals [@Boettiger2012a].
@@ -155,36 +155,35 @@ Without knowing the critical point (i.e., when $\mathcal{R}_e(t) = 1$), it is im
 
 Another option is to use fitted models of disease transmission to test EWS.
 This offers several advantages.
-First, using a model to simulate time series of cases means we also have access to a time series of $\mathcal{R}_e(t)$, which allows us to know precisely when the critical transition occurs.
+First, using a model to simulate time series of cases means one also has access to a time series of $\mathcal{R}_e(t)$, essential for knowing the time at which the critical transition occurs.
 This means we know whether we are getting the right answer for the right reason.
-Second, we can simulate replicate time series to account for the inherent stochasticity of disease transmission.
-This means our conclusions are not based on one-off events that bias conclusions [@Boettiger2012].
-Third, we can specifically simulate re-emergence and elimination events.
-This means we can separate the stress testing of EWS from the research necessary to operationalize EWS.
-Thus, we have all the flexibility of a theoretical model, but we remain tethered to reality because the model parameters are fitted to real data.
+Second, one can simulate replicate time series to account for the inherent stochasticity of disease transmission, so that conclusions are not based on one-off events that might result in confirmation bias [@Boettiger2012].
+Third, we can specifically simulate re-emergence and elimination events to separate the stress testing of EWS from the research necessary to operationalize EWS.
+In short, a simulation approach to stress testing provides the flexibility of a theoretical model, but  remains tethered to reality because the model parameters are fitted to real data.
+We believe this is the first study to take this step toward operationalizing EWS as part of infectious disease early warning systems.
 
-Here, we use fitted model simulations of measles dynamics to test whether CSD anticipates critical transitions in real disease dynamics.
-We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in the Sahel [@Ferrari2008], and the elimination of measles by gradual improvement of routine vaccination.
+Here, we report on a study using simulations from fitted models of measles transmission in an outbreak prone population to test whether CSD anticipates critical transitions in realist situations.
+We focus on two scenarios: the re-emergence of measles following a large outbreak, a situation typical of measles dynamics in the Sahel [@Ferrari2008], and the elimination of measles by gradually increasing routine vaccination.
 We seek to answer two related questions.
-First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from and near to a critical transition?
+First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from vs. near to a critical transition?
 Second, can CSD anticipate disease re-emergence and elimination?
 <!-- More precisely, how does the distance to and the rate of approaching the threshold impact the anticipatory accuracy of CSD? -->
 
-To answer these questions, we fit mechanistic models of disease transmission to time series of measles incidence in four Nigerien cities [@Ferrari2008; @Bharti2011].
-We then use the fitted models to perform model experiments designed to test the performance of several EWS, which signify CSD, at anticipating re-emergence and elimination.
-Our results confirm theoretical expectations about several EWS and associated CSD.
-In particular, we show that CSD before a critical transition is detectable by several EWS in realistic scenarios.
+To answer these questions, we fit mechanistic models to time series of measles incidence in four cities in Niger [@Ferrari2008; @Bharti2011].
+We then use the fitted models to perform simulation experiments designed to test the performance of several EWS that are characteristic of critical slowing down with respect to anticipating re-emergence and elimination.
+Our results confirm the theory concerning several EWS.
+In particular, we show that slowing down before a critical transition is detectable by several EWS in realistic scenarios.
 <!-- , and they do so using much shorter time series than used in theoretical studies. -->
-However, our study highlights the limitations of EWS in situations where disease re-emergence and elimination occurs rapidly.
-We also find that EWS perform better at detecting CSD before re-emergence than before elimination.
+However, our study also highlights the limitations of EWS in situations where disease re-emergence and elimination occur rapidly.
+Finally, we also find that EWS perform better at anticipating re-emergence than elimination.
 
 # Materials and methods
 
 ## Data
-We used weekly measles case report data (incidence data) from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}*a*).
+We used weekly measles case report data (incidence) from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}*a*).
 The data were collected over an 11 year period from 1995-2005 (figure \ref{data-plot}*b*).
-These data are ideal for testing theory on CSD in disease dynamics because each city has a different population size (spanning means of about 150 to 750 thousand during this time period), different dynamics in terms of outbreak sizes (maximum weekly incidence from 60 to 1845 cases) and length of inter-epidemic periods (2-5 years), and has different amounts of demographic stochasticity due to differences in population size.
-Such differences provide a natural gradient of extra-demographic and environmental stochasticity that may influence CSD [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
+These data are ideal for testing the theory of critical slowing down in disease dynamics because each city has a different population size (with means ranging from about 150,000 to 750,000 during this time period), different dynamics in terms of outbreak sizes (maximum weekly incidence ranging from 60 to 1845 cases) and length of inter-epidemic periods (2-5 years), and has different amounts of demographic stochasticity due to differences in population size.
+Such differences provide a natural gradient of extra-demographic and environmental stochasticity that may influence critical slowing down [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
 The data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].
 
 ```{r data-plot, fig.width=6.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (*a*) Locations and 1995--2005 population-size--ranges (in parantheses) of our four focal cities in Niger. (*b*) Time series of weekly reported cases (incidence data; yellow solid lines) and the 68% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
@@ -216,7 +215,7 @@ plot_grid(the_map, the_series, ncol = 2, labels = c("(a)", "(b)"),
 ```
 
 ## Stochastic *SEIR* model
-The model is a discrete-time approximation of a continuous-time SEIR model with limited demography, specified as a set of difference equations,
+The model is a discrete-time approximation to the continuous-time SEIR model with demography, specified as a set of difference equations,
 
 \begin{align}
 S_{t+\Delta t} - S_t &= n_{S,t} - n_{E,t} \\
@@ -224,9 +223,9 @@ E_{t+\Delta t} - E_t &= n_{E,t} - n_{I,t} \\
 I_{t+\Delta t} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 \end{align}
 
-\noindent{}where $\Delta t$ is a time step of one day, and $\textbf{n}_t$ are the number of times different transition events occur in the time interval of $t \rightarrow t+\Delta t$.
-$n_{S}$ is the number of births, $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious, $n_{I}$ is the number of newly infectious individuals, $n_{O}$ is the number of imported infections, and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
-The stochastic random variables are distributed as:
+\noindent{}where $\Delta t$ is a time step of one day, and $\textbf{n}_t$ are the number of times different transition events occur in the time interval of $t \rightarrow t+\Delta t$;
+$n_{S}$ is the number of births; $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious; $n_{I}$ is the number of newly infectious individuals; $n_{O}$ is the number of imported infections; and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
+The stochastic random variables are distributed as follows:
 
 \begin{align}
 n_{S,t} &\sim \text{Poisson}(\mu_t (1 - p_t) N_t \times \Delta t) \\
@@ -236,7 +235,7 @@ n_{O,t} &\sim \text{Poisson}(\psi \times \Delta t) \\
 n_{R,t} &\sim \text{Binomial}( I_{t}, \lambda_{R,t}),
 \end{align}
 
-\noindent{}where $\mu_t$ is the *per capita* birth rate at time $t$, $N_t$ is the known total population size in each city at time $t$, $p_t$ is the vaccination probability, $\psi$ is the rate of imported infections, and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
+\noindent{}where $\mu_t$ is the *per capita* birth rate at time $t$; $N_t$ is the known total population size in each city at time $t$; $p_t$ is the vaccination probability; $\psi$ is the rate of imported infections; and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
 These probabilities reflect the processes of transmission, transition from the latent period to the infectious period, and recovery, which were modeled as:
 
 \begin{align}
@@ -252,13 +251,13 @@ Rate of transmission was modeled as,
 \beta_t = \beta \left(1 + \exp \left( \sum^6_{i=1} q_i \xi_{i_{t}} \right) \right) \Gamma_t,
 \end{equation}
 
-\noindent{} where $\beta$ is the minimum transmission rate over the season, and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
+\noindent{} where $\beta$ is the minimum transmission rate over the season, and $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to fit seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
 
-Death is not included in the model because the rate of infection is much faster than the rate of death and because we use known population size at each time step.
-Excluding deaths means we can avoid making further assumptions about demographic rates -- we are already making assumptions about birth rates (e.g., the rate is the same across cities, but with city-specific population size).
-Demographic stochasticity in births and imported infections was inlcuded by drawing time-specific values from Poisson distributions.
+Death was not included in the model because the rate of infection is much faster than the rate of death and because we use known population size at each time step.
+Excluding deaths means we can avoid making further assumptions about demography.
+Demographic stochasticity in births and imported infections wwere represented by time-specific Poisson random variates.
 In this model, the effective reproduction number at time $t$ may be approximated as: $\mathcal{R}_e(t) \approx \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$. 
 \textcolor{red}{EAMON: Is vaccination implicitly included through $S_t$?}.
 
@@ -273,28 +272,28 @@ In this parameterization of the negative binomial, the mean is equal to $\rho x_
 
 ##  Model fitting and inference
 
-The model described above was fitte to the time series of case reports (incidence data) from each of our focal cities using Maximization by Iterated particle Filtering (MIF) [@Ionides2015].
-We estimated 14 parameters for each city: six seasonal transmission parameters ($q_i$), minimum transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the importation rate ($\psi$), reporting fraction ($\rho$), one parameter accounting for process noise ($\sigma$), and one parameter accounting for measurement noise ($\tau$).
-To help parameter identifiability, mean incubation period was set to $1/\eta = 8$ days and mean infectious period was set to $1/\gamma = 5$ days [@Keeling2002].
+The model described above was fit to the time series of case reports (incidence data) from each city using Maximization by Iterated particle Filtering (MIF) [@Ionides2015].
+We estimated 14 parameters: six seasonal transmission parameters ($q_i$), minimum transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the importation rate ($\psi$), reporting fraction ($\rho$), a parameter accounting for process noise ($\sigma$), and a parameter accounting for measurement noise ($\tau$).
+To improve parameter identifiability, mean incubation period was fixed to $1/\eta = 8$ days and the mean infectious period was set to $1/\gamma = 5$ days [@Keeling2002].
 The vaccination probability ($p_t$) was set to 70\% for all times $t$, consistent with reported vaccination coverage [@Ferrari2008].
 
 MIF relies on particle filtering, which estimates the likelihood of fixed parameters by integrating state variables of a stochastic system.
 To identify the maximum likelihood estimates, MIF lets parameters take a random walk during the filtering process and selectively propagates forward parameter sets (i.e., particles) with the highest likelihood.
 The variance of the random walk decreases at each iteration of MIF, where a MIF iteration means one filtering pass through the time series.
-This procedure converges toward the maximimum likelihood estimates (MLEs), in theory.
+This procedure converges toward the maximimum likelihood estimates (MLEs).
 
 We used the IF2 algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` version 1.18 [@King2016; @King2018] to conduct MIF.
-To initialize MIF, we generated 5000 parameter sets using Latin Hypercube Sampling over large ranges of the parameter values.
-We then performed two rounds of MIF, each for 100 iterations, with 10,000 particles, and geometric cooling.
+To initialize MIF, we generated 5000 parameter sets using Latin hypercube sampling over large ranges of the parameters.
+We then performed two rounds of MIF, each for 100 iterations, with 10,000 particles, using geometric cooling.
 For the first round of MIF we set `cooling.factor = 1`.
 For the second round, which was initialized using the collection of parameter sets from the end of the first round, we set `cooling.factor = 0.9`.
 We computed the log likelihood of 5000 final MIF parameter sets (i.e., parameter sets collected after 200 MIF iterations) as the log of the mean likelihoods of 50 replicate particle filters with 10,000 particles each.
-At this stage, we assume the parameter set with highest log likelihood is the MLE.
+At this stage, we took the parameter set with highest log likelihood to be the MLE.
 
-We used bootstrapping to estimate approximate 95\% confidence intervals for all parameters, conducted for each city independently, as follows.
+We used the parametric bootstrap to estimate approximate 95\% confidence intervals for all parameters, conducted for each city independently, as follows.
 First, we simulated 100 realizations from the fitted model using the MLE parameters.
 Second, we fitted the SEIR model to each of the 100 bootstrap simulations using the same MIF procedure described above, except we initiated the parameter search from 50 parameter sets rather then 5000.
-We reduced the number of parameter sets due to the computational constraints of fitting 100 simulated data sets for each of the four cities.
+We reduced the number of parameter sets due to the excessive computing time required to fit 100 simulated data sets for each of the four cities.
 Third, we identified the MLE parameter set for each of the 100 bootstrap simulations from among the 50 MIF parameter sets.
 Last, we calculated summary statistics (mean, median, quantiles) from the distribution of 100 MLE parameters (electronic supplement).
 
@@ -303,31 +302,31 @@ We used the MLE parameter sets to make one-week-ahead predictions and compared o
 To make one-week-ahead predictions, we used particle filtering with 50,000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
 In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarks: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model (electronic supplement).
-We fit the benchmark models to the observed data and then compared models using Akaike's Information Criterion (AIC) to account for differences in the number of model parameters [@Akaike1973].
+We fit these benchmark models to the observed data and then compared models using Akaike's Information Criterion (AIC) to account for differences in the number of model parameters [@Akaike1973].
 
 ## Model simulations
-For fitting the SEIR model, we used known population size interpolated between years.
+To fit the SEIR model, we used known population size interpolated between years.
 This meant we were able to ignore certain demographic processes.
 For example, deaths from the susceptible pool were ignored under the assumption that the infection rate was much faster than the death rate.
 We also ignored the recovered class because their dynamics, outside of the contribution to population size (which was assumed known), do not impact the $S, E, \text{or } I$ compartments.
 However, births and deaths from all compartments, including $R$, were needed when simulating the model over arbitrarily long time periods that do not necessarily represent real times for which we would have information on population size.
-Details on the *simulating model* are in the electronic supplement.
+Simulation details are in the electronic supplement.
 
 ### Simulating re-emergence
-To simulate re-emergence of measles, we manipulated the initial size of the susceptible pool to simulate an increase from low $\mathcal{R}_e(t)$ to high $\mathcal{R}_e(t)$.
+To simulate re-emergence of measles, we manipulated the initial size of the susceptible pool to represent an increase from low $\mathcal{R}_e(t)$ to high $\mathcal{R}_e(t)$.
 Doing so allowed us to test whether EWS can distinguish between windows of time when $\mathcal{R}_e(t)$ is far from a critical transition and when $\mathcal{R}_e(t)$ is near a critical transition.
 We reduced the initial fraction of susceptible individuals by multiplying the MLE for $S_{(t=0)}$ by six depletion factors: 1e-4, 0.1, 0.2, 0.3, 0.4, and 0.5.
 These depletion factors represent situations of susceptible depletion after outbreaks of various size.
-After defining $S_{(t=0)}$ based on the discounting factor, we then set the initial number of recovered individuals to $R_{(t=0)} = N_{(t=0)} - S_{(t=0)}$ and set the initial number of exposed and infected individuals to zero.
+After defining $S_{(t=0)}$ based on the depletion factor, we then set the initial number of recovered individuals to $R_{(t=0)} = N_{(t=0)} - S_{(t=0)}$ and set the initial number of exposed and infected individuals to zero.
 Initial population size for simulation scenarios, $N_{(t=0)}$, was set to the mean population size for each city over the 1995-2005 time period.
-We then simulated the model forward for forty years using the mean birth rate for the entire country ($\mu = 0.05$) and setting the death rate equal to the birth rate ($\mu = \nu = 0.05$) to achieve a constant equilibrium total population size over the course of the simulation (total population size does vary, though, because of stochasticity in the model).
+We then simulated the model forward for forty years using the mean birth rate for the entire country ($\mu = 0.05$) and setting the death rate equal to the birth rate ($\mu = \nu = 0.05$) to achieve a constant average total population size over the course of the simulation (total population size does vary, though, because of stochasticity in the model).
 Forty years was long enough for $\mathcal{R}_e(t)$ to reach or exceed 1 for each simulation replicate.
-Several outbreaks are seen within 11 years in the data (figure 1b), but times to outbreaks were longer in some scenarios where the susceptible population was initialized as much smaller than ever observed in reality.
+Several outbreaks are seen within 11 years in the data (figure 1b), though time-to-outbreak was larger in  scenarios where the susceptible population was initialized to be much smaller than ever observed in reality.
 Because the model is stochastic, we repeated these simulations 500 times for each city--susceptible-depletion combination.
 
 Next, we split each simulated time series into null and test intervals.
-Fixed-size windows before and after the known critical transition were used because our focus is on testing EWS using empirically-based models, rather than attempting to identify optimal methods for operationalizing EWS.
-First, averaging across all simulations for a city--susceptible-depletion combination, we found the simulation year in which $\mathcal{R}_e(t)$ reaches or exceeds 1 and excluded years past that year (electronic supplement).
+Fixed-size windows before and after the known critical transition were used because our focus was on testing EWS using empirically-based models, rather than attempting to identify optimal methods for operationalizing EWS.
+First, averaging across all simulations for a city--susceptible-depletion combination, we found the simulation year in which $\mathcal{R}_e(t)$ reached or exceeded 1 and excluded years after that (electronic supplement).
 We split the remaining time series into two windows of equal length (figure \ref{emerge-aucs}*a*).
 The null interval is the first window, where $\mathcal{R}_e(t)$ is increasing but far from 1.
 The test interval is the second window, where $\mathcal{R}_e(t)$ is increasing and approaching 1.
@@ -335,17 +334,17 @@ We did this for each city and for each level of susceptible depletion.
 We calculated EWS over null and test intervals separately.
 
 ### Simulating elimination
-To simulate elimination, we simulated an improvement in routine vaccination in which the vaccination probability linearly increased over time to eventually reach 100\%, i.e. eradication (figure S3).
-We ran simulations for 100 years, starting with 50 years of dynamics at the baseline vaccine coverage reported for Niger of 70\%, $p_t = 0.7$ [@Ferrari2008].
+To simulate elimination, we simulated an improvement in routine vaccination in which the vaccination probability increased linearly with respect to time to eventually reach 100\%, i.e. eradication (figure S3).
+We performed simulations for 100 years, starting with 50 years of at the baseline vaccine coverage reported for Niger of 70\%, $p_t = 0.7$ [@Ferrari2008].
 Note that vaccination is included in our model by multiplying the birth rate of susceptibles by $1-p_t$.
 At year 50, we initiated the improvement in routine vaccination and let the model run for another 50 years.
-We ran simulations across six vaccination "speeds" (the rate at which $p_t \rightarrow 1$; electronic supplement), simulating situations of slow and fast approaches to elimination.
-As in the re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant equilibrium population size. 
+We performed simulations across six vaccination "speeds" (the rate at which $p_t \rightarrow 1$; electronic supplement), simulating situations of slow and fast approaches to elimination.
+As in re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant equilibrium population size. 
 
 We then split each time series into null and test intervals for calculating EWS.
 The test interval was defined as the window of time between the start of the vaccination improvements (year 50) and the time at which the vaccination probability reached the vaccination threshold of $1 - 1/\max(\mathcal{R}_0 (t))$ (figure \ref{elim-aucs}*a*);
-$\max(\mathcal{R}_0(t))$ was approximated for each city using the MLE parameters as: $\max(\mathcal{R}_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
-The null interval was defined as the window of time that ends at the start of the vaccination improvements (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
+$\max(\mathcal{R}_0(t))$ was determined for each city using the MLE parameters as: $\max(\mathcal{R}_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
+The null interval was defined as the window of time that ends at the beginning of the vaccination remp up (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
 EWS were then calculated for each interval.
 
 ## Calculating early warning signals
@@ -583,10 +582,10 @@ Our estimates of $\mathcal{R}_0$ do not all perfectly overlap with the often cit
 Our model for Agadez performed poorly relative to the other cities, but still did better than non-mechanistic models (table S1).
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables S4-S7).
 Parameter correlations were generally weak (electronic supplement section S9), but the correlation between initial susceptible population size ($S_{t=0}/N_{t=0}$) was negative and larger than -0.5 for all cities.
-Overall, weak parameter correlations indicated parameter identifiability in the model. 
+Overall, weak parameter correlations indicated high parameter identifiability in the model. 
 
-The EWS generally performed as expected from theory on the approach to re-emergence.
-Most EWS increased as the critical transition is approached, resulting in AUC values above 0.5 and near 1 (figure \ref{emerge-aucs}).
+The EWS generally performed as predicted by theory with respect to the approach to re-emergence.
+Most EWS increased as the critical transition was approached, resulting in AUC values above 0.5 and often near 1 (figure \ref{emerge-aucs}).
 Skewness, kurtosis, and coefficient of variation performed poorly across all levels of susceptible depletion in all cities.
 
 Variance, mean, index of dispersion, autocovariance, and autocorrelation all performed equally well at predicting re-emergence (figure \ref{emerge-aucs}*c*).
@@ -728,7 +727,7 @@ print(final)
 The EWS performed less well when anticipating elimination, relative to emergence (figure \ref{elim-aucs}).
 Only three metrics were reliable: mean, autocovariance, and variance.
 All three metrics decreased as $\mathcal{R}_e(t)$ approached the critical transition (figure S6).
-As in the case of anticipating elimination, AUC values moved closer to 0.5 as the rate of improvement in routine vaccination increased (figure \ref{elim-aucs}*c*).
+As in the case of anticipating elimination, AUC values moved closer to 0.5 as the rate of vaccination increased (figure \ref{elim-aucs}*c*).
 <!-- Again, this is because of shorter null and test intervals. -->
 
 ```{r elimination, fig.width=6.5, fig.height=5, fig.cap="Performance of early warning signals (EWS) over fixed windows on the approach to elimination. (*a*) A typical example of an elimination simulation for Maradi. The two vertical blue lines indicate the start (left-most line) and end (line for critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals, in which we show the calculated variance. (*b*) Empirical densities of variance in the null and test intervals across 500 simulations and the associated area under the curve (AUC) statistic. (*c*) Heatmap of AUC statistics for each EWS at each speed of approach to herd immunity. AUC values closer to 0 or 1 indicate higher ability to distinguish among time series near and far from a critical transition. See figure S8 for a visualization of how vaccination speed maps to number of weeks in the null and test intervals.  \\label{elim-aucs}"}
@@ -830,31 +829,31 @@ final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
 print(final)
 ```
 
-In all, the suite of EWS suggested that indicators of critical slowing down have some predictive value for emergence and elimination events.
+In summary, our analysis of EWS suggested that indicators of critical slowing down have predictive value for emergence and elimination events.
 We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (figure S9b).
-But, all EWS performed worse when predicting the approach to emergence over the moving window (figure S9).
+But, all EWS performed less well when predicting the approach to emergence over the moving window (figure S9).
 
 # Discussion
 
 The ability to detect early warnings of outbreaks of potentially fatal diseases such as measles during non-epidemic periods of unpredictable duration may facilitate planning such as enhanced surveillance to expedite outbreak detection, implementation of serological surveys to identify immunity gaps, and initiation of targeted supplemental vaccination [@Grais2008;@Weldegebriel2011]. 
-Further, it has been argued that measles eradication requires consideration of local demographic factors [@Ferrari2013] and that regional outbreak response vaccination (ORV) can be effective when initiated early, even if coverage is suboptimal [@Grais2008]. 
-Consequently indicators that a region is on a path to outbreak or elimination can help to prioritize the timing and distribution of limited resources.
-Using empirically-based disease transmission models, we found that generic indicators of critical slowing down were informative regarding simulated re-emergence and elimination of measles.
-Our results are conditional on the modeling choices we made, but using empirically-based models represents a step in the progression from theory to simulations to applied science.
+Further, it has been argued that measles eradication requires consideration of local demographic factors [@Ferrari2013] and that regional outbreak response vaccination can be effective when initiated early, even if coverage is suboptimal [@Grais2008]. 
+Consequently indicators that a location or a region is on a path to outbreak or elimination can help to prioritize the timing and distribution of limited resources.
+Using empirically-based transmission models, we found that generic indicators of critical slowing down were informative regarding simulated re-emergence and elimination of measles.
+Our conclusions are, of course, dependent on the modeling choices we made, but using empirically-based models represents a step in the progression from theory to simulations to applied science.
 This work fills the important gap between data-free simulations and application of EWS as part of a decision-support toolkit.
 
-The generic indicators performed better in scenarios of re-emergence. 
-Moreover, these indicators behaved as expected based on a simple one-dimensional model of fluctuations around an equilibrium with gradually declining stability -- the prototypical model of critical slowing down.
+Overall, generic indicators performed better in scenarios of re-emergence compared with elimination. 
+Moreover, indicators behaved as expected based on simple one-dimensional models of fluctuations around an equilibrium with gradually declining stability -- the prototypical model of critical slowing down.
 This is because the autocorrelation and variance increased on the approach to $\mathcal{R}_e = 1$ (figure \ref{emerge-aucs}*c*).
 If, alternatively, the variance had increased but the autocorrelation had not, a better supported model would be an equilibrium with fixed stability but subject to increasing intensity of perturbations.
-From a model selection point of view, our simulations of re-emergence can be said to support the prototypical critical slowing down model. 
-And since our simulations were fit to measles data and had high one-step-ahead predictive accuracy on average, it suggests that the prototypical model of critical slowing down may be supported by data sets similar to the ones we fit and can provide predictive value for them.
+From a model selection point of view, our simulations of re-emergence support the prototypical model of critical slowing down. 
+Moreover, since our simulations were fit to measles data and had relatively high one-step-ahead predictive accuracy on average, it suggests that the prototypical model of critical slowing down may be supported by data sets similar to the ones we fit and can provide predictive value for them.
 The definitive test of this approach, or course, would be to record forecasts of re-emergence based on indicators of critical slowing down and evaluate their accuracy as data are accumulated.
 
-The lag-1 autocorrelation was not a strong indicator of the transition to elimination (figure \ref{elim-aucs}*c*).
+We found lag-1 autocorrelation not to be a strong indicator of the transition to elimination (figure \ref{elim-aucs}*c*).
 Thus, the prototypical model of critical slowing down appears less useful in this scenario.
 Other EWS (variance, autocovariance, and mean) did show altered behavior as the transition to elimination was approached, but these EWS were less sensitive under elimination scenarios compared to re-emergence scenarios.
-These results suggest that although distributional changes in indicators occur prior to disease elimination, interpreting these changes in terms of loss of stability of an endemic equilibrium, or declining $\mathcal{R}_e$, requires a model which accounts for complicating system features such as seasonality, non-linearity, damped oscillations, and local extinction.
+These results suggest that although distributional changes in indicators occur prior to disease elimination, interpreting these changes as the loss of stability of an endemic equilibrium, or declining $\mathcal{R}_e$, requires a model which accounts for complicating system features such as seasonality, non-linearity, damped oscillations, and local extinction.
 
 
 ```{r susc-deplete}
@@ -915,23 +914,23 @@ percs <- fracs_less_than_half$frac_less*100
 ```
 
 A potential limitation of our findings is that the susceptible discount factors in our simulation study (figure \ref{emerge-aucs}*c*) might be smaller than the factors that occur in reality.
-A smaller discount factor corresponds to a larger level of susceptible depletion.
-To check the relevance of this limitation, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (electronic supplement).
+A small discount factor corresponds to a large level of susceptible depletion.
+To check the relevance of this concern, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (electronic supplement).
 We found that susceptible depletion was less than 0.5, the smallest susceptible depletion level we tested, for `r round(percs[1], 1)`% of outbreaks in Agadez, `r round(percs[2])`% of outbreaks in Maradi, `r round(percs[3])`% of outbreaks in Niamey, and `r round(percs[4])`% of outbreaks in Zinder.
-These statistics do not detract from our main findings of CSD in measles dynamics, but they do suggest that EWS might be less useful in some cases than in others.
-For example, AUC values for emergence at the 0.5 level of susceptible depletion are already low for most cities (figure \ref{emerge-aucs}*c*).
-Thus, our analysis methods are not practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
+These statistics do not detract from our main finding of critical slowing down in measles dynamics, but do suggest that EWS might be less useful in some cases than in others.
+For example, AUC values for emergence at the 0.5 level of susceptible depletion were already low for most cities (figure \ref{emerge-aucs}*c*).
+Thus, our methods may not be practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
-We focused on fixed-windows for calculating EWS based on the timing of the critical transition.
-Thus, our work does not represent how EWS would be operationalized in online mode.
+We focused on fixed windows for calculating EWS based on the timing of the critical transition.
+Thus, our work also does not represent how EWS would be operationalized in online mode.
 The fixed windows were specifically designed to test whether EWS could detect a known critical transition and limit the additional complexity associated with choosing a moving window size.
-Supplemntal simulations showed that all EWS performed worse when using a moving window (electronic supplment section S11), suggesting that choosing the temporal width of the moving window is important for application of EWS in real-world settings.
+Supplemental simulations showed that all EWS performed more poorly when using a moving window (electronic supplement section S11), suggesting that choosing the temporal width of the moving window is important for application of EWS in real-world settings.
 
-Unpredictable, recurring outbreaks with seasonality in transmission such as those observed for measles in Niger during 1995--2005 are challenging settings for the application of EWS in part because theoretical predictions of EWS behavior [@ORegan2018;@Brett2017] are typically restricted to models with simpler dynamics. 
-Consequently, the development of robust, model-independent early warning systems for infectious diseases [@Han2016] likely will benefit from study of the behavior of EWS in more complex models.
+Unpredictable, recurring outbreaks with seasonality in transmission such as those observed for measles in Niger during 1995--2005 are challenging settings for the application of EWS in part because most theory regarding the behavior of EWS [@ORegan2018;@Brett2017] is based on models that exhibit simpler dynamics. 
+Consequently, the development of robust, model-independent early warning systems for infectious diseases [@Han2016] likely will benefit from further study of the behavior of EWS in complex models.
 Also, although we have shown that critical slowing down precedes tipping points in stochastic models that were fit to data with state-of-the-art methods, how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
 Emerging technologies like artificial intelligence might offer new ways to find optimal detection thresholds for early warning signals [@Brett2020].
-But there will always be a role for expert judgment.
+But there will liekly always be a role for expert judgment.
 Early warning signals, although powerful and now accompanied with additional support, will likely be just one part of a decision-support toolkit.
 
 # Acknowledgements
