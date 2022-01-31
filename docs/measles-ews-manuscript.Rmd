@@ -259,7 +259,7 @@ Death was not included in the model because the rate of infection is much faster
 Excluding deaths means we can avoid making further assumptions about demography.
 Demographic stochasticity in births and imported infections wwere represented by time-specific Poisson random variates.
 In this model, the effective reproduction number at time $t$ may be approximated as: $\mathcal{R}_e(t) \approx \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$. 
-\textcolor{red}{EAMON: Is vaccination implicitly included through $S_t$?}.
+The effect of vaccination on $\mathcal{R}_e(t)$ is implicitly included through the size of the $S_t$ compartment.
 
 Observed case reports ($y_t$) were drawn from a negative binomial distribution subject to a constant reporting fraction ($\rho$) and dispersion parameter $\tau$,
 
