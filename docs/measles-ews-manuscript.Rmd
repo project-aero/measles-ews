@@ -28,7 +28,7 @@ address:
   - code: ID
     address: "Department of Infectious Diseases, University of Georgia, Athens, GA 30602, USA"
 abstract: |
-  Timely forecasts of the emergence, re-emergence, and elimination of human infectious diseases allow for proactive, rather than reactive, decisions that save lives. Recent theory suggests that a generic feature of dynamical systems approaching a tipping point -- early warning signals due to critical slowing down -- can anticipate disease emergence and elimination. Empirical studies documenting critical slowing down in observed disease dynamics are scarce, but such demonistration of concept is essential to the further development of model-independent outbreak detection systems. Here, we use fitted, mechanistic models of measles transmission in four cities in Niger to detect critical slowing down through statistical early warning signals. We find that several early warning signals accurately anticipate measles re-emergence and elimination, suggesting that critical slowing down should be detectable before disease transmission systems cross key tipping points. These findings support the idea that statistical signals based on critical slowing down, coupled with decision-support algorithms and expert judgment, could provide the basis for early warning systems of disease outbreaks.
+  Timely forecasts of the emergence, re-emergence, and elimination of human infectious diseases allow for proactive, rather than reactive, decisions that save lives. Recent theory suggests that a generic feature of dynamical systems approaching a tipping point -- early warning signals due to critical slowing down -- can anticipate disease emergence and elimination. Empirical studies documenting critical slowing down in observed disease dynamics are scarce, but such demonstration of concept is essential to the further development of model-independent outbreak detection systems. Here, we use fitted, mechanistic models of measles transmission in four cities in Niger to detect critical slowing down through statistical early warning signals. We find that several early warning signals accurately anticipate measles re-emergence and elimination, suggesting that critical slowing down should be detectable before disease transmission systems cross key tipping points. These findings support the idea that statistical signals based on critical slowing down, coupled with decision-support algorithms and expert judgment, could provide the basis for early warning systems of disease outbreaks.
 keywords:
   - critical slowing down,
   - early warning signals,
@@ -133,8 +133,8 @@ An alternative approach is to use model-independent statistical signals that por
 Emergence and elimination of an infectious disease both involve a critical transition, often reflected in deterministic models by a *transcritical bifurcation*, that occurs at the critical point where the effective reproduction number ($\mathcal{R}_e$, corresponding to the number of secondary cases that arise from a single infected case in a population) is equal to one [@Heffernan2005].
 Thus, subcritical ($\mathcal{R}_e < 1$) and supercritical ($\mathcal{R}_e > 1$) systems represent alternative dynamical regimes [@Scheffer2009; @Scheffer2012; @ORegan2013].
 
-Critical transitions in stochastic systems, such as systems of disease transmission, are often accompanied by critical slowing down, a reduction in the resilience of a system to perturbations [@Wissel1984; @VanNes2007].
-Critical slowing down (CSD) can be measured by changes in the statistical properties of the system, often referred to as early warning signals (EWS), such as an increase in the variance and autocorrelation [@Carpenter2006; @Scheffer2009].
+Critical transitions in stochastic systems, such as systems of disease transmission, are often accompanied by critical slowing down (CSD), a reduction in the resilience of a system to perturbations [@Wissel1984; @VanNes2007].
+CSD can be measured by changes in the statistical properties of the system, often referred to as early warning signals (EWS), such as an increase in the variance and autocorrelation [@Carpenter2006; @Scheffer2009].
 Recent theoretical work suggests that CSD occurs as disease dynamics approach $\mathcal{R}_e = 1$ from below (emergence) [@ORegan2013; @Dibble2016] and from above (elimination) [@ORegan2013; @ORegan2016; @Drake2017], and that several EWS can anticipate the critical transition [@Brett2017; @Brett2018; @Miller2017].
 These findings suggest that such model-independent statistical signals could be operationalized as part of early warning systems for disease emergence and elimination, or re-emergence and outbreaks of endemic diseases.
 
@@ -225,6 +225,7 @@ I_{t+\Delta t} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
 
 \noindent{}where $\Delta t$ is a time step of one day, and $\textbf{n}_t$ are the number of times different transition events occur in the time interval of $t \rightarrow t+\Delta t$;
 $n_{S}$ is the number of births; $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious; $n_{I}$ is the number of newly infectious individuals; $n_{O}$ is the number of imported infections; and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
+Because we assumed that total population size was known, we only explicitly modeled imports into the infected class that would influence the reported cases.
 The stochastic random variables are distributed as follows:
 
 \begin{align}
@@ -328,6 +329,7 @@ Next, we split each simulated time series into null and test intervals.
 Fixed-size windows before and after the known critical transition were used because our focus was on testing EWS using empirically-based models, rather than attempting to identify optimal methods for operationalizing EWS.
 First, averaging across all simulations for a city--susceptible-depletion combination, we found the simulation year in which $\mathcal{R}_e(t)$ reached or exceeded 1 and excluded years after that (electronic supplement).
 We split the remaining time series into two windows of equal length (figure \ref{emerge-aucs}*a*).
+For example, if the total length of the time series from the beginning of the simulations to the time at which $\mathcal{R}_e(t)$ reached or exceeded 1 was six years, then the first window would be years 1 through 3, and the second window would be years 4 through 6. 
 The null interval is the first window, where $\mathcal{R}_e(t)$ is increasing but far from 1.
 The test interval is the second window, where $\mathcal{R}_e(t)$ is increasing and approaching 1.
 We did this for each city and for each level of susceptible depletion.
@@ -344,7 +346,8 @@ As in re-emergence simulations, we set the birth rate equal to the death rate to
 We then split each time series into null and test intervals for calculating EWS.
 The test interval was defined as the window of time between the start of the vaccination improvements (year 50) and the time at which the vaccination probability reached the vaccination threshold of $1 - 1/\max(\mathcal{R}_0 (t))$ (figure \ref{elim-aucs}*a*);
 $\max(\mathcal{R}_0(t))$ was determined for each city using the MLE parameters as: $\max(\mathcal{R}_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
-The null interval was defined as the window of time that ends at the beginning of the vaccination remp up (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
+The null interval was defined as the window of time that ends at the beginning of the vaccination ramp up (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
+For example, if the vaccination threshold for herd immunity was met in year 60 of the simulation, then the test interval was defined as years 50 (when vaccination ramp up began) through 60; the null interval would then be defined as years 39 through 49 to match the length of the test interval.
 EWS were then calculated for each interval.
 
 ## Calculating early warning signals
@@ -581,7 +584,7 @@ Our estimates of $\mathcal{R}_0$ do not all perfectly overlap with the often cit
 
 Our model for Agadez performed poorly relative to the other cities, but still did better than non-mechanistic models (table S1).
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables S4-S7).
-Parameter correlations were generally weak (electronic supplement section S9), but the correlation between initial susceptible population size ($S_{t=0}/N_{t=0}$) was negative and larger than -0.5 for all cities.
+Parameter correlations were generally weak (electronic supplement section S9), but the correlation between initial susceptible population size ($S_{t=0}/N_{t=0}$) and transmission rate ($\beta$) was negative and larger than -0.5 for all cities.
 Overall, weak parameter correlations indicated high parameter identifiability in the model. 
 
 The EWS generally performed as predicted by theory with respect to the approach to re-emergence.
