@@ -51,9 +51,10 @@ preamble: |
   \usepackage[nomarkers]{endfloat}
   \usepackage{xcolor}
   \newcommand{\comment}[1]{\ignorespaces}
+  \newcommand{\new}{\textcolor{blue}}
   \renewcommand*{\thefootnote}{\fnsymbol{footnote}}
-extra: \usepackage[nomarkers]{endfloat}
 ---
+
 
 ```{r libraries, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, cache = FALSE)
@@ -167,13 +168,11 @@ We focus on two scenarios: the re-emergence of measles following a large outbrea
 We seek to answer two related questions.
 First, can CSD distinguish between time series of disease incidence when the underlying dynamics are far from vs. near to a critical transition?
 Second, can CSD anticipate disease re-emergence and elimination?
-<!-- More precisely, how does the distance to and the rate of approaching the threshold impact the anticipatory accuracy of CSD? -->
 
 To answer these questions, we fit mechanistic models to time series of measles incidence in four cities in Niger [@Ferrari2008; @Bharti2011].
 We then use the fitted models to perform simulation experiments designed to test the performance of several EWS that are characteristic of critical slowing down with respect to anticipating re-emergence and elimination.
 Our results confirm the theory concerning several EWS.
 In particular, we show that slowing down before a critical transition is detectable by several EWS in realistic scenarios.
-<!-- , and they do so using much shorter time series than used in theoretical studies. -->
 However, our study also highlights the limitations of EWS in situations where disease re-emergence and elimination occur rapidly.
 Finally, we also find that EWS perform better at anticipating re-emergence than elimination.
 
@@ -183,7 +182,7 @@ Finally, we also find that EWS perform better at anticipating re-emergence than 
 We used weekly measles case report data (incidence) from four Nigerien cities: Agadez, Maradi, Niamey, and Zinder (figure \ref{data-plot}*a*).
 The data were collected over an 11 year period from 1995-2005 (figure \ref{data-plot}*b*).
 These data are ideal for testing the theory of critical slowing down in disease dynamics because each city has a different population size (with means ranging from about 150,000 to 750,000 during this time period), different dynamics in terms of outbreak sizes (maximum weekly incidence ranging from 60 to 1845 cases) and length of inter-epidemic periods (2-5 years), and has different amounts of demographic stochasticity due to differences in population size.
-Such differences provide a natural gradient of extra-demographic and environmental stochasticity that may influence critical slowing down [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
+Such differences \new{provide an interesting test case for EWS because different levels of demographic stochasticity due to population sizes and environmental stochasticity due to potential differences in tranmission dynamics can} influence critical slowing down [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
 The data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].
 
 ```{r data-plot, fig.width=6.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (*a*) Locations and 1995--2005 population-size--ranges (in parantheses) of our four focal cities in Niger. (*b*) Time series of weekly reported cases (incidence data; yellow solid lines) and the 68% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
@@ -258,7 +257,7 @@ The transmission rate ($\beta_t$) is also subject to stochastic process noise at
 
 Death was not included in the model because the rate of infection is much faster than the rate of death and because we use known population size at each time step.
 Excluding deaths means we can avoid making further assumptions about demography.
-Demographic stochasticity in births and imported infections wwere represented by time-specific Poisson random variates.
+Demographic stochasticity in births and imported infections were represented by time-specific Poisson random variates.
 In this model, the effective reproduction number at time $t$ may be approximated as: $\mathcal{R}_e(t) \approx \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$. 
 The effect of vaccination on $\mathcal{R}_e(t)$ is implicitly included through the size of the $S_t$ compartment.
 
@@ -302,8 +301,15 @@ Last, we calculated summary statistics (mean, median, quantiles) from the distri
 We used the MLE parameter sets to make one-week-ahead predictions and compared observed and expected case counts.
 To make one-week-ahead predictions, we used particle filtering with 50,000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
-In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarks: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model (electronic supplement).
-We fit these benchmark models to the observed data and then compared models using Akaike's Information Criterion (AIC) to account for differences in the number of model parameters [@Akaike1973].
+
+In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarks: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model.
+\new{Doing so allows us to gain some intuition as to whether accounting for mechanism (i.e., transmission dynamics) improves model fit and eventual inference.}
+\new{The SARIMA is a seasonal autoregressive moving average model (an ARIMA (2,0,2)(1,0,1)\textsubscript{52} model) that can account for data dependencies and annual periodicity.}
+\new{Beating the SARIMA is a harder test than beating the NBM.}
+
+\new{We fitted both models to the weekly case count observations for each city using maximum likelihood.}
+\new{After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where *k* is the number of estimated parameters in the model and *L* is the model's likelihood [@Akaike1973].}
+\new{The NBM model has 2 parameters, the SARIMA model has 8 parameters, and the SEIR model has 14 parameters.}
 
 ## Model simulations
 To fit the SEIR model, we used known population size interpolated between years.
@@ -578,14 +584,75 @@ plot_grid(scatters, rnaughts, scale = 0.9, labels = c("(a)", "(b)"),
 # Results
 
 The fitted models adequately reproduce observed dynamics (figure \ref{data-plot}*b*), with in-sample $R^2$s from one-week-ahead predictions ranging from 0.55 for Agadez to 0.89 for Maradi (figure \ref{scatters}*a*).
-The fitted models also had lower AIC values than two benchmarking models (table S1).
-The estimated seasonality is consistent with previously estimated patterns (figure S2), including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
+The fitted models also had lower AIC values than two benchmarking models (table \ref{tab:AIC}).
+The estimated seasonality is consistent with previously estimated patterns, including the decline in seasonality amplitude as population size decreases (figure \ref{scatters}*b*) [@Ferrari2008].
 Our estimates of $\mathcal{R}_0$ do not all perfectly overlap with the often cited range of 12-18 (figure \ref{scatters}*b*) [@Anderson1982], but more recent reviews suggest that measles' $\mathcal{R}_0$ is much more variable and is context-specific [@Guerra2017].
 
-Our model for Agadez performed poorly relative to the other cities, but still did better than non-mechanistic models (table S1).
+```{r aic-comp}
+data_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
+measles <- readRDS(data_file) %>%
+  filter(year > 1994)
+
+nb_lik <- function(theta) {
+  -sum(dnbinom(as.vector(cases),size=exp(theta[1]),prob=exp(theta[2]),log=TRUE))
+} 
+
+all_logliks <- tibble()
+for(do_city in unique(measles$region)){
+  cases <- measles %>%
+    filter(region == do_city) %>%
+    pull(cases)
+  
+  # Negative binomial iid sampling model
+  nb_mle <- optim(c(0,-5), nb_lik)
+  nb_nll <- -nb_mle$value
+  
+  # SARIMA model
+  log_y <- log(as.vector(cases)+1)
+  arma_fit <- arima(log_y,order=c(2,0,2),seasonal=list(order=c(1,0,1),period=52), method = "CSS")
+  arma_nll <- arma_fit$loglik - sum(log_y) ## log normal likelihood
+  
+  # SEIR fit log likelihood
+  mif_city <- str_sub(do_city, 1, 6)
+  seir_nll <- read.csv(file = paste0("../results/initial-mif-lls-", mif_city, ".csv")) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    pull(loglik)
+  
+  # Store results
+  all_logliks %>%
+    bind_rows(
+      tibble(
+        City = mif_city,
+        `Neg. Binomial` = nb_nll,
+        SARIMA = arma_nll,
+        SEIR = seir_nll
+      )
+    ) -> all_logliks
+}
+
+num_params <- tibble(
+  `Neg. Binomial` = 2,
+  SARIMA = 8,
+  SEIR = 14
+) %>%
+  gather(model, k)
+
+all_logliks %>%
+  gather(model, loglik, -City) %>%
+  left_join(num_params, by = "model") %>%
+  mutate(
+    AIC = round(2*k - 2*loglik)
+  ) %>%
+  dplyr::select(-loglik, -k) %>%
+  spread(key = model, value = AIC) %>%
+  knitr::kable(format = "pandoc", caption = "AIC values for the benchmarking and SEIR models. \\label{tab:AIC}")
+```
+
+Our model for Agadez performed poorly relative to the other cities, but still did better than non-mechanistic models (table \ref{tab:AIC}).
 Maximum likelihood estimates and bootstrapped 95% confidence intervals for all parameters are in the electronic supplement (tables S4-S7).
 Parameter correlations were generally weak (electronic supplement section S9), but the correlation between initial susceptible population size ($S_{t=0}/N_{t=0}$) and transmission rate ($\beta$) was negative and larger than -0.5 for all cities.
-Overall, weak parameter correlations indicated high parameter identifiability in the model. 
+Overall, weak parameter correlations indicated high parameter identifiability in the model.
 
 The EWS generally performed as predicted by theory with respect to the approach to re-emergence.
 Most EWS increased as the critical transition was approached, resulting in AUC values above 0.5 and often near 1 (figure \ref{emerge-aucs}).
@@ -925,15 +992,18 @@ For example, AUC values for emergence at the 0.5 level of susceptible depletion 
 Thus, our methods may not be practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
 We focused on fixed windows for calculating EWS based on the timing of the critical transition.
-Thus, our work also does not represent how EWS would be operationalized in online mode.
+Thus, our work also does not represent how EWS would be operationalised in online mode.
 The fixed windows were specifically designed to test whether EWS could detect a known critical transition and limit the additional complexity associated with choosing a moving window size.
 Supplemental simulations showed that all EWS performed more poorly when using a moving window (electronic supplement section S11), suggesting that choosing the temporal width of the moving window is important for application of EWS in real-world settings.
+\new{Determining the optimal moving window width is non-trivial [@Brett2020] and is beyond the scope of this article.}
+\new{Nonetheless, our analyses show that several EWS can detect critical transitions in representatively noisy SEIR dynamics.}
+\new{Providing this link from theory to application through empirically-base models represents an important step toward operationalising EWS.}
 
 Unpredictable, recurring outbreaks with seasonality in transmission such as those observed for measles in Niger during 1995--2005 are challenging settings for the application of EWS in part because most theory regarding the behavior of EWS [@ORegan2018;@Brett2017] is based on models that exhibit simpler dynamics. 
 Consequently, the development of robust, model-independent early warning systems for infectious diseases [@Han2016] likely will benefit from further study of the behavior of EWS in complex models.
 Also, although we have shown that critical slowing down precedes tipping points in stochastic models that were fit to data with state-of-the-art methods, how to operationalize the phenomenon of critical slowing down remains an open research area [@Shmueli2010].
 Emerging technologies like artificial intelligence might offer new ways to find optimal detection thresholds for early warning signals [@Brett2020].
-But there will liekly always be a role for expert judgment.
+But there will likely always be a role for expert judgment.
 Early warning signals, although powerful and now accompanied with additional support, will likely be just one part of a decision-support toolkit.
 
 # Acknowledgements

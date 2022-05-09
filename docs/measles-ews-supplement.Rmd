@@ -173,78 +173,11 @@ ggplot() +
 ```
 
 # Comparisons with benchmarking models
-Here we compare our fitted SEIR models to two non-mechanistic benchmarking models.
-Doing so allows us to gain some intuition as to whether accounting for mechanism (i.e., transmission dynamics) improves model fit and eventual inference.
-The first benchmarking model is a negative binomial sampling model (NBM) that simply assumes all observations are independent and identically distributed.
-The second benchmarking model is a seasonal autoregressive moving average model (an ARIMA (2,0,2)(1,0,1)\textsubscript{52} model) that can account for data dependencies and annual periodicity.
-Beating the SARIMA is a harder test than beating the NBM.
-
-We fitted both models to the weekly case count observations for each city using maximum likelihood.
-After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where *k* is the number of estimated parameters in the model and *L* is the model's likelihood.
-The NBM model has 2 parameters, the SARIMA model has 8 parameters, and the SEIR model has 14 parameters.
+Here
 The results in table \ref{tab:AIC} show the AIC values for each model.
 The AIC values for the SEIR models are lowest for all cities, suggesting that the addition of mechanism via explicit disease transmission dynamics substantially improves model fit.
 
-```{r aic-comp}
-data_file <- "../data/clean-data/weekly-measles-incidence-niger-cities-clean.RDS"
-measles <- readRDS(data_file) %>%
-  filter(year > 1994)
 
-nb_lik <- function(theta) {
-  -sum(dnbinom(as.vector(cases),size=exp(theta[1]),prob=exp(theta[2]),log=TRUE))
-} 
-
-all_logliks <- tibble()
-for(do_city in unique(measles$region)){
-  cases <- measles %>%
-    filter(region == do_city) %>%
-    pull(cases)
-  
-  # Negative binomial iid sampling model
-  nb_mle <- optim(c(0,-5), nb_lik)
-  nb_nll <- -nb_mle$value
-  
-  # SARIMA model
-  log_y <- log(as.vector(cases)+1)
-  arma_fit <- arima(log_y,order=c(2,0,2),seasonal=list(order=c(1,0,1),period=52), method = "CSS")
-  arma_nll <- arma_fit$loglik - sum(log_y) ## log normal likelihood
-  
-  # SEIR fit log likelihood
-  mif_city <- str_sub(do_city, 1, 6)
-  seir_nll <- read.csv(file = paste0("../results/initial-mif-lls-", mif_city, ".csv")) %>%
-    drop_na() %>%
-    filter(loglik == max(loglik)) %>%
-    pull(loglik)
-  
-  # Store results
-  all_logliks %>%
-    bind_rows(
-      tibble(
-        City = mif_city,
-        `Neg. Binomial` = nb_nll,
-        SARIMA = arma_nll,
-        SEIR = seir_nll
-      )
-    ) -> all_logliks
-}
-
-num_params <- tibble(
-  `Neg. Binomial` = 2,
-  SARIMA = 8,
-  SEIR = 14
-) %>%
-  gather(model, k)
-
-all_logliks %>%
-  gather(model, loglik, -City) %>%
-  left_join(num_params, by = "model") %>%
-  mutate(
-    AIC = round(2*k - 2*loglik)
-  ) %>%
-  dplyr::select(-loglik, -k) %>%
-  spread(key = model, value = AIC) %>%
-  knitr::kable(format = "pandoc", caption = "AIC values for the benchmarking and SEIR models. \\label{tab:AIC}")
-```
 
 # Long-run simulations from the fitted the SEIR models
 For fitting the SEIR model, we used known population size interpolated between years.
@@ -361,7 +294,7 @@ one_sim <- emerge_sim %>%
   left_join(re_path, by = "time") %>%
   mutate(used = ifelse(time <= re_one_year$year, "yes", "no"))
 
-re_series <- ggplot(one_sim, aes(x = time, y = mean_re)) +
+re_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = mean_re)) +
   geom_line(color = "tan", aes(alpha = used)) +
   geom_hline(aes(yintercept = 1), color = "grey35", linetype = 3) +
   geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
