@@ -780,18 +780,18 @@ cowplot::plot_grid(emerge_ints, elimin_ints, nrow = 1, align = "h")
 
 ```
 
-# Moving window analysis
+<!-- # Moving window analysis -->
 
-To complement our fixed window analysis presented in the main text, we conducted a moving window analysis as might be conducted on real surveillance data.
-We used the same null and test intervals as described above for the emergence and elimination scenarios.
-However, instead of calculating a single value for each EWS over the entire window of the interval, we calculated EWS in the intervals over moving windows of 35 weeks.
-We then calculated the Kendall's rank correlation ($\tau$) between each EWS and time in each of the null and test intervals.
-We used the distributions of Kendall's $\tau$ over the 500 replicate simulations to then calculate the Area Under the Curve (AUC) metric for each EWS.
-For the approach to elimination, the results are similar to those for the fixed window analysis (Figure \ref{mvw-ews}B).
-For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure \ref{mvw-ews}A).
+<!-- To complement our fixed window analysis presented in the main text, we conducted a moving window analysis as might be conducted on real surveillance data. -->
+<!-- We used the same null and test intervals as described above for the emergence and elimination scenarios. -->
+<!-- However, instead of calculating a single value for each EWS over the entire window of the interval, we calculated EWS in the intervals over moving windows of 35 weeks. -->
+<!-- We then calculated the Kendall's rank correlation ($\tau$) between each EWS and time in each of the null and test intervals. -->
+<!-- We used the distributions of Kendall's $\tau$ over the 500 replicate simulations to then calculate the Area Under the Curve (AUC) metric for each EWS. -->
+<!-- For the approach to elimination, the results are similar to those for the fixed window analysis (Figure \ref{mvw-ews}B). -->
+<!-- For the approach to emergence, however, the moving window results show much worse performance for Agadez and Zinder, and, on average, the AUC values are lower for all EWS in each city (Figure \ref{mvw-ews}A). -->
 
 
-```{r plot-aucs, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (*a*) and elimination (*b*). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values. AUC values farther from 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
+```{r plot-aucs, eval = FALSE, fig.width=8.5, fig.height=5.5, fig.cap="Performance of early warning signals (EWS) over a moving window. Correlations between EWS (calculated over 35 week moving windows) and time were calculated over two intervals, one far from a critical transition and one near, for simulations of re-emergence (*a*) and elimination (*b*). EWS performance is quantified using the AUC metric, which we show here as a heatmap of AUC values. AUC values farther from 0.5 indicate higher ability to distinguish among time series near and far from a critical transition.  \\label{mvw-ews}"}
 library(viridis)
 emergence_aucs <- read.csv("../results/emergence-mvw-grid-aucs.csv")
 elimination_aucs <- read.csv("../results/elimination-mvw-grid-aucs.csv")

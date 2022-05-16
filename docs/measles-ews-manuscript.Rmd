@@ -183,7 +183,10 @@ We used weekly measles case report data (incidence) from four Nigerien cities: A
 The data were collected over an 11 year period from 1995-2005 (figure \ref{data-plot}*b*).
 These data are ideal for testing the theory of critical slowing down in disease dynamics because each city has a different population size (with means ranging from about 150,000 to 750,000 during this time period), different dynamics in terms of outbreak sizes (maximum weekly incidence ranging from 60 to 1845 cases) and length of inter-epidemic periods (2-5 years), and has different amounts of demographic stochasticity due to differences in population size.
 Such differences \new{provide an interesting test case for EWS because different levels of demographic stochasticity due to population sizes and environmental stochasticity due to potential differences in tranmission dynamics can} influence critical slowing down [@Hastings2010; @Dakos2012a; @ODea2018a; @ORegan2018].
-The data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].
+\new{We also used data on district population sizes and national-level birth rates.}
+\new{Measles incidence data and district-level population data were obtained from the Niger Ministry of Health [@NigerMinistryofHealth2008].}
+\new{National-level birth rate data were downloaded from the FRED database (https://fred.stlouisfed.org/series/SPDYNCBRTINNER).}
+
 
 ```{r data-plot, fig.width=6.5, fig.height=4, fig.cap="Locations of data sources and observed and predicted measles dynamics. (*a*) Locations and 1995--2005 population-size--ranges (in parantheses) of our four focal cities in Niger. (*b*) Time series of weekly reported cases (incidence data; yellow solid lines) and the 68% prediction intervals (black ribbons) for one-week-ahead predictions from our fitted SEIR models for each city. \\label{data-plot}"}
 set.seed(1) # affects placement of geom_label_repel
@@ -216,48 +219,71 @@ plot_grid(the_map, the_series, ncol = 2, labels = c("(a)", "(b)"),
 ## Stochastic *SEIR* model
 The model is a discrete-time approximation to the continuous-time SEIR model with demography, specified as a set of difference equations,
 
-\begin{align}
-S_{t+\Delta t} - S_t &= n_{S,t} - n_{E,t} \\
-E_{t+\Delta t} - E_t &= n_{E,t} - n_{I,t} \\
-I_{t+\Delta t} - I_t &= n_{I,t} + n_{O,t} - n_{R,t},
-\end{align}
+\new{\begin{align}
+S_{t+ \Delta t} - S_{t} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
+E_{t+ \Delta t} - E_{t} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
+I_{t+\Delta t} - I_{t} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
+R_{t+\Delta t} - R_{t} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
+\end{align}}
 
-\noindent{}where $\Delta t$ is a time step of one day, and $\textbf{n}_t$ are the number of times different transition events occur in the time interval of $t \rightarrow t+\Delta t$;
-$n_{S}$ is the number of births; $n_{E}$ is the number of newly infected individuals that have the disease but are not infectious; $n_{I}$ is the number of newly infectious individuals; $n_{O}$ is the number of imported infections; and $n_{R}$ is the number of newly recovered individuals who are no longer infectious and have life-long immunity.
-Because we assumed that total population size was known, we only explicitly modeled imports into the infected class that would influence the reported cases.
-The stochastic random variables are distributed as follows:
+\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each update $t \rightarrow t+\Delta t$.
+\new{Transition definitions are in table \ref{tab:transitions}.}
 
-\begin{align}
-n_{S,t} &\sim \text{Poisson}(\mu_t (1 - p_t) N_t \times \Delta t) \\
-n_{E,t} &\sim \text{Binomial}( S_{t}, \lambda_{E,t}) \\
-n_{I,t} &\sim \text{Binomial}( E_{t}, \lambda_{I,t}) \\
-n_{O,t} &\sim \text{Poisson}(\psi \times \Delta t) \\
-n_{R,t} &\sim \text{Binomial}( I_{t}, \lambda_{R,t}),
-\end{align}
+| Random variable | Transition | $\left(\Delta S, \Delta E, \Delta I, \Delta R\right)$ |
+| ---------- | ----------------------------| ---------- |
+| $n_{0S}$ | Births into the *S* compartment, not vaccinated | (1, 0, 0, 0) |
+| $n_{SE}$ | Number of people transitioning from *S* to *E* | (-1, 1, 0, 0) |
+| $n_{S0}$ | Number of deaths leaving *S* | (-1, 0, 0, 0) |
+| $n_{EI}$ | Number of people transitioning from *E* to *I* | (0, -1, 1, 0) |
+| $n_{E0}$ | Number of deaths leaving *E* | (0, -1, 0, 0) |
+| $n_{0I}$ | Number of imported infections | (0, 0, 1, 0) |
+| $n_{IR}$ | Number of people transitioning from *I* to *R* | (0, 0, -1, 1) |
+| $n_{I0}$ | Number of deaths leaving *I* | (0, 0, -1, 0) |
+| $n_{0R}$ | Births into the *R* compartment, vaccinated | (0, 0, 0, 1) |
+| $n_{R0}$ | Number of deaths leaving *R* | (0, 0, 0, -1) |
 
-\noindent{}where $\mu_t$ is the *per capita* birth rate at time $t$; $N_t$ is the known total population size in each city at time $t$; $p_t$ is the vaccination probability; $\psi$ is the rate of imported infections; and $\lambda_E$, $\lambda_I$, and $\lambda_R$ are the probabilities of exposure, becoming infectious, and recovery, respectively.
-These probabilities reflect the processes of transmission, transition from the latent period to the infectious period, and recovery, which were modeled as:
+Table: Transitions in the simulating model. \label{tab:transitions}
 
-\begin{align}
-\lambda_{E,t} &= 1 - e^{-\frac{\beta_t I_t \Delta t}{N_t}} \\
-\lambda_{I,t} &= 1 - e^{-\eta \Delta t} \\
-\lambda_{R,t} &= 1 - e^{-\gamma \Delta t},
-\end{align}
+The stochastic random variables are specified as follows:
 
-\noindent{}where $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of progression from the exposed class to the infectious class, and $\gamma$ is a time-invariant recovery rate.
-Rate of transmission was modeled as,
+\new{\begin{align}
+n_{0S,t} &\sim \text{Poisson}((1-p_t)\mu N \times \Delta t) \\
+(n_{SE,t}, n_{S0,t}) &\sim \text{EulerMultinomial}(S_{t}, (\beta_t I_t / N, \nu), \Delta t) \\
+(n_{EI,t}, n_{E0,t}) &\sim \text{EulerMultinomial}(E_{t}, (\eta, \nu), \Delta t)  \label{eq:emulti} \\
+(n_{IR,t}, n_{I0,t}) &\sim \text{EulerMultinomial}(I_{t}, (\gamma, \nu), \Delta t) \\
+n_{I0,t} &\sim \text{Poisson}(\psi \times \Delta t) \\
+n_{0R,t} &\sim \text{Poisson}(p_t \mu N \times \Delta t) \\
+n_{R0,t} &\sim \text{EulerMultinomial}(R_t, (\nu), \Delta t),
+\end{align}}
+
+\noindent{}\new{where $p_t$ is the vaccination probability, $\mu$ is the per capita birth rate at time $t$, $N$ is population size at time $t$, $\sim \text{EulerMultinomial}(T, r_i, \Delta t)$ specifies that the variables on the left of $\sim$ follow an Euler Multinomial distribution for $T$ individuals with hazard rates $r_i$ and step size $\Delta t$, $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of transfer from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, $\nu$ is the per capita death rate, and $\psi$ is the rate of imported infections (estimated by the model).} 
+\new{The Euler Multinomial distribution corresponds to a multinomial distribution where the event probabilities $P_i$ are determined by the Euler time step $\Delta t$ and the hazard rates $r_i$, according to,} 
+
+\new{\begin{align}
+P_0 &= \exp( -\sum_i r_i \Delta t), \\
+P_i &= (1 - P_0) r_i / (\sum_i r_i)\qquad \text{for} \qquad i > 0.
+\end{align}}
+
+\new{\noindent{}Event zero is the event that an individual stays in its initial compartment and does not contribute to the vector $\textbf{n}_t$.}
+\new{To provide a specific example, equation \eqref{eq:emulti} corresponds to,} 
+
+\new{\begin{equation}
+(E_{t} - n_{EI,t} - n_{E0,t}, \,n_{EI,t},\, n_{E0,t}) \sim \text{Multinomial}(E_{t}; P_0, (1 - P_0) \eta /(\eta + \nu), (1 - P_0) \nu / (\eta + \nu)),
+\end{equation}}
+
+\noindent{}\new{where $P_0 =  \exp(-(\eta + \nu) \Delta t)$.}
+We used a daily time step of $\Delta t = \text{year} / 365$.
+
+We modeled the rate of transmission as:
 
 \begin{equation}
-\beta_t = \beta \left(1 + \exp \left( \sum^6_{i=1} q_i \xi_{i_{t}} \right) \right) \Gamma_t,
+\beta_t = \beta \left(1 + \exp \left(\sum^6_{i=1} q_i \xi_{i_{t}}\right) \right) \Gamma_t.
 \end{equation}
 
-\noindent{} where $\beta$ is the minimum transmission rate over the season, and $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to fit seasonality in transmission.
+\noindent{}where $\beta$ is the minimum transmission rate over the season and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
 The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
 The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
 
-Death was not included in the model because the rate of infection is much faster than the rate of death and because we use known population size at each time step.
-Excluding deaths means we can avoid making further assumptions about demography.
-Demographic stochasticity in births and imported infections were represented by time-specific Poisson random variates.
 In this model, the effective reproduction number at time $t$ may be approximated as: $\mathcal{R}_e(t) \approx \frac{\beta_t}{\gamma} \frac{S_t}{N_t}$. 
 The effect of vaccination on $\mathcal{R}_e(t)$ is implicitly included through the size of the $S_t$ compartment.
 
@@ -270,12 +296,35 @@ y_t \sim \text{Negative Binomial} \left( \rho x_t, \tau \right),
 \noindent{}where $x_t$ are the accumulated cases that transition from the infected class to the recovered class in a one week period. 
 In this parameterization of the negative binomial, the mean is equal to $\rho x_t$ and the the variance is equal to $\rho x_t + (\rho x_t) ^ 2 \tau$. 
 
+
 ##  Model fitting and inference
 
 The model described above was fit to the time series of case reports (incidence data) from each city using Maximization by Iterated particle Filtering (MIF) [@Ionides2015].
-We estimated 14 parameters: six seasonal transmission parameters ($q_i$), minimum transmission rate ($\beta$), three initial conditions $\left(S_{(t=0)},E_{(t=0)},I_{(t=0)}\right)$, the importation rate ($\psi$), reporting fraction ($\rho$), a parameter accounting for process noise ($\sigma$), and a parameter accounting for measurement noise ($\tau$).
+We estimated 14 parameters (table \ref{tab:params}.
 To improve parameter identifiability, mean incubation period was fixed to $1/\eta = 8$ days and the mean infectious period was set to $1/\gamma = 5$ days [@Keeling2002].
 The vaccination probability ($p_t$) was set to 70\% for all times $t$, consistent with reported vaccination coverage [@Ferrari2008].
+
+| Parameter symbol | Definition | Fitted or fixed | 
+| ------ | --------------------- | ---------- |
+| $\beta$ | Minimum transmission rate within the season | Fitted |
+| $q_i$ | Seasonal transmission spline parameters ($i \in 1,2,3, \dots 6$) | Fitted |
+| $S_{(t=0)}/N_{t=0}$ | Initial susceptibal fraction | Fitted |
+| $E_{(t=0)}/N_{t=0}$ | Initial exposed fraction | Fitted |
+| $I_{(t=0)}/N_{t=0}$ | Initial infected fraction | Fitted |
+| $\psi$ | Importation rate | Fitted |
+| $\rho$ | Reporting fraction | Fitted |
+| $\sigma$ | Gamma white-noise intensity | Fitted |
+| $\tau$ | Negative binomial dispersion | Fitted |
+| $1/\eta$ | Incubation period | Fixed (8 days) |
+| $1/\gamma$ | Infectious period | Fixed (5 days) |
+| $p_t$ | Vaccination probability | Fixed (0.7) |
+| $mu_t$ | per capita birth rate | Fixed |
+| $N_t$ | Population size | Fixed |
+
+Table: Model parameters, definitions, and indicator as to whether they were fitted or fixed. Sources for fixed values are cited in the main text. \label{tab:params}
+
+
+\new{For model fitting, we made simplifying assumptions to make the estimation procudure more tractable.} \new{First, we used known population size ($N_t$) for each city in each year.} \new{Second, death ($\nu$) was not included in the model when fitting because the rate of infection is much faster than the rate of death and because we used known population size at each time step.} Excluding deaths means we can avoid making further assumptions about demography. \new{This means we ignored the $R$ compartment entirely for model fitting.}
 
 MIF relies on particle filtering, which estimates the likelihood of fixed parameters by integrating state variables of a stochastic system.
 To identify the maximum likelihood estimates, MIF lets parameters take a random walk during the filtering process and selectively propagates forward parameter sets (i.e., particles) with the highest likelihood.
@@ -295,7 +344,7 @@ First, we simulated 100 realizations from the fitted model using the MLE paramet
 Second, we fitted the SEIR model to each of the 100 bootstrap simulations using the same MIF procedure described above, except we initiated the parameter search from 50 parameter sets rather then 5000.
 We reduced the number of parameter sets due to the excessive computing time required to fit 100 simulated data sets for each of the four cities.
 Third, we identified the MLE parameter set for each of the 100 bootstrap simulations from among the 50 MIF parameter sets.
-Last, we calculated summary statistics (mean, median, quantiles) from the distribution of 100 MLE parameters (electronic supplement).
+Last, we calculated summary statistics (mean, median, quantiles) from the distribution of 100 MLE parameters.
 
 ## Model assessment
 We used the MLE parameter sets to make one-week-ahead predictions and compared observed and expected case counts.
@@ -308,7 +357,7 @@ In addition to comparing model expectations to in-sample observed data, we also 
 \new{Beating the SARIMA is a harder test than beating the NBM.}
 
 \new{We fitted both models to the weekly case count observations for each city using maximum likelihood.}
-\new{After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where *k* is the number of estimated parameters in the model and *L* is the model's likelihood [@Akaike1973].}
+\new{After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where $k$ is the number of estimated parameters in the model and $L$ is the model's likelihood [@Akaike1973].}
 \new{The NBM model has 2 parameters, the SARIMA model has 8 parameters, and the SEIR model has 14 parameters.}
 
 ## Model simulations
@@ -317,7 +366,8 @@ This meant we were able to ignore certain demographic processes.
 For example, deaths from the susceptible pool were ignored under the assumption that the infection rate was much faster than the death rate.
 We also ignored the recovered class because their dynamics, outside of the contribution to population size (which was assumed known), do not impact the $S, E, \text{or } I$ compartments.
 However, births and deaths from all compartments, including $R$, were needed when simulating the model over arbitrarily long time periods that do not necessarily represent real times for which we would have information on population size.
-Simulation details are in the electronic supplement.
+\new{For long-run simulations, we set $\mu = \nu = 0.05$, which is the per capita rate reported for 2005, rounded to the nearest 0.01.}
+\new{Setting birth rate equal to death rate achieved an equilibrium population size for long-run simulations.}
 
 ### Simulating re-emergence
 To simulate re-emergence of measles, we manipulated the initial size of the susceptible pool to represent an increase from low $\mathcal{R}_e(t)$ to high $\mathcal{R}_e(t)$.
@@ -333,35 +383,45 @@ Because the model is stochastic, we repeated these simulations 500 times for eac
 
 Next, we split each simulated time series into null and test intervals.
 Fixed-size windows before and after the known critical transition were used because our focus was on testing EWS using empirically-based models, rather than attempting to identify optimal methods for operationalizing EWS.
-First, averaging across all simulations for a city--susceptible-depletion combination, we found the simulation year in which $\mathcal{R}_e(t)$ reached or exceeded 1 and excluded years after that (electronic supplement).
-We split the remaining time series into two windows of equal length (figure \ref{emerge-aucs}*a*).
-For example, if the total length of the time series from the beginning of the simulations to the time at which $\mathcal{R}_e(t)$ reached or exceeded 1 was six years, then the first window would be years 1 through 3, and the second window would be years 4 through 6. 
-The null interval is the first window, where $\mathcal{R}_e(t)$ is increasing but far from 1.
-The test interval is the second window, where $\mathcal{R}_e(t)$ is increasing and approaching 1.
-We did this for each city and for each level of susceptible depletion.
-We calculated EWS over null and test intervals separately.
+\new{To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.}
+\new{For re-emergence, we defined the critical year as the year in which the effective reproduction number ($\mathcal{R}_e$) reaches or exceeds the critical value of 1.}
+\new{When determining the critical year, we eliminated the variation in $\mathcal{R}_e$ that arises from the gamma white noise factor and thus calculated the expected value of $\mathcal{R}_e(t)$ over the set of all simulation replicates at time $t$.}
+\new{From a window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $\mathcal{R}_e = 1$) and the test interval as the second half of the window (near $\mathcal{R}_e = 1$).}
+We did this for each city and for each level of susceptible depletion, and calculated EWS over all null and test intervals separately.
 
 ### Simulating elimination
 To simulate elimination, we simulated an improvement in routine vaccination in which the vaccination probability increased linearly with respect to time to eventually reach 100\%, i.e. eradication (figure S3).
-We performed simulations for 100 years, starting with 50 years of at the baseline vaccine coverage reported for Niger of 70\%, $p_t = 0.7$ [@Ferrari2008].
-Note that vaccination is included in our model by multiplying the birth rate of susceptibles by $1-p_t$.
-At year 50, we initiated the improvement in routine vaccination and let the model run for another 50 years.
-We performed simulations across six vaccination "speeds" (the rate at which $p_t \rightarrow 1$; electronic supplement), simulating situations of slow and fast approaches to elimination.
-As in re-emergence simulations, we set the birth rate equal to the death rate to achieve a constant equilibrium population size. 
+Vaccination probablity started at baseline vaccine coverage reported for Niger of 70\%, $p_t = 0.7$ [@Ferrari2008].
 
-We then split each time series into null and test intervals for calculating EWS.
-The test interval was defined as the window of time between the start of the vaccination improvements (year 50) and the time at which the vaccination probability reached the vaccination threshold of $1 - 1/\max(\mathcal{R}_0 (t))$ (figure \ref{elim-aucs}*a*);
-$\max(\mathcal{R}_0(t))$ was determined for each city using the MLE parameters as: $\max(\mathcal{R}_0) \approx \left[\eta \max(\beta) \right]/ \left[\left(\eta+\nu\right)\left(\gamma+\nu\right)\right]$, where $\max(\beta)$ is the maximum value of $\beta_t$ over its seasonal variation.
-The null interval was defined as the window of time that ends at the beginning of the vaccination ramp up (end of year 49) and starts at a time that results in an interval equal in length to the test interval (figure \ref{elim-aucs}*a*).
-For example, if the vaccination threshold for herd immunity was met in year 60 of the simulation, then the test interval was defined as years 50 (when vaccination ramp up began) through 60; the null interval would then be defined as years 39 through 49 to match the length of the test interval.
-EWS were then calculated for each interval.
+\new{We defined the critical time as the year in which the vaccination probability reaches the threshold needed for herd immunity.}
+\new{This vaccination threshold is defined as $p^* = 1 - 1/\mathcal{R}_0$.}
+\new{Because our transmission function is seasonal, we first approximated time-specific $\mathcal{R}_0$ as: $\mathcal{R}_0(t) = \frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, and $\nu$ is the death rate.} 
+\new{We took a conservative approach for calculating the vaccination threshold by using the maximum value of $\mathcal{R}_0(t)$ out of the range of values in its seasonal variation.} 
+\new{That is, we used $p^* = 1 - 1/\text{max}(\mathcal{R}_0(t))$ as the threshold value.}
+\new{We set the time at which the vaccination probability is equal to this threshold value as the endpoint for the EWS analysis.}
+\new{All elimination simulations had vaccination improvements that started at year 50.}
+\new{Therefore, we defined the test interval as the times between the beginning of year 50 and the time at which the vaccination probability is equal to $p^*$.}
+\new{We then defined the null interval as a window with length equal to the test interval and ending at the end of year 49.} EWS were then calculated for each interval.
 
 ## Calculating early warning signals
-We considered nine candidate early warning signals (table S3).
-We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in table S3.
-All EWS except the coefficient of variation are expected to increase as $\mathcal{R}_e(t)$ approaches 1 from below [@ORegan2013; @ORegan2016; @Brett2018].
+We considered eight candidate early warning signals \new{based on previous work} [@ORegan2013; @ORegan2016; @Brett2017; @Brett2018; @Brett2020] (table \ref{tab:ews}).
+We used the `spaero::get_stats()` function [@ODea2018] in R [@R2017] to calculate EWS according to the formulas in table \ref{tab:ews}.
+All EWS except the coefficient of variation are expected to increase as $\mathcal{R}_e(t)$ approaches 1 from below [@ORegan2013; @ORegan2016; @Brett2017].
 We are not aware of theoretical results for the behavior of these EWS as $\mathcal{R}_e(t)$ approaches 1 from above that are applicable to our fitted model's dynamics, which are highly non-linear (figure S2).
 But a natural expectation is that the mean should decrease as the endemic equilibrium of our model's deterministic skeleton moves toward zero.
+
+| EWS | Estimator | Theoretical Correlation with $\mathcal{R}_e(t)$ in an emergence scenario |
+| -------------------- | ----------------------------------- | ------------------------ |
+| Mean | \( \bar{y} = \sum_{i=1}^n \frac{y_i}{n} \) | Positive |
+| Variance | \( s^2 = \sum_{i=1}^n \frac{(y_i - \bar{y})^2}{n} \) | Positive |
+| Coefficient of variation | \( \frac{ s }{ \bar{y} } \) | Null |
+| Index of dispersion | \( \frac{ s^2 }{ \bar{y} } \) | Positive |
+| Skewness | \( \frac{1}{s^3} \sum_{i=1}^n \frac{\left( y_i - \bar{y} \right)^3}{n} \) | Positive |
+| Kurtosis | \( \frac{1}{s^4} \sum_{i=1}^n \frac{\left( y_i - \bar{y} \right)^4}{n} \) | Positive |
+| Autocovariance | \( s^2_1 =  \sum^{n}_{i=2} \frac{\left( y_i - \bar{y} \right)\left( y_{i - 1}  - \bar{y} \right)}{n} \) | Positive |
+| Autocorrelation | \( r_1 = \frac{s^2_1 }{ s^2} \) | Positive |
+
+Table: List of candidate early warning signals and their estimating equations. See @Brett2018 for details, as well as moving window versions which we use in the section "Moving window analysis" in the following. \label{tab:ews}
 
 For each simulation of re-emergence and elimination, we calculated EWS for the time series of expected cases in the null and test intervals.
 This yielded a distribution of EWS over the 500 null and test intervals.
