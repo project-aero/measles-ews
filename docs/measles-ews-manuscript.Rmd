@@ -963,6 +963,7 @@ In summary, our analysis of EWS suggested that indicators of critical slowing do
 We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (figure S9b).
 But, all EWS performed less well when predicting the approach to emergence over the moving window (figure S9).
 
+
 # Discussion
 
 The ability to detect early warnings of outbreaks of potentially fatal diseases such as measles during non-epidemic periods of unpredictable duration may facilitate planning such as enhanced surveillance to expedite outbreak detection, implementation of serological surveys to identify immunity gaps, and initiation of targeted supplemental vaccination [@Grais2008;@Weldegebriel2011]. 
@@ -977,13 +978,20 @@ Moreover, indicators behaved as expected based on simple one-dimensional models 
 This is because the autocorrelation and variance increased on the approach to $\mathcal{R}_e = 1$ (figure \ref{emerge-aucs}*c*).
 If, alternatively, the variance had increased but the autocorrelation had not, a better supported model would be an equilibrium with fixed stability but subject to increasing intensity of perturbations.
 From a model selection point of view, our simulations of re-emergence support the prototypical model of critical slowing down. 
-Moreover, since our simulations were fit to measles data and had relatively high one-step-ahead predictive accuracy on average, it suggests that the prototypical model of critical slowing down may be supported by data sets similar to the ones we fit and can provide predictive value for them.
+Since our simulations were fit to measles data and had relatively high one-step-ahead predictive accuracy on average, it suggests that the prototypical model of critical slowing down may be supported by data sets similar to the ones we fit and can provide predictive value for them.
 The definitive test of this approach, or course, would be to record forecasts of re-emergence based on indicators of critical slowing down and evaluate their accuracy as data are accumulated.
+
+\new{Kurtosis and skewness did not perform well (AUC far from 0 and 1).}
+\new{This may be because higher moment based indicators may need longer time series and higher amounts of stochasticity to detect critical transitions.}
+\new{Thus, while kurtosis and skewness were not strong indicators of the transition to re-emergence in our system, they may still prove useful in other systems.}
 
 We found lag-1 autocorrelation not to be a strong indicator of the transition to elimination (figure \ref{elim-aucs}*c*).
 Thus, the prototypical model of critical slowing down appears less useful in this scenario.
 Other EWS (variance, autocovariance, and mean) did show altered behavior as the transition to elimination was approached, but these EWS were less sensitive under elimination scenarios compared to re-emergence scenarios.
 These results suggest that although distributional changes in indicators occur prior to disease elimination, interpreting these changes as the loss of stability of an endemic equilibrium, or declining $\mathcal{R}_e$, requires a model which accounts for complicating system features such as seasonality, non-linearity, damped oscillations, and local extinction.
+\new{We also found that EWS in smaller cities performed worse relative to larger cities at predicting elimination (figure \ref{elim-aucs}*c*).}
+\new{Our hypothesis is that stochastic effects are stronger in smaller populations, which introduces more variation into our EWS and makes trends more difficult to identify.}
+\new{Spatial replication across small populations, which should reduce stochasticity, could prove important for developing practical EWS.}
 
 
 ```{r susc-deplete}
@@ -1048,16 +1056,19 @@ A small depletion factor corresponds to a large level of susceptible depletion.
 To check the relevance of this concern, we calculated the level of susceptible depletion after outbreaks (defined as years where the total number of cases reached 80% of the maximum observed) across one hundred replicate simulations (electronic supplement).
 We found that susceptible depletion was less than 0.5, the smallest susceptible depletion level we tested, for `r round(percs[1], 1)`% of outbreaks in Agadez, `r round(percs[2])`% of outbreaks in Maradi, `r round(percs[3])`% of outbreaks in Niamey, and `r round(percs[4])`% of outbreaks in Zinder.
 These statistics do not detract from our main finding of critical slowing down in measles dynamics, but do suggest that EWS might be less useful in some cases than in others.
-For example, AUC values for emergence at the 0.5 level of susceptible depletion were already low for most cities (figure \ref{emerge-aucs}*c*).
+For example, AUC values for emergence at the 0.5 level of susceptible depletion were already low for most cities (figure \ref{emerge-aucs}\textbf{c}).
 Thus, our methods may not be practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
 We focused on fixed windows for calculating EWS based on the timing of the critical transition.
 Thus, our work also does not represent how EWS would be operationalised in online mode.
 The fixed windows were specifically designed to test whether EWS could detect a known critical transition and limit the additional complexity associated with choosing a moving window size.
-Supplemental simulations showed that all EWS performed more poorly when using a moving window (electronic supplement section S11), suggesting that choosing the temporal width of the moving window is important for application of EWS in real-world settings.
-\new{Determining the optimal moving window width is non-trivial [@Brett2020] and is beyond the scope of this article.}
+<!-- Supplemental simulations showed that all EWS performed more poorly when using a moving window (electronic supplement section S11), suggesting that choosing the temporal width of the moving window is important for application of EWS in real-world settings. -->
+\new{Determining the optimal moving window width is non-trivial} [@Brett2020] \new{and is beyond the scope of this article.}
 \new{Nonetheless, our analyses show that several EWS can detect critical transitions in representatively noisy SEIR dynamics.}
-\new{Providing this link from theory to application through empirically-base models represents an important step toward operationalising EWS.}
+\new{Providing this link from theory to application through empirically-based models represents an important step toward operationalising EWS.}
+\new{Further applied work on optimal moving window widths and the lead-time of different EWS appears to be worth the effort given our encouraging results at the theoretical-applied divide.}
+\new{This is especially true because fitting even relatively simple models of disease tranmission for a well-known disease such as measles is difficult.}
+\new{The ability to rely on model-free indicators of critical transitions therefore remains an important endeavor, especially for emerging pathogens.}
 
 Unpredictable, recurring outbreaks with seasonality in transmission such as those observed for measles in Niger during 1995--2005 are challenging settings for the application of EWS in part because most theory regarding the behavior of EWS [@ORegan2018;@Brett2017] is based on models that exhibit simpler dynamics. 
 Consequently, the development of robust, model-independent early warning systems for infectious diseases [@Han2016] likely will benefit from further study of the behavior of EWS in complex models.
