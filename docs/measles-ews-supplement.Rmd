@@ -109,427 +109,6 @@ ggplot() +
 plot_grid(birth_plot, pop_plot, nrow = 1, align = "h")
 ```
 
-# Stochastic simulations from the fitted models
-
-Here we show stochastic simulations from the fitted models (figure \ref{stoch-sims}).
-Simulations are all initialized from the same initial conditions, which were estimated as part of model fitting.
-
-```{r stoch-sims, fig.cap="Stochastic simulations from the fitted models. Each colored line is a single realization of the model from the same initial conditions. Ten simulations are shown. The black lines are the observed data. We do not expect model simulations to perfectly align with the data because of the multiple sources of stochasticity present. Thus, these simulations should be judged by their ability to reproduce dynamical features of the data. \\label{stoch-sims}", fig.width=8.5, fig.height=4}
-
-code_files <- list.files("../code/")
-pomp_ids <- grep("measles-pomp-object", code_files)
-pomp_files <- code_files[pomp_ids]
-
-results_files <- list.files("../results/")
-mle_ids <- grep("mif-lls", results_files)
-mle_files <- results_files[mle_ids]
-boot_ids <- grep("boot", mle_files)
-mle_files <- mle_files[-boot_ids]
-
-source("../code/make-legacy-pomp-filtering-function.R")
-
-all_sims <- tibble()
-for(do_file in pomp_files){
-  tmp_city <- str_sub(do_file, start = 21, end = nchar(do_file)-4)
-  tmp_pomp <- readRDS(paste0("../code/", do_file))
-  
-
-  
-  city_mle_ids <- grep(tmp_city, mle_files)
-  tmp_mles <- read.csv(paste0("../results/", mle_files[city_mle_ids])) %>%
-    drop_na() %>%
-    filter(loglik == max(loglik)) %>%
-    dplyr::select(-loglik, -loglik_se, -do_grid)
-
-  obs_data <- data.frame(time = tmp_pomp@times, reports = as.numeric(tmp_pomp@data))
-  covar_data <- cbind(time = tmp_pomp@tcovar, as.data.frame(tmp_pomp@covar))
-  
-  sim <- make_pomp_filter(obs_data = obs_data, 
-                          covar_data = covar_data, 
-                          mles = unlist(tmp_mles))
-  
-  tmp_sim <- pomp::simulate(
-    sim,
-    params = unlist(tmp_mles),
-    nsim = 10,
-    as.data.frame = TRUE,
-    include.data = TRUE
-  ) %>%
-    dplyr::select(time, sim, reports, S) %>%
-    mutate(city = tmp_city) %>%
-    filter(time >= 1995)
-  
-  all_sims <- bind_rows(all_sims, tmp_sim)
-}
-
-ggplot() +
-  geom_line(data = filter(all_sims, sim != "data"), aes(x = time, y = reports, color = sim), alpha = 0.25) +
-  geom_line(data = filter(all_sims, sim == "data"), aes(x = time, y = reports)) +
-  guides(color = "none") +
-  facet_wrap(~city, scales = "free_y") +
-  labs(x = "Date", y = expression(sqrt(Reports))) +
-  scale_y_sqrt() +
-  theme_minimal()
-```
-
-# Comparisons with benchmarking models
-Here
-The results in table \ref{tab:AIC} show the AIC values for each model.
-The AIC values for the SEIR models are lowest for all cities, suggesting that the addition of mechanism via explicit disease transmission dynamics substantially improves model fit.
-
-
-
-# Long-run simulations from the fitted the SEIR models
-For fitting the SEIR model, we used known population size interpolated between years.
-This meant we were able to ignore certain demographic processes.
-For example, we ignored deaths from the susceptible pool under the assumption that the infection rate was much faster than the death rate.
-We also ignored the recovered class completely because their dynamics, outside of the contribution to population size (which we assumed to be known), do not impact the $S, E, \text{or } I$ compartments.
-However, we needed to include births and deaths from all compartments, including $R$, when simulating the model over arbitrarily long time periods that do not necessarily represent real times for which we would have information on population size.
-
-We added a few terms to the SEIR model presented in the main text to account for births and deaths in all compartments.
-Our strategy was to simulate a population at a dynamic equilibrium, where total population was neither increasing or decreasing over time, but it does fluctuate.
-Our *simulating model* (in contrast to the *fitting model* in the main text) is as follows.
-
-As in the main text, the SEIR model is specified as a set of difference equations,
-
-\begin{align}
-S_{t+ \Delta t} - S_{t} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
-E_{t+ \Delta t} - E_{t} &= n_{SE,t} - n_{EI,t} - n_{E0,t} \\
-I_{t+\Delta t} - I_{t} &= n_{EI,t} + n_{0I,t} - n_{IR,t} - n_{I0,t} \\
-R_{t+\Delta t} - R_{t} &= n_{0R,t} + n_{IR,t} - n_{R0,t},
-\end{align}
-
-\noindent{}where $\textbf{n}_t$ are random variables representing the number of individuals transitioning into or out of each class at each update $t \rightarrow t+\Delta t$.
-Transition definitions are in table \ref{tab:transitions}.
-
-| Random variable | Transition | $\left(\Delta S, \Delta E, \Delta I, \Delta R\right)$ |
-| ---------- | ----------------------------| ---------- |
-| $n_{0S}$ | Births into the *S* compartment, not vaccinated | (1, 0, 0, 0) |
-| $n_{SE}$ | Number of people transitioning from *S* to *E* | (-1, 1, 0, 0) |
-| $n_{S0}$ | Number of deaths leaving *S* | (-1, 0, 0, 0) |
-| $n_{EI}$ | Number of people transitioning from *E* to *I* | (0, -1, 1, 0) |
-| $n_{E0}$ | Number of deaths leaving *E* | (0, -1, 0, 0) |
-| $n_{0I}$ | Number of imported infections | (0, 0, 1, 0) |
-| $n_{IR}$ | Number of people transitioning from *I* to *R* | (0, 0, -1, 1) |
-| $n_{I0}$ | Number of deaths leaving *I* | (0, 0, -1, 0) |
-| $n_{0R}$ | Births into the *R* compartment, vaccinated | (0, 0, 0, 1) |
-| $n_{R0}$ | Number of deaths leaving *R* | (0, 0, 0, -1) |
-
-Table: Transitions in the simulating model. \label{tab:transitions}
-
-The stochastic random variables are specified as follows:
-
-\begin{align}
-n_{0S,t} &\sim \text{Poisson}((1-p_t)\mu N \times \Delta t) \\
-(n_{SE,t}, n_{S0,t}) &\sim \text{EulerMultinomial}(S_{t}, (\beta_t I_t / N, \nu), \Delta t) \\
-(n_{EI,t}, n_{E0,t}) &\sim \text{EulerMultinomial}(E_{t}, (\eta, \nu), \Delta t)  \label{eq:emulti} \\
-(n_{IR,t}, n_{I0,t}) &\sim \text{EulerMultinomial}(I_{t}, (\gamma, \nu), \Delta t) \\
-n_{I0,t} &\sim \text{Poisson}(\psi \times \Delta t) \\
-n_{0R,t} &\sim \text{Poisson}(p_t \mu N \times \Delta t) \\
-n_{R0,t} &\sim \text{EulerMultinomial}(R_t, (\nu), \Delta t),
-\end{align}
-\noindent{}where $p_t$ is the vaccination probability (set at $p = 0.7$), $\mu$ is the constant birth rate (set at $\mu = 0.05$), $N$ is the equilibrium population size, $\sim \text{EulerMultinomial}(T, r_i, \Delta t)$ specifies that the variables on the left of $\sim$ follow an Euler Multinomial distribution for $T$ individuals with hazard rates $r_i$ and step size $\Delta t$, $\beta_t$ is a time-varying rate of transmission, $\eta$ is a time-invariant rate of transfer from the exposed class to the infectious class, $\gamma$ is a time-invariant recovery rate, $\nu$ is the constant death rate, and $\psi$ is the rate of imported infections (estimated by the model). 
-The Euler Multinomial distribution corresponds to a multinomial distribution where the event probabilities $P_i$ are determined by the Euler time step $\Delta t$ and the hazard rates $r_i$, according to 
-\begin{align}
-P_0 &= \exp( -\sum_i r_i \Delta t), \\
-P_i &= (1 - P_0) r_i / (\sum_i r_i)\qquad \text{for} \qquad i > 0.
-\end{align}
-Event zero is the event that an individual stays in its initial compartment and does not contribute to the vector $\textbf{n}_t$.
-To provide a specific example, equation \eqref{eq:emulti} corresponds to 
-\begin{equation}
-(E_{t} - n_{EI,t} - n_{E0,t}, \,n_{EI,t},\, n_{E0,t}) \sim \text{Multinomial}(E_{t}; P_0, (1 - P_0) \eta /(\eta + \nu), (1 - P_0) \nu / (\eta + \nu)),
-\end{equation}
-where $P_0 =  \exp(-(\eta + \nu) \Delta t)$.
-We set $1/\eta = 8$ days, $1/\gamma = 5$ days, and $\nu = 0.05$ per year. 
-We used a daily time step of $\Delta t = \text{year} / 365$.
-Setting the birth rate equal to $\mu N$ and the *per capita* death rate equal to $\nu = \mu$ makes $N$ a stable equilibrium population size.
-We modeled the rate of transmission as:
-\begin{equation}
-\beta_t = \beta \left(1 + \exp \left(\sum^6_{i=1} q_i \xi_{i_{t}}\right) \right) \Gamma_t.
-\end{equation}
-$\beta$ is the minimum transmission rate over the season and the term $\sum^6_{i=1} q_i \xi_{i_{t}}$ is a B-spline to model seasonality in transmission.
-The B-spline bases ($\xi_{i_{t}}$) are periodic with a 1 year period.
-The transmission rate ($\beta_t$) is also subject to stochastic process noise at each time step, $\Gamma_t$, which we model as gamma-distributed white (temporally uncorrelated) noise with mean 1 and intensity $\sigma^2$ [@Breto2011].
-
-Finally, observations were simulated from the model on a weekly time step by drawing counts of cases ($y_t$) from a negative binomial distribution centered on the number of people that transitioned from the infectious to recovered class over seven days ($x_t$), subject to estimated reporting rate ($\rho$), and with a dispersion parameter equal to the MLE: $y_t \sim \text{Negative Binomial}(\rho x_t, \tau)$, where we use the same parameterization of the negative binomial as described in our model definition in the main text.
-
-In this model, the effective reproduction number can be approximated as:
-
-$$
-\mathcal{R}_e(t) \approx \frac{S_t}{N_t} \frac{\eta \beta_t}{(\eta + \nu)(\gamma + \nu)}.
-$$
-
-The model described above was implemented in the `R` package `pomp` [@King2016; @King2018] to simulate the re-emergence and elimination scenarios.
-
-# Computing the time of critical transitions
-To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.
-For re-emergence, we defined the critical year as the year in which the effective reproduction number ($\mathcal{R}_e$) reaches or exceeds the critical value of 1.  
-When determining the critical year, we eliminate the variation in $\mathcal{R}_e$ that arises from the gamma white noise factor and thus calculate the expected value of $\mathcal{R}_e(t)$ over the set of all simulation replicates at time $t$.
-From a window ranging from the beginning of the simulation to the end of the critical year, we defined the null interval as the first half of the window (far from $\mathcal{R}_e = 1$) and the test interval as the second half of the window (near $\mathcal{R}_e = 1$).
-Figure \ref{emerge-sim} shows a typical example.
-
-```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the susceptible depletion factor was 1e-04. (*a*) The simulated trajectory of $\\mathcal{R}_e$ and the end of the year in which $\\mathcal{R}_e$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for end of critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
-ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
-emerge_sim <- readRDS(ex_file)
-
-re_one_year <- emerge_sim %>%
-  group_by(time) %>%
-  summarise(mean_re = mean(RE_seas)) %>%  
-  mutate(year = round(time)) %>%  # create 'year' variable
-  ungroup() %>%
-  filter(mean_re >= 1) %>%  # drop times where Re less than 1
-  filter(year == min(year) + 1) %>%  # filter to critical transition year
-  distinct(year, .keep_all = TRUE) %>%  # drop duplicates
-  dplyr::select(year) %>%
-  ungroup()
-
-re_path <- emerge_sim %>%
-  group_by(time) %>%
-  summarise(mean_re = mean(RE_seas)) %>%  
-  mutate(year = round(time)) %>%  # create 'year' variable
-  ungroup()
-
-one_sim <- emerge_sim %>% 
-  filter(sim == 1) %>%
-  left_join(re_path, by = "time") %>%
-  mutate(used = ifelse(time <= re_one_year$year, "yes", "no"))
-
-re_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = mean_re)) +
-  geom_line(color = "tan", aes(alpha = used)) +
-  geom_hline(aes(yintercept = 1), color = "grey35", linetype = 3) +
-  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
-  annotate(geom = "text", x = 10, y = 0.3, label = "End\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
-  scale_alpha_manual(values = c(0.5, 1)) +
-  guides(alpha = "none") +
-  labs(x = "Simulation time (year)", y = expression(R[e])) +
-  theme_classic(base_size = 12)
-
-cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports)) +
-  geom_line(color = "tan", aes(alpha = used)) +
-  geom_vline(aes(xintercept = 0), color = "dodgerblue4", linetype = 2) +
-  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
-  geom_vline(aes(xintercept = re_one_year$year /2)) +
-  annotate(geom = "text", x = 1.75, y = 250, label = "Null window") +
-  annotate(geom = "text", x = 5.25, y = 250, label = "Test window") +
-  scale_alpha_manual(values = c(0.4, 1)) +
-  guides(alpha = "none") +
-  annotate(geom = "text", x = 7.35, y = 150, label = "End\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
-  labs(x = "Simulation time (year)", y = "Reported cases") +
-  theme_classic(base_size = 12)
-
-plot_grid(re_series, cases_series, nrow = 2, align = "v", 
-          scale = 0.9, labels = c("(a)", "(b)"), label_size = 12,
-          label_fontfamily = "Times", label_fontface = 3)
-```
-
-For simulations of disease elimination by increasing the vaccination probability of the population, we define the critical time as the year in which the vaccination probability reaches the threshold needed for herd immunity.
-This vaccination threshold is defined as $p^* = 1 - 1/\mathcal{R}_0$.
-Because our transmission function is seasonal, we first approximated time-specific $\mathcal{R}_0$ as: $\mathcal{R}_0(t) = \frac{\eta \beta_t}{(\eta+\nu)(\gamma+\nu)}$, where $1/\eta$ is the incubation period, $1/\gamma$ is the infectious period, $\beta_t$ is the time-specific rate of transmission, and $\nu$ is the death rate. 
-Only $\beta_t$ is estimated by our model. 
-We set $1/\eta$ = 8 days, $1/\gamma$ = 5 days, and $\nu$ = 0.05 per year.
-Figure 2 in the main text shows our estimates of $\mathcal{R}_0$ over the course of a year using this approximation.
-We took a conservative approach for calculating the vaccination threshold by using the maximum value of $\mathcal{R}_0(t)$ out of the range of values in its seasonal variation. 
-That is, we used $p^* = 1 - 1/\text{max}(\mathcal{R}_0(t))$ as the threshold value.
-We set the time at which the vaccination probability is equal to this threshold value as the endpoint for the EWS analysis.
-All elimination simulations had vaccination improvements that started at year 50.
-So, we define the test interval as the times between the beginning of year 50 and the time at which the vaccination probability is equal to $p^*$.
-We then defined the null interval as a window with length equal to the test interval and ending at the end of year 49.
-Figure \ref{elimin-sim} shows a typical example.
-
-```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate of change in vaccination probability is 1.5e-05 per day. The null and test intervals are defined based on the time at which the vaccination improvements begin (year 50, black line) and the year at which the vaccination probability reaches the threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of reaching the immunity threshold: the null interval ends at time 50 (when the vaccination improvements begin) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
-
-example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
-ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
-
-rho_curve_ramp <- function(t, start = 50, speed = 1.5e-05){
-  ifelse(
-    t <= start,
-    rho <- 0.7,
-    # rho <- 0.3 * (1 - exp((t - start) * -0.015 speed)) + 0.7  # exponential
-    rho <- min(0.7 + (t - start)*speed, 1)  # linear
-  )
-  return(rho)
-}
-
-years <- 100
-weeks <- years*52
-days <- years*365
-vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, 
-                           start = 50*365, speed = 1.5e-05)
-
-vacc_ex_tbl <- tibble(
-  time = 1:length(vacc_coverage_ts),
-  coverage = vacc_coverage_ts
-)
-
-
-vacc_plot <- ggplot(vacc_ex_tbl, aes(time/365, coverage)) +
-  geom_line(color = "dodgerblue4") +
-  geom_hline(aes(yintercept = 0.7), linetype = 2, 
-             size = 0.25, color = "grey45") +
-  geom_hline(aes(yintercept = unique(example_data$threshold)), linetype = 2, 
-             size = 0.25, color = "grey45") +
-  annotate(geom = "text", x = 81, y = 0.72, color = "grey45",
-           label = "Current vaccination probability in Niger", size = 3) +
-  annotate(geom = "text", x = 25, y = 0.91, color = "grey45",
-           label = "Vaccination probability for herd immunity", size = 3) +
-  scale_y_continuous(limits = c(0.7, 1)) +
-  labs(x = NULL, y = "Vaccination\nprobability") +
-  theme_classic(base_size = 14)
-
-ts_plot <- ggplot() +
-  geom_line(data = example_data, aes(x = time, y = reports, group = group), color = "tan", alpha = 0.4, size = 0.3) +
-  geom_vline(data = ews_data_example, aes(xintercept = max(time)), color = "dodgerblue4",  linetype = 2) +
-  geom_vline(data = ews_data_example, aes(xintercept = min(time)), color = "dodgerblue4",  linetype = 2) +
-  geom_vline(data = ews_data_example, aes(xintercept = 50), color = "grey45", linetype = 1) +
-  geom_line(data = ews_data_example, aes(x = time, y = reports), color = "tan", size = 0.3) +
-  annotate(geom = "text", x = 28, y = 1450, label = "Null window") +
-  annotate(geom = "text", x = 70, y = 1450, label = "Test window") +
-  annotate(geom = "text", x = 41, y = 900, label = "Improvement\nin routine\nvaccination\nbegins", size = 3, color = "grey25") +
-  annotate(geom = "text", x = 81, y = 900, label = "Vaccination\nprobability\nreaches\nherd immunity\nthreshold", size = 3, color = "dodgerblue4") +
-  labs(x = "Simulation time (year)", y = "Reported cases") +
-  theme_classic(base_size = 14)
-
-plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
-
-```
-
-# Early warning signals
-
-We calculated nine early warning signals using the ```spaero::get_stats()``` function.
-Formulas for the early warning signals are in table \ref{tab:ews}.
-
-| EWS | Estimator | Theoretical Correlation with $\mathcal{R}_e(t)$ in an emergence scenario |
-| -------------------- | ----------------------------------- | ------------------------ |
-| Mean | \( \bar{y} = \sum_{i=1}^n \frac{y_i}{n} \) | Positive |
-| Variance | \( s^2 = \sum_{i=1}^n \frac{(y_i - \bar{y})^2}{n} \) | Positive |
-| Coefficient of variation | \( \frac{ s }{ \bar{y} } \) | Null |
-| Index of dispersion | \( \frac{ s^2 }{ \bar{y} } \) | Positive |
-| Skewness | \( \frac{1}{s^3} \sum_{i=1}^n \frac{\left( y_i - \bar{y} \right)^3}{n} \) | Positive |
-| Kurtosis | \( \frac{1}{s^4} \sum_{i=1}^n \frac{\left( y_i - \bar{y} \right)^4}{n} \) | Positive |
-| Autocovariance | \( s^2_1 =  \sum^{n}_{i=2} \frac{\left( y_i - \bar{y} \right)\left( y_{i - 1}  - \bar{y} \right)}{n} \) | Positive |
-| Autocorrelation | \( r_1 = \frac{s^2_1 }{ s^2} \) | Positive |
-| Decay time | \( -1 / \text{ln}(r_1) \) | Positive |
-
-Table: List of candidate early warning signals and their estimating equations. See @Brett2018 for details, as well as moving window versions which we use in the section "Moving window analysis" in the following. \label{tab:ews}
-
-# Trends of early warning signals
-
-Theory suggests that most EWS should increase as disease dynamics
-approach a critical transition from below (emergence).  When
-approaching the critical transition from above (elimination), we are not aware of any well-developed  theoretical predictions applicable to our model.
-
-To confirm that the EWS are behaving as expected, and to provide empirical results for cases in which we lack expectations, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
-
-```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where the susceptible depletion factor was 1e-04.", fig.height=5}
-emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
-  filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
-  mutate(metric = as.character(metric)) %>%
-  mutate(
-    metric = ifelse(metric == "variance", "Variance", metric),
-    metric = ifelse(metric == "variance_first_diff", "Var. 1st Diff.", metric),
-    metric = ifelse(metric == "autocovariance", "Autocovar.", metric),
-    metric = ifelse(metric == "autocorrelation", "Autocorr.", metric),
-    metric = ifelse(metric == "decay_time", "Decay\ntime", metric),
-    metric = ifelse(metric == "mean", "Mean", metric),
-    metric = ifelse(metric == "index_of_dispersion", "Index of\ndispersion", metric),
-    metric = ifelse(metric == "coefficient_of_variation", "Coeff. var.", metric),
-    metric = ifelse(metric == "skewness", "Skewness", metric),
-    metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
-  )
-
-gout <- list()
-for(do_city in sort(unique(emerge_ews$city))){
-  if(do_city != "Zinder"){
-    gout[[do_city]] <- ggplot(filter(emerge_ews, city == do_city), aes(fill = half, x = value)) +
-      geom_histogram(bins = 20) +
-      facet_wrap(~metric, scales = "free", nrow = 1) +
-      scale_fill_manual(values = c("tan", "dodgerblue4")) +
-      theme_minimal(base_size = 8) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      guides(fill = "none") +
-      labs(y = "Count", x = "") +
-      ggtitle(do_city)
-  }
-
-  if(do_city == "Zinder"){
-    gout[[do_city]] <- ggplot(filter(emerge_ews, city == do_city), aes(fill = half, x = value)) +
-      geom_histogram(bins = 20) +
-      facet_wrap(~metric, scales = "free", nrow = 1) +
-      scale_fill_manual(values = c("tan", "dodgerblue4"), labels = c("Null", "Test"), name = NULL) +
-      theme_minimal(base_size = 8) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      labs(y = "Count", x = "EWS value") +
-      ggtitle(do_city)
-  }
-
-}
-
-ews_hists <- cowplot::plot_grid(
-  plotlist = gout,
-  nrow = 4,
-  labels = c("(a)", "(b)", "(c)", "(d)"),
-  label_size = 12,
-  label_fontfamily = "Times", 
-  label_fontface = 3
-)
-print(ews_hists)
-```
-
-```{r ews-hists2, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where the rate of change in vaccination probability is equal to 1.5e-05 per day.", fig.height=5}
-elimination_ews <- read.csv("../results/ews-elimination.csv") %>%
-  filter(metric != "variance_first_diff" & vacc_speed == 1.5e-05) %>%
-  mutate(metric = as.character(metric)) %>%
-  mutate(
-    metric = ifelse(metric == "variance", "Variance", metric),
-    metric = ifelse(metric == "variance_first_diff", "Var. 1st Diff.", metric),
-    metric = ifelse(metric == "autocovariance", "Autocovar.", metric),
-    metric = ifelse(metric == "autocorrelation", "Autocorr.", metric),
-    metric = ifelse(metric == "decay_time", "Decay\ntime", metric),
-    metric = ifelse(metric == "mean", "Mean", metric),
-    metric = ifelse(metric == "index_of_dispersion", "Index of\ndispersion", metric),
-    metric = ifelse(metric == "coefficient_of_variation", "Coeff. var.", metric),
-    metric = ifelse(metric == "skewness", "Skewness", metric),
-    metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
-  )
-
-gout <- list()
-for(do_city in sort(unique(emerge_ews$city))){
-  if(do_city != "Zinder"){
-    gout[[do_city]] <- ggplot(filter(elimination_ews, city == do_city), aes(fill = half, x = value)) +
-      geom_histogram(bins = 20) +
-      facet_wrap(~metric, scales = "free", nrow = 1) +
-      scale_fill_manual(values = c("tan", "dodgerblue4")) +
-      theme_minimal(base_size = 8) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      guides(fill = "none") +
-      labs(y = "Count", x = "") +
-      ggtitle(do_city)
-  }
-
-  if(do_city == "Zinder"){
-    gout[[do_city]] <- ggplot(filter(elimination_ews, city == do_city), aes(fill = half, x = value)) +
-      geom_histogram(bins = 20) +
-      facet_wrap(~metric, scales = "free", nrow = 1) +
-      scale_fill_manual(values = c("tan", "dodgerblue4"), labels = c("Null", "Test"), name = NULL) +
-      theme_minimal(base_size = 8) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      labs(y = "Count", x = "EWS value") +
-      ggtitle(do_city)
-  }
-
-}
-
-ews_hists <- cowplot::plot_grid(
-  plotlist = gout,
-  nrow = 4,
-  labels = c("(a)", "(b)", "(c)", "(d)"),
-  label_size = 12,
-  label_fontfamily = "Times", 
-  label_fontface = 3
-)
-print(ews_hists)
-```
 
 # Bootstrapped parameter confidence intervals
 
@@ -735,6 +314,312 @@ for(do_file in loglik_files){
 }
 ```
 
+
+# Stochastic simulations from the fitted models
+
+Here we show stochastic simulations from the fitted models (figure \ref{stoch-sims}).
+Simulations are all initialized from the same initial conditions, which were estimated as part of model fitting.
+
+```{r stoch-sims, fig.cap="Stochastic simulations from the fitted models. Each colored line is a single realization of the model from the same initial conditions. Ten simulations are shown. The black lines are the observed data. We do not expect model simulations to perfectly align with the data because of the multiple sources of stochasticity present. Thus, these simulations should be judged by their ability to reproduce dynamical features of the data. \\label{stoch-sims}", fig.width=8.5, fig.height=4}
+
+code_files <- list.files("../code/")
+pomp_ids <- grep("measles-pomp-object", code_files)
+pomp_files <- code_files[pomp_ids]
+
+results_files <- list.files("../results/")
+mle_ids <- grep("mif-lls", results_files)
+mle_files <- results_files[mle_ids]
+boot_ids <- grep("boot", mle_files)
+mle_files <- mle_files[-boot_ids]
+
+source("../code/make-legacy-pomp-filtering-function.R")
+
+all_sims <- tibble()
+for(do_file in pomp_files){
+  tmp_city <- str_sub(do_file, start = 21, end = nchar(do_file)-4)
+  tmp_pomp <- readRDS(paste0("../code/", do_file))
+  
+
+  
+  city_mle_ids <- grep(tmp_city, mle_files)
+  tmp_mles <- read.csv(paste0("../results/", mle_files[city_mle_ids])) %>%
+    drop_na() %>%
+    filter(loglik == max(loglik)) %>%
+    dplyr::select(-loglik, -loglik_se, -do_grid)
+
+  obs_data <- data.frame(time = tmp_pomp@times, reports = as.numeric(tmp_pomp@data))
+  covar_data <- cbind(time = tmp_pomp@tcovar, as.data.frame(tmp_pomp@covar))
+  
+  sim <- make_pomp_filter(obs_data = obs_data, 
+                          covar_data = covar_data, 
+                          mles = unlist(tmp_mles))
+  
+  tmp_sim <- pomp::simulate(
+    sim,
+    params = unlist(tmp_mles),
+    nsim = 10,
+    as.data.frame = TRUE,
+    include.data = TRUE
+  ) %>%
+    dplyr::select(time, sim, reports, S) %>%
+    mutate(city = tmp_city) %>%
+    filter(time >= 1995)
+  
+  all_sims <- bind_rows(all_sims, tmp_sim)
+}
+
+ggplot() +
+  geom_line(data = filter(all_sims, sim != "data"), aes(x = time, y = reports, color = sim), alpha = 0.25) +
+  geom_line(data = filter(all_sims, sim == "data"), aes(x = time, y = reports)) +
+  guides(color = "none") +
+  facet_wrap(~city, scales = "free_y") +
+  labs(x = "Date", y = expression(sqrt(Reports))) +
+  scale_y_sqrt() +
+  theme_minimal()
+```
+
+
+# Null and test interval visuals
+
+Figure \ref{emerge-sim} shows a typical example of a re-emergence scenario, showing our split of null and test windows for comparing EWS far from and near to a critical transition.
+Figure \ref{elimin-sim} shows a typical example of an elimination scenario.
+
+```{r emerge-windows, fig.width=6, fig.cap="A typical emergence simulation for Maradi where the susceptible depletion factor was 1e-04. (*a*) The simulated trajectory of $\\mathcal{R}_e$ and the end of the year in which $\\mathcal{R}_e$ first reaches the critical value of 1 (denoted by dashed blue line). (*b*) The simulated trajectory of the number of cases. Note that the x-axis has been reduced relative to the top panel. The two vertical blue lines indicate the start (left-most line) and end (line for end of critical year) of the full window. The black line demarcates the division between the equal-length null and test intervals. \\label{emerge-sim}"}
+ex_file <- "../simulations/emergence-simulations-grid-Maradi-1e-04.RDS"
+emerge_sim <- readRDS(ex_file)
+
+re_one_year <- emerge_sim %>%
+  group_by(time) %>%
+  summarise(mean_re = mean(RE_seas)) %>%  
+  mutate(year = round(time)) %>%  # create 'year' variable
+  ungroup() %>%
+  filter(mean_re >= 1) %>%  # drop times where Re less than 1
+  filter(year == min(year) + 1) %>%  # filter to critical transition year
+  distinct(year, .keep_all = TRUE) %>%  # drop duplicates
+  dplyr::select(year) %>%
+  ungroup()
+
+re_path <- emerge_sim %>%
+  group_by(time) %>%
+  summarise(mean_re = mean(RE_seas)) %>%  
+  mutate(year = round(time)) %>%  # create 'year' variable
+  ungroup()
+
+one_sim <- emerge_sim %>% 
+  filter(sim == 1) %>%
+  left_join(re_path, by = "time") %>%
+  mutate(used = ifelse(time <= re_one_year$year, "yes", "no"))
+
+re_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = mean_re)) +
+  geom_line(color = "tan", aes(alpha = used)) +
+  geom_hline(aes(yintercept = 1), color = "grey35", linetype = 3) +
+  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
+  annotate(geom = "text", x = 8.5, y = 0.3, label = "End\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
+  scale_alpha_manual(values = c(0.5, 1)) +
+  coord_cartesian(xlim = c(1, 12)) +
+  guides(alpha = "none") +
+  labs(x = "Simulation time (year)", y = expression(R[e])) +
+  theme_classic(base_size = 12)
+
+cases_series <- ggplot(filter(one_sim, time < 11.5), aes(x = time, y = reports)) +
+  geom_line(color = "tan", aes(alpha = used)) +
+  geom_vline(aes(xintercept = 0), color = "dodgerblue4", linetype = 2) +
+  geom_vline(aes(xintercept = re_one_year$year), color = "dodgerblue4", linetype = 2) +
+  geom_vline(aes(xintercept = re_one_year$year /2)) +
+  annotate(geom = "text", x = 2.5, y = 250, label = "Null window") +
+  annotate(geom = "text", x = 5.75, y = 250, label = "Test window") +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  coord_cartesian(xlim = c(1, 12)) +
+  guides(alpha = "none") +
+  annotate(geom = "text", x = 7.35, y = 150, label = "End\nof\ncritical\nyear", size = 3, color = "dodgerblue4") +
+  labs(x = "Simulation time (year)", y = "Reported cases") +
+  theme_classic(base_size = 12)
+
+plot_grid(re_series, cases_series, nrow = 2, align = "v", 
+          scale = 0.9, labels = c("(a)", "(b)"), label_size = 12,
+          label_fontfamily = "Times", label_fontface = 3)
+```
+
+
+```{r elim-ex, fig.width=6, fig.cap="A typical elimination simulation for Maradi where the rate of change in vaccination probability is 1.5e-05 per day. The null and test intervals are defined based on the time at which the vaccination improvements begin (year 50, black line) and the year at which the vaccination probability reaches the threshold for herd immunity (right-most dashed blue line). The beginning of the null interval is determined by the length of the series from time 50 to the time of reaching the immunity threshold: the null interval ends at time 50 (when the vaccination improvements begin) and starts at whatever time results in a series that is equal in length to the test interval. \\label{elimin-sim}"}
+
+example_data <- readRDS("../simulations/single-elimination-example.RDS")[[1]]
+ews_data_example <- readRDS("../simulations/single-elimination-example.RDS")[[2]]
+
+rho_curve_ramp <- function(t, start = 50, speed = 1.5e-05){
+  ifelse(
+    t <= start,
+    rho <- 0.7,
+    # rho <- 0.3 * (1 - exp((t - start) * -0.015 speed)) + 0.7  # exponential
+    rho <- min(0.7 + (t - start)*speed, 1)  # linear
+  )
+  return(rho)
+}
+
+years <- 100
+weeks <- years*52
+days <- years*365
+vacc_coverage_ts <- sapply(0:days, FUN = rho_curve_ramp, 
+                           start = 50*365, speed = 1.5e-05)
+
+vacc_ex_tbl <- tibble(
+  time = 1:length(vacc_coverage_ts),
+  coverage = vacc_coverage_ts
+)
+
+
+vacc_plot <- ggplot(vacc_ex_tbl, aes(time/365, coverage)) +
+  geom_line(color = "dodgerblue4") +
+  geom_hline(aes(yintercept = 0.7), linetype = 2, 
+             size = 0.25, color = "grey45") +
+  geom_hline(aes(yintercept = unique(example_data$threshold)), linetype = 2, 
+             size = 0.25, color = "grey45") +
+  annotate(geom = "text", x = 81, y = 0.72, color = "grey45",
+           label = "Current vaccination probability in Niger", size = 3) +
+  annotate(geom = "text", x = 25, y = 0.91, color = "grey45",
+           label = "Vaccination probability for herd immunity", size = 3) +
+  scale_y_continuous(limits = c(0.7, 1)) +
+  labs(x = NULL, y = "Vaccination\nprobability") +
+  theme_classic(base_size = 14)
+
+ts_plot <- ggplot() +
+  geom_line(data = example_data, aes(x = time, y = reports, group = group), color = "tan", alpha = 0.4, size = 0.3) +
+  geom_vline(data = ews_data_example, aes(xintercept = max(time)), color = "dodgerblue4",  linetype = 2) +
+  geom_vline(data = ews_data_example, aes(xintercept = min(time)), color = "dodgerblue4",  linetype = 2) +
+  geom_vline(data = ews_data_example, aes(xintercept = 50), color = "grey45", linetype = 1) +
+  geom_line(data = ews_data_example, aes(x = time, y = reports), color = "tan", size = 0.3) +
+  annotate(geom = "text", x = 28, y = 1450, label = "Null window") +
+  annotate(geom = "text", x = 70, y = 1450, label = "Test window") +
+  annotate(geom = "text", x = 41, y = 900, label = "Improvement\nin routine\nvaccination\nbegins", size = 3, color = "grey25") +
+  annotate(geom = "text", x = 81, y = 900, label = "Vaccination\nprobability\nreaches\nherd immunity\nthreshold", size = 3, color = "dodgerblue4") +
+  labs(x = "Simulation time (year)", y = "Reported cases") +
+  theme_classic(base_size = 14)
+
+plot_grid(vacc_plot, ts_plot, rel_heights = c(1, 1), ncol = 1, align = "v")
+
+```
+
+
+# Trends of early warning signals
+
+Theory suggests that most EWS should increase as disease dynamics
+approach a critical transition from below (emergence).  When
+approaching the critical transition from above (elimination), we are not aware of any well-developed  theoretical predictions applicable to our model.
+
+To confirm that the EWS are behaving as expected, and to provide empirical results for cases in which we lack expectations, we plotted histograms of the EWS for the test and null intervals for both simulation types, emergence and elimination.
+
+```{r ews-hists, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from emergence simulations where the susceptible depletion factor was 1e-04.", fig.height=5}
+emerge_ews <- read.csv("../results/ews-emergence.csv") %>%
+  filter(metric != "variance_first_diff" & susc_discount == 0.0)  %>%
+  mutate(metric = as.character(metric)) %>%
+  mutate(
+    metric = ifelse(metric == "variance", "Variance", metric),
+    metric = ifelse(metric == "variance_first_diff", "Var. 1st Diff.", metric),
+    metric = ifelse(metric == "autocovariance", "Autocovar.", metric),
+    metric = ifelse(metric == "autocorrelation", "Autocorr.", metric),
+    metric = ifelse(metric == "decay_time", "Decay\ntime", metric),
+    metric = ifelse(metric == "mean", "Mean", metric),
+    metric = ifelse(metric == "index_of_dispersion", "Index of\ndispersion", metric),
+    metric = ifelse(metric == "coefficient_of_variation", "Coeff. var.", metric),
+    metric = ifelse(metric == "skewness", "Skewness", metric),
+    metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
+  )
+
+gout <- list()
+for(do_city in sort(unique(emerge_ews$city))){
+  if(do_city != "Zinder"){
+    gout[[do_city]] <- ggplot(filter(emerge_ews, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = c("tan", "dodgerblue4")) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      guides(fill = "none") +
+      labs(y = "Count", x = "") +
+      ggtitle(do_city)
+  }
+
+  if(do_city == "Zinder"){
+    gout[[do_city]] <- ggplot(filter(emerge_ews, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = c("tan", "dodgerblue4"), labels = c("Null", "Test"), name = NULL) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(y = "Count", x = "EWS value") +
+      ggtitle(do_city)
+  }
+
+}
+
+ews_hists <- cowplot::plot_grid(
+  plotlist = gout,
+  nrow = 4,
+  labels = c("(a)", "(b)", "(c)", "(d)"),
+  label_size = 12,
+  label_fontfamily = "Times", 
+  label_fontface = 3
+)
+print(ews_hists)
+```
+
+```{r ews-hists2, message=FALSE, warning=TRUE, echo = FALSE, fig.cap="Histograms of EWS from elimination simulations where the rate of change in vaccination probability is equal to 1.5e-05 per day.", fig.height=5}
+elimination_ews <- read.csv("../results/ews-elimination.csv") %>%
+  filter(metric != "variance_first_diff" & vacc_speed == 1.5e-05) %>%
+  mutate(metric = as.character(metric)) %>%
+  mutate(
+    metric = ifelse(metric == "variance", "Variance", metric),
+    metric = ifelse(metric == "variance_first_diff", "Var. 1st Diff.", metric),
+    metric = ifelse(metric == "autocovariance", "Autocovar.", metric),
+    metric = ifelse(metric == "autocorrelation", "Autocorr.", metric),
+    metric = ifelse(metric == "decay_time", "Decay\ntime", metric),
+    metric = ifelse(metric == "mean", "Mean", metric),
+    metric = ifelse(metric == "index_of_dispersion", "Index of\ndispersion", metric),
+    metric = ifelse(metric == "coefficient_of_variation", "Coeff. var.", metric),
+    metric = ifelse(metric == "skewness", "Skewness", metric),
+    metric = ifelse(metric == "kurtosis", "Kurtosis", metric)
+  )
+
+gout <- list()
+for(do_city in sort(unique(emerge_ews$city))){
+  if(do_city != "Zinder"){
+    gout[[do_city]] <- ggplot(filter(elimination_ews, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = c("tan", "dodgerblue4")) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      guides(fill = "none") +
+      labs(y = "Count", x = "") +
+      ggtitle(do_city)
+  }
+
+  if(do_city == "Zinder"){
+    gout[[do_city]] <- ggplot(filter(elimination_ews, city == do_city), aes(fill = half, x = value)) +
+      geom_histogram(bins = 20) +
+      facet_wrap(~metric, scales = "free", nrow = 1) +
+      scale_fill_manual(values = c("tan", "dodgerblue4"), labels = c("Null", "Test"), name = NULL) +
+      theme_minimal(base_size = 8) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(y = "Count", x = "EWS value") +
+      ggtitle(do_city)
+  }
+
+}
+
+ews_hists <- cowplot::plot_grid(
+  plotlist = gout,
+  nrow = 4,
+  labels = c("(a)", "(b)", "(c)", "(d)"),
+  label_size = 12,
+  label_fontfamily = "Times", 
+  label_fontface = 3
+)
+print(ews_hists)
+```
+
+
+
 # Length of null and test intervals
 
 In the main text we show EWS performance across the range of susceptible depletion factors and vaccination improvement speeds we modeled.
@@ -916,6 +801,3 @@ ggplot() +
   theme_minimal(base_size = 12)
 ```
 
-
-
-# References
