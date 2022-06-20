@@ -51,7 +51,7 @@ preamble: |
   \usepackage[nomarkers]{endfloat}
   \usepackage{xcolor}
   \newcommand{\comment}[1]{\ignorespaces}
-  \newcommand{\new}{\textcolor{blue}}
+  \newcommand{\new}{\textcolor{black}}
   \renewcommand*{\thefootnote}{\fnsymbol{footnote}}
 ---
 
@@ -217,7 +217,7 @@ plot_grid(the_map, the_series, ncol = 2, labels = c("(a)", "(b)"),
 ```
 
 ## Stochastic *SEIR* model
-The model is a discrete-time approximation to the continuous-time SEIR model with demography, specified as a set of difference equations,
+The model is a discrete-time approximation to the continuous-time susceptible-exposed-infected-recovered (SEIR) model with demography, specified as a set of difference equations,
 
 \new{\begin{align}
 S_{t+ \Delta t} - S_{t} &= n_{0S,t} - n_{SE,t} - n_{S0,t} \\
@@ -297,7 +297,7 @@ To identify the maximum likelihood estimates, MIF lets parameters take a random 
 The variance of the random walk decreases at each iteration of MIF, where a MIF iteration means one filtering pass through the time series.
 This procedure converges toward the maximimum likelihood estimates (MLEs).
 
-We used the IF2 algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` version 1.18 [@King2016; @King2018] to conduct MIF.
+We used the Iterated Filtering 2 (IF2) algorithm [@Ionides2015] implemented in the R [@R2017] package `pomp` version 1.18 [@King2016; @King2018] to conduct MIF.
 To initialize MIF, we generated 5000 parameter sets using Latin hypercube sampling over large ranges of the parameters.
 We then performed two rounds of MIF, each for 100 iterations, with 10,000 particles, using geometric cooling.
 For the first round of MIF we set `cooling.factor = 1`.
@@ -317,7 +317,7 @@ We used the MLE parameter sets to make one-week-ahead predictions and compared o
 To make one-week-ahead predictions, we used particle filtering with 50,000 particles and retained the mean and standard deviation of all latent states across all particles before they were filtered at each time step.
 We used the mean predictions ($\mathbb{E}(\text{cases}_t)$) to assess model fit using a generalized coefficient of determination, calculated as: $R^2 = 1 - \frac{\sum_t [\mathbb{E}(\text{cases}_t) - \text{cases}_t]^2}{\sum_t [\text{mean(cases)}-\text{cases}_t]^2}$ [@Martinez-Bakker2015].
 
-In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarks: a negative binomial sampling model that assumes independent and identically distributed observations and a SARIMA model.
+In addition to comparing model expectations to in-sample observed data, we also compared our fitted SEIR models to two benchmarks: a negative binomial sampling model that assumes independent and identically distributed observations and a seaonal autoregressive moving average (SARIMA) model.
 \new{Doing so allows us to gain some intuition as to whether accounting for mechanism (i.e., transmission dynamics) improves model fit and inference.}
 \new{The SARIMA is a seasonal autoregressive moving average model (an ARIMA (2,0,2)(1,0,1)\textsubscript{52} model) that can account for data dependencies and annual periodicity.}
 \new{Outperforming the SARIMA is a harder test than outperforming the negative binomial sampling model.} \new{We fitted both models to the weekly case count observations for each city using maximum likelihood.} \new{After fitting, we calculated Akaike's Information Criterion for each model as: $\text{AIC} = 2k -2\text{ln}(L)$, where $k$ is the number of estimated parameters in the model and $L$ is the model's likelihood} [@Akaike1973]. \new{The negative binomial sampling model has 2 parameters, the SARIMA model has 8 parameters, and the SEIR model has 14 parameters.}
@@ -344,7 +344,7 @@ Several outbreaks are seen within 11 years in the data (figure 1b), though time-
 Because the model is stochastic, we repeated these simulations 500 times for each city--susceptible-depletion combination.
 
 Next, we split each simulated time series into null and test intervals.
-Fixed-size windows before and after the known critical transition were used because our focus was on testing EWS using empirically-based models, rather than attempting to identify optimal methods for operationalizing EWS.
+Fixed-size windows before (null) and after (test) the known critical transition were used because our focus was on testing EWS using empirically-based models, rather than attempting to identify optimal methods for operationalizing EWS.
 \new{To define the null and test intervals for our simulations of re-emergence and elimination, we need to know when the critical transition between alternative modes of fluctuation occurs.}
 \new{For re-emergence, we defined the critical year as the year in which the effective reproduction number ($\mathcal{R}_e$) reaches or exceeds the critical value of 1.}
 \new{When determining the critical year, we eliminated the variation in $\mathcal{R}_e$ that arises from the gamma white noise factor and thus calculated the expected value of $\mathcal{R}_e(t)$ over the set of all simulation replicates at time $t$.}
@@ -846,10 +846,6 @@ final <- cowplot::plot_grid(row1, row2, ncol = 1, align = "v")
 print(final)
 ```
 
-In summary, our analysis of EWS suggested that indicators of critical slowing down have predictive value for emergence and elimination events.
-We found similar results for the approach to elimination when calculating EWS over a moving window of 35 weeks in the null and test intervals (figure S9b).
-But, all EWS performed less well when predicting the approach to emergence over the moving window (figure S9).
-
 
 # Discussion
 
@@ -947,6 +943,8 @@ We found that susceptible depletion was less than 0.5, the smallest susceptible 
 These statistics do not detract from our main finding of critical slowing down in measles dynamics, but do suggest that EWS might be less useful in some cases than in others.
 For example, AUC values for emergence at the 0.5 level of susceptible depletion were already low for most cities (figure \ref{emerge-aucs}\textbf{c}).
 Thus, our methods may not be practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
+
+\new{Another potential limitation is that the population of Nigeria has increased substantially since the end of the time series’ we analyzed in 2005. This presents a limitation to our work because we cannot definitively say whether our results are robust to such large changes in population size. However, our analysis across cities with different population sizes suggests that EWS would remain a viable tool. Elimination may be easier to detect, as demonstrated by our result that EWS performed better in larger cities.}
 
 We focused on fixed windows for calculating EWS based on the timing of the critical transition.
 Thus, our work also does not represent how EWS would be operationalised in online mode.
