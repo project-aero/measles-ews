@@ -950,7 +950,10 @@ These statistics do not detract from our main finding of critical slowing down i
 For example, AUC values for emergence at the 0.5 level of susceptible depletion were already low for most cities (figure \ref{emerge-aucs}\textbf{c}).
 Thus, our methods may not be practical for cities that rarely experience levels of susceptible depletion below 0.5 (e.g., Agadez).
 
-\new{Another potential limitation is that the population of Niger has increased substantially since the end of the time series’ we analyzed in 2005. This presents a limitation to our work because we cannot definitively say whether our results are robust to such large changes in population size. However, our analysis across cities with different population sizes suggests that EWS would remain a viable tool. Elimination may be easier to detect, as demonstrated by our result that EWS performed better in larger cities.}
+Another potential limitation is that the population of Niger has increased substantially since the end of the time series’ we analyzed in 2005. 
+This presents a limitation to our work because we cannot definitively say whether our results are robust to such large changes in population size. 
+However, our analysis across cities with different population sizes suggests that EWS would remain a viable tool. 
+Elimination may be easier to detect, as demonstrated by our result that EWS performed better in larger cities.
 
 We focused on fixed windows for calculating EWS based on the timing of the critical transition.
 Thus, our work also does not represent how EWS would be operationalised in online mode.
